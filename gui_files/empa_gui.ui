@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>431</width>
-    <height>457</height>
+    <height>472</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -20,7 +20,7 @@
       <x>0</x>
       <y>0</y>
       <width>441</width>
-      <height>401</height>
+      <height>421</height>
      </rect>
     </property>
     <property name="currentIndex">
@@ -222,7 +222,7 @@
         <x>0</x>
         <y>0</y>
         <width>431</width>
-        <height>371</height>
+        <height>391</height>
        </rect>
       </property>
       <widget class="QWidget" name="tab_4">
@@ -401,7 +401,7 @@
           <x>0</x>
           <y>150</y>
           <width>421</width>
-          <height>191</height>
+          <height>211</height>
          </rect>
         </property>
         <property name="title">
@@ -412,7 +412,7 @@
           <rect>
            <x>10</x>
            <y>15</y>
-           <width>201</width>
+           <width>131</width>
            <height>24</height>
           </rect>
          </property>
@@ -426,7 +426,7 @@
            <x>0</x>
            <y>31</y>
            <width>411</width>
-           <height>61</height>
+           <height>81</height>
           </rect>
          </property>
          <property name="title">
@@ -543,18 +543,31 @@
            <string>Clear</string>
           </property>
          </widget>
+         <widget class="QPushButton" name="calssification_segment_savetofolder_button">
+          <property name="geometry">
+           <rect>
+            <x>9</x>
+            <y>56</y>
+            <width>181</width>
+            <height>24</height>
+           </rect>
+          </property>
+          <property name="text">
+           <string> Labelled patterns to folder(.csv)</string>
+          </property>
+         </widget>
         </widget>
         <widget class="QGroupBox" name="groupBox_7">
          <property name="geometry">
           <rect>
            <x>1</x>
-           <y>88</y>
+           <y>108</y>
            <width>411</width>
            <height>101</height>
           </rect>
          </property>
          <property name="title">
-          <string>Classification</string>
+          <string>Classification train/test</string>
          </property>
          <widget class="QPushButton" name="classification_run_classification_button">
           <property name="geometry">

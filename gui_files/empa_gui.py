@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 ################################################################################
-## Form generated from reading UI file 'empa_guiFXCuDw.ui'
+## Form generated from reading UI file 'empa_guixBXeGx.ui'
 ##
 ## Created by: Qt User Interface Compiler version 6.9.0
 ##
@@ -24,12 +24,12 @@ class Ui_EmpaGUI(object):
     def setupUi(self, EmpaGUI):
         if not EmpaGUI.objectName():
             EmpaGUI.setObjectName(u"EmpaGUI")
-        EmpaGUI.resize(431, 457)
+        EmpaGUI.resize(431, 472)
         self.centralwidget = QWidget(EmpaGUI)
         self.centralwidget.setObjectName(u"centralwidget")
         self.tabWidget = QTabWidget(self.centralwidget)
         self.tabWidget.setObjectName(u"tabWidget")
-        self.tabWidget.setGeometry(QRect(0, 0, 441, 401))
+        self.tabWidget.setGeometry(QRect(0, 0, 441, 421))
         self.tab = QWidget()
         self.tab.setObjectName(u"tab")
         self.groupBox = QGroupBox(self.tab)
@@ -78,7 +78,7 @@ class Ui_EmpaGUI(object):
         self.tab_2.setObjectName(u"tab_2")
         self.tabWidget_2 = QTabWidget(self.tab_2)
         self.tabWidget_2.setObjectName(u"tabWidget_2")
-        self.tabWidget_2.setGeometry(QRect(0, 0, 431, 371))
+        self.tabWidget_2.setGeometry(QRect(0, 0, 431, 391))
         self.tab_4 = QWidget()
         self.tab_4.setObjectName(u"tab_4")
         self.groupBox_4 = QGroupBox(self.tab_4)
@@ -121,13 +121,13 @@ class Ui_EmpaGUI(object):
         self.unload_as_csv_button_data_button_3.setGeometry(QRect(10, 124, 201, 24))
         self.groupBox_5 = QGroupBox(self.tab_4)
         self.groupBox_5.setObjectName(u"groupBox_5")
-        self.groupBox_5.setGeometry(QRect(0, 150, 421, 191))
+        self.groupBox_5.setGeometry(QRect(0, 150, 421, 211))
         self.calssification_plot_segment = QPushButton(self.groupBox_5)
         self.calssification_plot_segment.setObjectName(u"calssification_plot_segment")
-        self.calssification_plot_segment.setGeometry(QRect(10, 15, 201, 24))
+        self.calssification_plot_segment.setGeometry(QRect(10, 15, 131, 24))
         self.groupBox_6 = QGroupBox(self.groupBox_5)
         self.groupBox_6.setObjectName(u"groupBox_6")
-        self.groupBox_6.setGeometry(QRect(0, 31, 411, 61))
+        self.groupBox_6.setGeometry(QRect(0, 31, 411, 81))
         self.classification_set_category = QPushButton(self.groupBox_6)
         self.classification_set_category.setObjectName(u"classification_set_category")
         self.classification_set_category.setGeometry(QRect(300, 15, 101, 21))
@@ -156,9 +156,12 @@ class Ui_EmpaGUI(object):
         self.classification_clear_labels_button = QPushButton(self.groupBox_6)
         self.classification_clear_labels_button.setObjectName(u"classification_clear_labels_button")
         self.classification_clear_labels_button.setGeometry(QRect(300, 35, 101, 21))
+        self.calssification_segment_savetofolder_button = QPushButton(self.groupBox_6)
+        self.calssification_segment_savetofolder_button.setObjectName(u"calssification_segment_savetofolder_button")
+        self.calssification_segment_savetofolder_button.setGeometry(QRect(9, 56, 181, 24))
         self.groupBox_7 = QGroupBox(self.groupBox_5)
         self.groupBox_7.setObjectName(u"groupBox_7")
-        self.groupBox_7.setGeometry(QRect(1, 88, 411, 101))
+        self.groupBox_7.setGeometry(QRect(1, 108, 411, 101))
         self.classification_run_classification_button = QPushButton(self.groupBox_7)
         self.classification_run_classification_button.setObjectName(u"classification_run_classification_button")
         self.classification_run_classification_button.setGeometry(QRect(300, 15, 101, 41))
@@ -260,7 +263,8 @@ class Ui_EmpaGUI(object):
         self.label_8.setText(QCoreApplication.translate("EmpaGUI", u"label-", None))
         self.label_9.setText(QCoreApplication.translate("EmpaGUI", u"Start:", None))
         self.classification_clear_labels_button.setText(QCoreApplication.translate("EmpaGUI", u"Clear", None))
-        self.groupBox_7.setTitle(QCoreApplication.translate("EmpaGUI", u"Classification", None))
+        self.calssification_segment_savetofolder_button.setText(QCoreApplication.translate("EmpaGUI", u" Labelled patterns to folder(.csv)", None))
+        self.groupBox_7.setTitle(QCoreApplication.translate("EmpaGUI", u"Classification train/test", None))
         self.classification_run_classification_button.setText(QCoreApplication.translate("EmpaGUI", u"Run", None))
         self.label_13.setText(QCoreApplication.translate("EmpaGUI", u"Model:", None))
         self.classificationclassifier_dropdown.setItemText(0, QCoreApplication.translate("EmpaGUI", u"XGBoost", None))
