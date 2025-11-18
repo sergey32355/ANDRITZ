@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 ################################################################################
-## Form generated from reading UI file 'empa_guixBXeGx.ui'
+## Form generated from reading UI file 'empa_guiGEwcDO.ui'
 ##
 ## Created by: Qt User Interface Compiler version 6.9.0
 ##
@@ -42,7 +42,6 @@ class Ui_EmpaGUI(object):
         self.Brows_data_folder_button.setObjectName(u"Brows_data_folder_button")
         self.Brows_data_folder_button.setGeometry(QRect(334, 20, 91, 24))
         self.load_data_plate_type_dropdown = QComboBox(self.groupBox)
-        self.load_data_plate_type_dropdown.addItem("")
         self.load_data_plate_type_dropdown.addItem("")
         self.load_data_plate_type_dropdown.addItem("")
         self.load_data_plate_type_dropdown.setObjectName(u"load_data_plate_type_dropdown")
@@ -210,8 +209,8 @@ class Ui_EmpaGUI(object):
 
         self.retranslateUi(EmpaGUI)
 
-        self.tabWidget.setCurrentIndex(1)
-        self.load_data_plate_type_dropdown.setCurrentIndex(0)
+        self.tabWidget.setCurrentIndex(0)
+        self.load_data_plate_type_dropdown.setCurrentIndex(-1)
         self.classification_preproc_dropdown.setCurrentIndex(0)
 
 
@@ -222,9 +221,8 @@ class Ui_EmpaGUI(object):
         EmpaGUI.setWindowTitle(QCoreApplication.translate("EmpaGUI", u"MainWindow", None))
         self.groupBox.setTitle(QCoreApplication.translate("EmpaGUI", u"Train data source", None))
         self.Brows_data_folder_button.setText(QCoreApplication.translate("EmpaGUI", u"Browse folder", None))
-        self.load_data_plate_type_dropdown.setItemText(0, QCoreApplication.translate("EmpaGUI", u"small", None))
-        self.load_data_plate_type_dropdown.setItemText(1, QCoreApplication.translate("EmpaGUI", u"large", None))
-        self.load_data_plate_type_dropdown.setItemText(2, QCoreApplication.translate("EmpaGUI", u"from file", None))
+        self.load_data_plate_type_dropdown.setItemText(0, QCoreApplication.translate("EmpaGUI", u"default", None))
+        self.load_data_plate_type_dropdown.setItemText(1, QCoreApplication.translate("EmpaGUI", u"from file", None))
 
         self.load_data_plate_type_dropdown.setPlaceholderText(QCoreApplication.translate("EmpaGUI", u"Choose BPP type", None))
         self.load_data_button.setText(QCoreApplication.translate("EmpaGUI", u"Load data", None))

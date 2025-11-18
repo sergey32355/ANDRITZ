@@ -356,3 +356,6 @@ def ShowSignalInFigure(fig, plates=[],colors_code=[],indx_plate=0,indx_segment=0
         fig.canvas.flush_events()
         fig.show()        
 
+#plates layout
+
+        

@@ -24,7 +24,7 @@
      </rect>
     </property>
     <property name="currentIndex">
-     <number>1</number>
+     <number>0</number>
     </property>
     <widget class="QWidget" name="tab">
      <attribute name="title">
@@ -75,19 +75,14 @@
         </rect>
        </property>
        <property name="currentIndex">
-        <number>0</number>
+        <number>-1</number>
        </property>
        <property name="placeholderText">
         <string>Choose BPP type</string>
        </property>
        <item>
         <property name="text">
-         <string>small</string>
-        </property>
-       </item>
-       <item>
-        <property name="text">
-         <string>large</string>
+         <string>default</string>
         </property>
        </item>
        <item>
