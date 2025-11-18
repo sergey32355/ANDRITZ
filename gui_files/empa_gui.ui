@@ -1,0 +1,710 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>EmpaGUI</class>
+ <widget class="QMainWindow" name="EmpaGUI">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>431</width>
+    <height>435</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>MainWindow</string>
+  </property>
+  <widget class="QWidget" name="centralwidget">
+   <widget class="QTabWidget" name="tabWidget">
+    <property name="geometry">
+     <rect>
+      <x>0</x>
+      <y>0</y>
+      <width>441</width>
+      <height>381</height>
+     </rect>
+    </property>
+    <property name="currentIndex">
+     <number>1</number>
+    </property>
+    <widget class="QWidget" name="tab">
+     <attribute name="title">
+      <string>Main</string>
+     </attribute>
+     <widget class="QGroupBox" name="groupBox">
+      <property name="geometry">
+       <rect>
+        <x>0</x>
+        <y>0</y>
+        <width>431</width>
+        <height>111</height>
+       </rect>
+      </property>
+      <property name="title">
+       <string>Train data source</string>
+      </property>
+      <widget class="QLineEdit" name="load_data_path">
+       <property name="geometry">
+        <rect>
+         <x>10</x>
+         <y>20</y>
+         <width>331</width>
+         <height>22</height>
+        </rect>
+       </property>
+      </widget>
+      <widget class="QPushButton" name="Brows_data_folder_button">
+       <property name="geometry">
+        <rect>
+         <x>334</x>
+         <y>20</y>
+         <width>91</width>
+         <height>24</height>
+        </rect>
+       </property>
+       <property name="text">
+        <string>Browse folder</string>
+       </property>
+      </widget>
+      <widget class="QComboBox" name="load_data_plate_type_dropdown">
+       <property name="geometry">
+        <rect>
+         <x>80</x>
+         <y>50</y>
+         <width>341</width>
+         <height>24</height>
+        </rect>
+       </property>
+       <property name="currentIndex">
+        <number>0</number>
+       </property>
+       <property name="placeholderText">
+        <string>Choose BPP type</string>
+       </property>
+       <item>
+        <property name="text">
+         <string>small</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>large</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>from file</string>
+        </property>
+       </item>
+      </widget>
+      <widget class="QPushButton" name="load_data_button">
+       <property name="geometry">
+        <rect>
+         <x>0</x>
+         <y>80</y>
+         <width>421</width>
+         <height>24</height>
+        </rect>
+       </property>
+       <property name="text">
+        <string>Load data</string>
+       </property>
+      </widget>
+      <widget class="QLabel" name="label">
+       <property name="geometry">
+        <rect>
+         <x>10</x>
+         <y>54</y>
+         <width>71</width>
+         <height>16</height>
+        </rect>
+       </property>
+       <property name="text">
+        <string>Plate layout:</string>
+       </property>
+      </widget>
+     </widget>
+     <widget class="QGroupBox" name="groupBox_2">
+      <property name="geometry">
+       <rect>
+        <x>0</x>
+        <y>110</y>
+        <width>431</width>
+        <height>151</height>
+       </rect>
+      </property>
+      <property name="title">
+       <string>Model</string>
+      </property>
+      <widget class="QPushButton" name="load_model_button">
+       <property name="geometry">
+        <rect>
+         <x>10</x>
+         <y>50</y>
+         <width>411</width>
+         <height>24</height>
+        </rect>
+       </property>
+       <property name="text">
+        <string>Load pre-trained model</string>
+       </property>
+      </widget>
+      <widget class="QComboBox" name="train_dropdown">
+       <property name="geometry">
+        <rect>
+         <x>10</x>
+         <y>80</y>
+         <width>401</width>
+         <height>24</height>
+        </rect>
+       </property>
+       <property name="placeholderText">
+        <string>Choose model architecture</string>
+       </property>
+       <item>
+        <property name="text">
+         <string>autoencoder</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>load from file</string>
+        </property>
+       </item>
+      </widget>
+      <widget class="QPushButton" name="train_button">
+       <property name="geometry">
+        <rect>
+         <x>10</x>
+         <y>110</y>
+         <width>329</width>
+         <height>24</height>
+        </rect>
+       </property>
+       <property name="text">
+        <string>Train model</string>
+       </property>
+      </widget>
+     </widget>
+     <widget class="QGroupBox" name="groupBox_3">
+      <property name="geometry">
+       <rect>
+        <x>0</x>
+        <y>260</y>
+        <width>431</width>
+        <height>51</height>
+       </rect>
+      </property>
+      <property name="title">
+       <string>GroupBox</string>
+      </property>
+      <widget class="QPushButton" name="predict_button">
+       <property name="geometry">
+        <rect>
+         <x>10</x>
+         <y>20</y>
+         <width>411</width>
+         <height>24</height>
+        </rect>
+       </property>
+       <property name="text">
+        <string>Run model (identify defects)</string>
+       </property>
+      </widget>
+     </widget>
+    </widget>
+    <widget class="QWidget" name="tab_2">
+     <attribute name="title">
+      <string>Tools</string>
+     </attribute>
+     <widget class="QTabWidget" name="tabWidget_2">
+      <property name="geometry">
+       <rect>
+        <x>0</x>
+        <y>0</y>
+        <width>431</width>
+        <height>361</height>
+       </rect>
+      </property>
+      <widget class="QWidget" name="tab_4">
+       <attribute name="title">
+        <string>Page 1</string>
+       </attribute>
+       <widget class="QGroupBox" name="groupBox_4">
+        <property name="geometry">
+         <rect>
+          <x>-1</x>
+          <y>0</y>
+          <width>421</width>
+          <height>131</height>
+         </rect>
+        </property>
+        <property name="title">
+         <string>Segments</string>
+        </property>
+        <widget class="QComboBox" name="plot_plate_dropdown">
+         <property name="geometry">
+          <rect>
+           <x>60</x>
+           <y>15</y>
+           <width>361</width>
+           <height>24</height>
+          </rect>
+         </property>
+         <property name="placeholderText">
+          <string>Choose plate to plot</string>
+         </property>
+        </widget>
+        <widget class="QComboBox" name="plot_segment_dropdown">
+         <property name="geometry">
+          <rect>
+           <x>60</x>
+           <y>59</y>
+           <width>361</width>
+           <height>24</height>
+          </rect>
+         </property>
+         <property name="placeholderText">
+          <string>Choose segment to plot</string>
+         </property>
+        </widget>
+        <widget class="QPushButton" name="plot_button">
+         <property name="geometry">
+          <rect>
+           <x>10</x>
+           <y>101</y>
+           <width>201</width>
+           <height>24</height>
+          </rect>
+         </property>
+         <property name="text">
+          <string>Plot signal</string>
+         </property>
+        </widget>
+        <widget class="QPushButton" name="platre_data_button_2">
+         <property name="geometry">
+          <rect>
+           <x>210</x>
+           <y>101</y>
+           <width>211</width>
+           <height>24</height>
+          </rect>
+         </property>
+         <property name="text">
+          <string>Segments - full list show</string>
+         </property>
+        </widget>
+        <widget class="QComboBox" name="Channel_segment_plot">
+         <property name="geometry">
+          <rect>
+           <x>60</x>
+           <y>80</y>
+           <width>361</width>
+           <height>24</height>
+          </rect>
+         </property>
+         <property name="placeholderText">
+          <string>Choose channel to plot</string>
+         </property>
+        </widget>
+        <widget class="QComboBox" name="type_of_signal_dropdown">
+         <property name="geometry">
+          <rect>
+           <x>60</x>
+           <y>37</y>
+           <width>361</width>
+           <height>24</height>
+          </rect>
+         </property>
+         <property name="placeholderText">
+          <string>Choose segment to plot</string>
+         </property>
+         <item>
+          <property name="text">
+           <string>Raw signals</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>Segments</string>
+          </property>
+         </item>
+        </widget>
+        <widget class="QLabel" name="label_2">
+         <property name="geometry">
+          <rect>
+           <x>8</x>
+           <y>18</y>
+           <width>49</width>
+           <height>16</height>
+          </rect>
+         </property>
+         <property name="text">
+          <string>Plate:</string>
+         </property>
+        </widget>
+        <widget class="QLabel" name="label_3">
+         <property name="geometry">
+          <rect>
+           <x>7</x>
+           <y>38</y>
+           <width>49</width>
+           <height>16</height>
+          </rect>
+         </property>
+         <property name="text">
+          <string>Type:</string>
+         </property>
+        </widget>
+        <widget class="QLabel" name="label_4">
+         <property name="geometry">
+          <rect>
+           <x>8</x>
+           <y>61</y>
+           <width>49</width>
+           <height>16</height>
+          </rect>
+         </property>
+         <property name="text">
+          <string>Segment:</string>
+         </property>
+        </widget>
+        <widget class="QLabel" name="label_5">
+         <property name="geometry">
+          <rect>
+           <x>8</x>
+           <y>82</y>
+           <width>49</width>
+           <height>16</height>
+          </rect>
+         </property>
+         <property name="text">
+          <string>Channel:</string>
+         </property>
+        </widget>
+       </widget>
+       <widget class="QGroupBox" name="groupBox_5">
+        <property name="geometry">
+         <rect>
+          <x>-1</x>
+          <y>130</y>
+          <width>421</width>
+          <height>191</height>
+         </rect>
+        </property>
+        <property name="title">
+         <string>Classification (applicable only for segments)</string>
+        </property>
+        <widget class="QPushButton" name="calssification_plot_segment">
+         <property name="geometry">
+          <rect>
+           <x>10</x>
+           <y>15</y>
+           <width>201</width>
+           <height>24</height>
+          </rect>
+         </property>
+         <property name="text">
+          <string>Plot segment</string>
+         </property>
+        </widget>
+        <widget class="QGroupBox" name="groupBox_6">
+         <property name="geometry">
+          <rect>
+           <x>0</x>
+           <y>31</y>
+           <width>411</width>
+           <height>61</height>
+          </rect>
+         </property>
+         <property name="title">
+          <string>Labeling</string>
+         </property>
+         <widget class="QPushButton" name="classification_set_category">
+          <property name="geometry">
+           <rect>
+            <x>300</x>
+            <y>15</y>
+            <width>101</width>
+            <height>21</height>
+           </rect>
+          </property>
+          <property name="text">
+           <string>Assign</string>
+          </property>
+         </widget>
+         <widget class="QLabel" name="label_6">
+          <property name="geometry">
+           <rect>
+            <x>10</x>
+            <y>18</y>
+            <width>91</width>
+            <height>16</height>
+           </rect>
+          </property>
+          <property name="frameShape">
+           <enum>QFrame::Shape::Panel</enum>
+          </property>
+          <property name="text">
+           <string>Elements:</string>
+          </property>
+         </widget>
+         <widget class="QLabel" name="label_7">
+          <property name="geometry">
+           <rect>
+            <x>146</x>
+            <y>40</y>
+            <width>31</width>
+            <height>16</height>
+           </rect>
+          </property>
+          <property name="text">
+           <string>end-</string>
+          </property>
+         </widget>
+         <widget class="QLabel" name="label_8">
+          <property name="geometry">
+           <rect>
+            <x>144</x>
+            <y>18</y>
+            <width>31</width>
+            <height>16</height>
+           </rect>
+          </property>
+          <property name="text">
+           <string>label-</string>
+          </property>
+         </widget>
+         <widget class="QLabel" name="label_9">
+          <property name="geometry">
+           <rect>
+            <x>10</x>
+            <y>40</y>
+            <width>31</width>
+            <height>16</height>
+           </rect>
+          </property>
+          <property name="text">
+           <string>Start:</string>
+          </property>
+         </widget>
+         <widget class="QLineEdit" name="classification_labeling_start_element_text">
+          <property name="geometry">
+           <rect>
+            <x>40</x>
+            <y>35</y>
+            <width>101</width>
+            <height>22</height>
+           </rect>
+          </property>
+         </widget>
+         <widget class="QLineEdit" name="classification_labeling_end_element_text">
+          <property name="geometry">
+           <rect>
+            <x>173</x>
+            <y>35</y>
+            <width>121</width>
+            <height>22</height>
+           </rect>
+          </property>
+         </widget>
+         <widget class="QLineEdit" name="classification_labeling_label_text">
+          <property name="geometry">
+           <rect>
+            <x>178</x>
+            <y>11</y>
+            <width>113</width>
+            <height>22</height>
+           </rect>
+          </property>
+         </widget>
+         <widget class="QPushButton" name="classification_clear_labels_button">
+          <property name="geometry">
+           <rect>
+            <x>300</x>
+            <y>35</y>
+            <width>101</width>
+            <height>21</height>
+           </rect>
+          </property>
+          <property name="text">
+           <string>Clear</string>
+          </property>
+         </widget>
+        </widget>
+        <widget class="QGroupBox" name="groupBox_7">
+         <property name="geometry">
+          <rect>
+           <x>1</x>
+           <y>88</y>
+           <width>411</width>
+           <height>101</height>
+          </rect>
+         </property>
+         <property name="title">
+          <string>Classification</string>
+         </property>
+         <widget class="QPushButton" name="classification_run_classification_button">
+          <property name="geometry">
+           <rect>
+            <x>300</x>
+            <y>15</y>
+            <width>101</width>
+            <height>41</height>
+           </rect>
+          </property>
+          <property name="text">
+           <string>Run</string>
+          </property>
+         </widget>
+         <widget class="QLabel" name="label_13">
+          <property name="geometry">
+           <rect>
+            <x>8</x>
+            <y>15</y>
+            <width>41</width>
+            <height>16</height>
+           </rect>
+          </property>
+          <property name="text">
+           <string>Model:</string>
+          </property>
+         </widget>
+         <widget class="QComboBox" name="classificationclassifier_dropdown">
+          <property name="geometry">
+           <rect>
+            <x>49</x>
+            <y>12</y>
+            <width>251</width>
+            <height>24</height>
+           </rect>
+          </property>
+          <property name="placeholderText">
+           <string>XGBoost</string>
+          </property>
+          <item>
+           <property name="text">
+            <string>XGBoost</string>
+           </property>
+          </item>
+         </widget>
+         <widget class="QLabel" name="label_10">
+          <property name="geometry">
+           <rect>
+            <x>10</x>
+            <y>40</y>
+            <width>51</width>
+            <height>16</height>
+           </rect>
+          </property>
+          <property name="text">
+           <string>Snippet:</string>
+          </property>
+         </widget>
+         <widget class="QLineEdit" name="classification_snippet_size_text">
+          <property name="geometry">
+           <rect>
+            <x>56</x>
+            <y>36</y>
+            <width>71</width>
+            <height>22</height>
+           </rect>
+          </property>
+          <property name="text">
+           <string>1000</string>
+          </property>
+         </widget>
+         <widget class="QComboBox" name="classification_preproc_dropdown">
+          <property name="geometry">
+           <rect>
+            <x>140</x>
+            <y>36</y>
+            <width>161</width>
+            <height>24</height>
+           </rect>
+          </property>
+          <property name="currentText">
+           <string>Preprocessing - none</string>
+          </property>
+          <property name="currentIndex">
+           <number>0</number>
+          </property>
+          <property name="placeholderText">
+           <string>XGBoost</string>
+          </property>
+          <item>
+           <property name="text">
+            <string>Preprocessing - none</string>
+           </property>
+          </item>
+         </widget>
+         <widget class="QLabel" name="label_11">
+          <property name="geometry">
+           <rect>
+            <x>10</x>
+            <y>70</y>
+            <width>51</width>
+            <height>16</height>
+           </rect>
+          </property>
+          <property name="text">
+           <string>Test (%):</string>
+          </property>
+         </widget>
+         <widget class="QLineEdit" name="classification_test_text">
+          <property name="geometry">
+           <rect>
+            <x>54</x>
+            <y>66</y>
+            <width>71</width>
+            <height>22</height>
+           </rect>
+          </property>
+          <property name="text">
+           <string>20</string>
+          </property>
+         </widget>
+         <widget class="QPushButton" name="classification_dataset_info_button">
+          <property name="geometry">
+           <rect>
+            <x>300</x>
+            <y>56</y>
+            <width>101</width>
+            <height>41</height>
+           </rect>
+          </property>
+          <property name="text">
+           <string>Dataset info</string>
+          </property>
+         </widget>
+        </widget>
+       </widget>
+      </widget>
+      <widget class="QWidget" name="tab_5">
+       <attribute name="title">
+        <string>Tab 2</string>
+       </attribute>
+      </widget>
+     </widget>
+    </widget>
+    <widget class="QWidget" name="tab_3">
+     <attribute name="title">
+      <string>Settings</string>
+     </attribute>
+    </widget>
+   </widget>
+  </widget>
+  <widget class="QMenuBar" name="menubar">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>0</y>
+     <width>431</width>
+     <height>33</height>
+    </rect>
+   </property>
+  </widget>
+  <widget class="QStatusBar" name="statusbar"/>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>
