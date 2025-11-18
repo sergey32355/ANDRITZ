@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 ################################################################################
-## Form generated from reading UI file 'empa_guitxIUyi.ui'
+## Form generated from reading UI file 'empa_guiFXCuDw.ui'
 ##
 ## Created by: Qt User Interface Compiler version 6.9.0
 ##
@@ -24,12 +24,12 @@ class Ui_EmpaGUI(object):
     def setupUi(self, EmpaGUI):
         if not EmpaGUI.objectName():
             EmpaGUI.setObjectName(u"EmpaGUI")
-        EmpaGUI.resize(431, 435)
+        EmpaGUI.resize(431, 457)
         self.centralwidget = QWidget(EmpaGUI)
         self.centralwidget.setObjectName(u"centralwidget")
         self.tabWidget = QTabWidget(self.centralwidget)
         self.tabWidget.setObjectName(u"tabWidget")
-        self.tabWidget.setGeometry(QRect(0, 0, 441, 381))
+        self.tabWidget.setGeometry(QRect(0, 0, 441, 401))
         self.tab = QWidget()
         self.tab.setObjectName(u"tab")
         self.groupBox = QGroupBox(self.tab)
@@ -78,12 +78,12 @@ class Ui_EmpaGUI(object):
         self.tab_2.setObjectName(u"tab_2")
         self.tabWidget_2 = QTabWidget(self.tab_2)
         self.tabWidget_2.setObjectName(u"tabWidget_2")
-        self.tabWidget_2.setGeometry(QRect(0, 0, 431, 361))
+        self.tabWidget_2.setGeometry(QRect(0, 0, 431, 371))
         self.tab_4 = QWidget()
         self.tab_4.setObjectName(u"tab_4")
         self.groupBox_4 = QGroupBox(self.tab_4)
         self.groupBox_4.setObjectName(u"groupBox_4")
-        self.groupBox_4.setGeometry(QRect(-1, 0, 421, 131))
+        self.groupBox_4.setGeometry(QRect(-1, 0, 421, 151))
         self.plot_plate_dropdown = QComboBox(self.groupBox_4)
         self.plot_plate_dropdown.setObjectName(u"plot_plate_dropdown")
         self.plot_plate_dropdown.setGeometry(QRect(60, 15, 361, 24))
@@ -116,9 +116,12 @@ class Ui_EmpaGUI(object):
         self.label_5 = QLabel(self.groupBox_4)
         self.label_5.setObjectName(u"label_5")
         self.label_5.setGeometry(QRect(8, 82, 49, 16))
+        self.unload_as_csv_button_data_button_3 = QPushButton(self.groupBox_4)
+        self.unload_as_csv_button_data_button_3.setObjectName(u"unload_as_csv_button_data_button_3")
+        self.unload_as_csv_button_data_button_3.setGeometry(QRect(10, 124, 201, 24))
         self.groupBox_5 = QGroupBox(self.tab_4)
         self.groupBox_5.setObjectName(u"groupBox_5")
-        self.groupBox_5.setGeometry(QRect(-1, 130, 421, 191))
+        self.groupBox_5.setGeometry(QRect(0, 150, 421, 191))
         self.calssification_plot_segment = QPushButton(self.groupBox_5)
         self.calssification_plot_segment.setObjectName(u"calssification_plot_segment")
         self.calssification_plot_segment.setGeometry(QRect(10, 15, 201, 24))
@@ -247,8 +250,9 @@ class Ui_EmpaGUI(object):
         self.label_3.setText(QCoreApplication.translate("EmpaGUI", u"Type:", None))
         self.label_4.setText(QCoreApplication.translate("EmpaGUI", u"Segment:", None))
         self.label_5.setText(QCoreApplication.translate("EmpaGUI", u"Channel:", None))
+        self.unload_as_csv_button_data_button_3.setText(QCoreApplication.translate("EmpaGUI", u"Save as *.SCV", None))
         self.groupBox_5.setTitle(QCoreApplication.translate("EmpaGUI", u"Classification (applicable only for segments)", None))
-        self.calssification_plot_segment.setText(QCoreApplication.translate("EmpaGUI", u"Plot segment", None))
+        self.calssification_plot_segment.setText(QCoreApplication.translate("EmpaGUI", u"Plot/update segment", None))
         self.groupBox_6.setTitle(QCoreApplication.translate("EmpaGUI", u"Labeling", None))
         self.classification_set_category.setText(QCoreApplication.translate("EmpaGUI", u"Assign", None))
         self.label_6.setText(QCoreApplication.translate("EmpaGUI", u"Elements:", None))
