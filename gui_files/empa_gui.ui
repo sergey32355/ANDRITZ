@@ -74,8 +74,11 @@
          <height>24</height>
         </rect>
        </property>
+       <property name="currentText">
+        <string>default</string>
+       </property>
        <property name="currentIndex">
-        <number>-1</number>
+        <number>0</number>
        </property>
        <property name="placeholderText">
         <string>Choose BPP type</string>
@@ -605,6 +608,11 @@
           <item>
            <property name="text">
             <string>XGBoost</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>NonStatKern_1</string>
            </property>
           </item>
          </widget>

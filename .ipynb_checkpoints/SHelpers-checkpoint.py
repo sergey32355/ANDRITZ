@@ -11,9 +11,6 @@ import matplotlib.pyplot as plt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
 from matplotlib.figure import Figure
 
-#classifiers
-from xgboost import XGBClassifier
-
 SEGMENTS_MISSED_SEGMENT_NAME="noname_"
 
 def get_channel_sorting_dict(channel_order_hex, n_channels):
@@ -359,38 +356,3 @@ def ShowSignalInFigure(fig, plates=[],colors_code=[],indx_plate=0,indx_segment=0
         fig.canvas.flush_events()
         fig.show()        
 
-#classifiers
-
-def XGBoostClassifRun(X_train=[], X_test=[], y_train=[], y_test=[]):
-                bst=None
-                xgb_labs_back=[]
-                try:
-                    #now adjsut the labels -  the reason is that xgbboost wants the labels start from 0, i.e. 0,1,2....
-                    unique_labels=list(set(y_train))    #list(set(labs))
-                    #now adjsut the labels -  the reason is that xgbboost wants the labels start from 0, i.e. 0,1,2....
-                    xgb_unique_labs=[]
-                    for l in range(0,len(unique_labels)):
-                        xgb_unique_labs.append(l)
-                    xgb_lab_train=y_train.copy()
-                    xgb_lab_test=y_test.copy()
-                    print(unique_labels)                
-                    for i in range(0,len(xgb_lab_train)):
-                        indx=unique_labels.index(xgb_lab_train[i])
-                        xgb_lab_train[i]=int(xgb_unique_labs[indx])
-                    for i in range(0,len(xgb_lab_test)):
-                        indx1=unique_labels.index(xgb_lab_test[i])
-                        xgb_lab_test[i]=int(xgb_unique_labs[indx1])                    
-                    #print("xgb_test_labs:"+str(xgb_lab_test))            
-                    #print("unique_labels:"+str(unique_labels))                              
-                    bst = XGBClassifier(n_estimators=200, max_depth=8, learning_rate=1, objective='binary:logistic')
-                    bst.fit(X_train, xgb_lab_train)
-                    preds = bst.predict(X_test)
-                    #show in figure  
-                    xgb_labs_back=preds.copy()
-                    for i in range(0,len(xgb_lab_test)):
-                        indx2=xgb_unique_labs.index(xgb_labs_back[i])
-                        xgb_labs_back[i]=int(unique_labels[indx2])        
-                except Exception as ex:
-                    print(str(ex))
-                    
-                return bst, xgb_labs_back

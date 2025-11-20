@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 ################################################################################
-## Form generated from reading UI file 'empa_guiGEwcDO.ui'
+## Form generated from reading UI file 'empa_guisLdyMm.ui'
 ##
 ## Created by: Qt User Interface Compiler version 6.9.0
 ##
@@ -169,6 +169,7 @@ class Ui_EmpaGUI(object):
         self.label_13.setGeometry(QRect(8, 15, 41, 16))
         self.classificationclassifier_dropdown = QComboBox(self.groupBox_7)
         self.classificationclassifier_dropdown.addItem("")
+        self.classificationclassifier_dropdown.addItem("")
         self.classificationclassifier_dropdown.setObjectName(u"classificationclassifier_dropdown")
         self.classificationclassifier_dropdown.setGeometry(QRect(49, 12, 251, 24))
         self.label_10 = QLabel(self.groupBox_7)
@@ -210,7 +211,7 @@ class Ui_EmpaGUI(object):
         self.retranslateUi(EmpaGUI)
 
         self.tabWidget.setCurrentIndex(0)
-        self.load_data_plate_type_dropdown.setCurrentIndex(-1)
+        self.load_data_plate_type_dropdown.setCurrentIndex(0)
         self.classification_preproc_dropdown.setCurrentIndex(0)
 
 
@@ -224,6 +225,7 @@ class Ui_EmpaGUI(object):
         self.load_data_plate_type_dropdown.setItemText(0, QCoreApplication.translate("EmpaGUI", u"default", None))
         self.load_data_plate_type_dropdown.setItemText(1, QCoreApplication.translate("EmpaGUI", u"from file", None))
 
+        self.load_data_plate_type_dropdown.setCurrentText(QCoreApplication.translate("EmpaGUI", u"default", None))
         self.load_data_plate_type_dropdown.setPlaceholderText(QCoreApplication.translate("EmpaGUI", u"Choose BPP type", None))
         self.load_data_button.setText(QCoreApplication.translate("EmpaGUI", u"Load data", None))
         self.label.setText(QCoreApplication.translate("EmpaGUI", u"Plate layout:", None))
@@ -266,6 +268,7 @@ class Ui_EmpaGUI(object):
         self.classification_run_classification_button.setText(QCoreApplication.translate("EmpaGUI", u"Run", None))
         self.label_13.setText(QCoreApplication.translate("EmpaGUI", u"Model:", None))
         self.classificationclassifier_dropdown.setItemText(0, QCoreApplication.translate("EmpaGUI", u"XGBoost", None))
+        self.classificationclassifier_dropdown.setItemText(1, QCoreApplication.translate("EmpaGUI", u"NonStatKern_1", None))
 
         self.classificationclassifier_dropdown.setPlaceholderText(QCoreApplication.translate("EmpaGUI", u"XGBoost", None))
         self.label_10.setText(QCoreApplication.translate("EmpaGUI", u"Snippet:", None))
