@@ -1,409 +1,340 @@
-import os
-import sys
-import traceback
-import joblib
-from PySide6.QtWidgets import QApplication, QMainWindow, QTextEdit
-from PySide6.QtCore import QThread, Signal, QObject
-from gui_files.empa_gui import Ui_EmpaGUI
-from mod.mod_gui_data_loader_bpp_lines import DataLoaderBPPLines
-from mod.mod_gui_feature_extractor_bpp_lines import FeatureExtractorBPPLines
-from mod.mod_gui_model_selector_bpp_lines import ModelSelectorBPPLines, PredictorScorerBPPLines
-from PySide6.QtWidgets import QMessageBox
-import matplotlib
-import matplotlib.pyplot as plt
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
-from matplotlib.figure import Figure
-from PySide6.QtWidgets import QDialog, QVBoxLayout
-from PySide6.QtWidgets import QMessageBox
-matplotlib.use('Qt5Agg')
+# -*- coding: utf-8 -*-
 
-DEBUG_MODE = False
+################################################################################
+## Form generated from reading UI file 'empa_guiVLtnjk.ui'
+##
+## Created by: Qt User Interface Compiler version 6.9.0
+##
+## WARNING! All changes made in this file will be lost when recompiling UI file!
+################################################################################
 
-class MainWindow(QMainWindow):
+from PySide6.QtCore import (QCoreApplication, QDate, QDateTime, QLocale,
+    QMetaObject, QObject, QPoint, QRect,
+    QSize, QTime, QUrl, Qt)
+from PySide6.QtGui import (QBrush, QColor, QConicalGradient, QCursor,
+    QFont, QFontDatabase, QGradient, QIcon,
+    QImage, QKeySequence, QLinearGradient, QPainter,
+    QPalette, QPixmap, QRadialGradient, QTransform)
+from PySide6.QtWidgets import (QApplication, QComboBox, QFrame, QGroupBox,
+    QLabel, QLineEdit, QMainWindow, QMenuBar,
+    QPushButton, QSizePolicy, QStatusBar, QTabWidget,
+    QWidget)
 
-    def __init__(self):
-        super().__init__()
-        self.ui = Ui_EmpaGUI()
-        self.ui.setupUi(self)
+class Ui_EmpaGUI(object):
+    def setupUi(self, EmpaGUI):
+        if not EmpaGUI.objectName():
+            EmpaGUI.setObjectName(u"EmpaGUI")
+        EmpaGUI.resize(430, 541)
+        self.centralwidget = QWidget(EmpaGUI)
+        self.centralwidget.setObjectName(u"centralwidget")
+        self.tabWidget = QTabWidget(self.centralwidget)
+        self.tabWidget.setObjectName(u"tabWidget")
+        self.tabWidget.setGeometry(QRect(0, 60, 441, 421))
+        self.tab = QWidget()
+        self.tab.setObjectName(u"tab")
+        self.groupBox = QGroupBox(self.tab)
+        self.groupBox.setObjectName(u"groupBox")
+        self.groupBox.setGeometry(QRect(0, 0, 421, 111))
+        self.load_data_path = QLineEdit(self.groupBox)
+        self.load_data_path.setObjectName(u"load_data_path")
+        self.load_data_path.setGeometry(QRect(10, 20, 331, 22))
+        self.Brows_data_folder_button = QPushButton(self.groupBox)
+        self.Brows_data_folder_button.setObjectName(u"Brows_data_folder_button")
+        self.Brows_data_folder_button.setGeometry(QRect(334, 20, 91, 24))
+        self.load_data_plate_type_dropdown = QComboBox(self.groupBox)
+        self.load_data_plate_type_dropdown.addItem("")
+        self.load_data_plate_type_dropdown.addItem("")
+        self.load_data_plate_type_dropdown.addItem("")
+        self.load_data_plate_type_dropdown.addItem("")
+        self.load_data_plate_type_dropdown.setObjectName(u"load_data_plate_type_dropdown")
+        self.load_data_plate_type_dropdown.setGeometry(QRect(80, 50, 91, 24))
+        self.load_data_button = QPushButton(self.groupBox)
+        self.load_data_button.setObjectName(u"load_data_button")
+        self.load_data_button.setGeometry(QRect(280, 43, 141, 61))
+        self.label = QLabel(self.groupBox)
+        self.label.setObjectName(u"label")
+        self.label.setGeometry(QRect(10, 54, 71, 16))
+        self.groupBox_2 = QGroupBox(self.tab)
+        self.groupBox_2.setObjectName(u"groupBox_2")
+        self.groupBox_2.setGeometry(QRect(0, 110, 421, 101))
+        self.load_model_button = QPushButton(self.groupBox_2)
+        self.load_model_button.setObjectName(u"load_model_button")
+        self.load_model_button.setGeometry(QRect(10, 20, 411, 24))
+        self.train_dropdown = QComboBox(self.groupBox_2)
+        self.train_dropdown.addItem("")
+        self.train_dropdown.addItem("")
+        self.train_dropdown.setObjectName(u"train_dropdown")
+        self.train_dropdown.setGeometry(QRect(10, 40, 401, 24))
+        self.train_button = QPushButton(self.groupBox_2)
+        self.train_button.setObjectName(u"train_button")
+        self.train_button.setGeometry(QRect(10, 70, 329, 24))
+        self.groupBox_3 = QGroupBox(self.tab)
+        self.groupBox_3.setObjectName(u"groupBox_3")
+        self.groupBox_3.setGeometry(QRect(0, 210, 421, 51))
+        self.predict_button = QPushButton(self.groupBox_3)
+        self.predict_button.setObjectName(u"predict_button")
+        self.predict_button.setGeometry(QRect(10, 20, 411, 24))
+        self.tabWidget.addTab(self.tab, "")
+        self.tab_2 = QWidget()
+        self.tab_2.setObjectName(u"tab_2")
+        self.tabWidget_2 = QTabWidget(self.tab_2)
+        self.tabWidget_2.setObjectName(u"tabWidget_2")
+        self.tabWidget_2.setGeometry(QRect(0, 0, 431, 401))
+        self.tab_4 = QWidget()
+        self.tab_4.setObjectName(u"tab_4")
+        self.groupBox_4 = QGroupBox(self.tab_4)
+        self.groupBox_4.setObjectName(u"groupBox_4")
+        self.groupBox_4.setGeometry(QRect(-1, 0, 421, 151))
+        self.plot_plate_dropdown = QComboBox(self.groupBox_4)
+        self.plot_plate_dropdown.setObjectName(u"plot_plate_dropdown")
+        self.plot_plate_dropdown.setGeometry(QRect(60, 15, 361, 24))
+        self.plot_segment_dropdown = QComboBox(self.groupBox_4)
+        self.plot_segment_dropdown.setObjectName(u"plot_segment_dropdown")
+        self.plot_segment_dropdown.setGeometry(QRect(60, 59, 361, 24))
+        self.plot_button = QPushButton(self.groupBox_4)
+        self.plot_button.setObjectName(u"plot_button")
+        self.plot_button.setGeometry(QRect(10, 101, 201, 24))
+        self.platre_data_button_2 = QPushButton(self.groupBox_4)
+        self.platre_data_button_2.setObjectName(u"platre_data_button_2")
+        self.platre_data_button_2.setGeometry(QRect(210, 101, 211, 24))
+        self.Channel_segment_plot = QComboBox(self.groupBox_4)
+        self.Channel_segment_plot.setObjectName(u"Channel_segment_plot")
+        self.Channel_segment_plot.setGeometry(QRect(60, 80, 361, 24))
+        self.type_of_signal_dropdown = QComboBox(self.groupBox_4)
+        self.type_of_signal_dropdown.addItem("")
+        self.type_of_signal_dropdown.addItem("")
+        self.type_of_signal_dropdown.setObjectName(u"type_of_signal_dropdown")
+        self.type_of_signal_dropdown.setGeometry(QRect(60, 37, 361, 24))
+        self.label_2 = QLabel(self.groupBox_4)
+        self.label_2.setObjectName(u"label_2")
+        self.label_2.setGeometry(QRect(8, 18, 49, 16))
+        self.label_3 = QLabel(self.groupBox_4)
+        self.label_3.setObjectName(u"label_3")
+        self.label_3.setGeometry(QRect(7, 38, 49, 16))
+        self.label_4 = QLabel(self.groupBox_4)
+        self.label_4.setObjectName(u"label_4")
+        self.label_4.setGeometry(QRect(8, 61, 49, 16))
+        self.label_5 = QLabel(self.groupBox_4)
+        self.label_5.setObjectName(u"label_5")
+        self.label_5.setGeometry(QRect(8, 82, 49, 16))
+        self.unload_as_csv_button_data_button_3 = QPushButton(self.groupBox_4)
+        self.unload_as_csv_button_data_button_3.setObjectName(u"unload_as_csv_button_data_button_3")
+        self.unload_as_csv_button_data_button_3.setGeometry(QRect(10, 124, 201, 24))
+        self.groupBox_5 = QGroupBox(self.tab_4)
+        self.groupBox_5.setObjectName(u"groupBox_5")
+        self.groupBox_5.setGeometry(QRect(0, 150, 421, 211))
+        self.calssification_plot_segment = QPushButton(self.groupBox_5)
+        self.calssification_plot_segment.setObjectName(u"calssification_plot_segment")
+        self.calssification_plot_segment.setGeometry(QRect(10, 15, 131, 24))
+        self.groupBox_6 = QGroupBox(self.groupBox_5)
+        self.groupBox_6.setObjectName(u"groupBox_6")
+        self.groupBox_6.setGeometry(QRect(0, 31, 411, 81))
+        self.classification_set_category = QPushButton(self.groupBox_6)
+        self.classification_set_category.setObjectName(u"classification_set_category")
+        self.classification_set_category.setGeometry(QRect(300, 15, 101, 21))
+        self.label_6 = QLabel(self.groupBox_6)
+        self.label_6.setObjectName(u"label_6")
+        self.label_6.setGeometry(QRect(10, 18, 91, 16))
+        self.label_6.setFrameShape(QFrame.Shape.Panel)
+        self.label_7 = QLabel(self.groupBox_6)
+        self.label_7.setObjectName(u"label_7")
+        self.label_7.setGeometry(QRect(146, 40, 31, 16))
+        self.label_8 = QLabel(self.groupBox_6)
+        self.label_8.setObjectName(u"label_8")
+        self.label_8.setGeometry(QRect(144, 18, 31, 16))
+        self.label_9 = QLabel(self.groupBox_6)
+        self.label_9.setObjectName(u"label_9")
+        self.label_9.setGeometry(QRect(10, 40, 31, 16))
+        self.classification_labeling_start_element_text = QLineEdit(self.groupBox_6)
+        self.classification_labeling_start_element_text.setObjectName(u"classification_labeling_start_element_text")
+        self.classification_labeling_start_element_text.setGeometry(QRect(40, 35, 101, 22))
+        self.classification_labeling_end_element_text = QLineEdit(self.groupBox_6)
+        self.classification_labeling_end_element_text.setObjectName(u"classification_labeling_end_element_text")
+        self.classification_labeling_end_element_text.setGeometry(QRect(173, 35, 121, 22))
+        self.classification_labeling_label_text = QLineEdit(self.groupBox_6)
+        self.classification_labeling_label_text.setObjectName(u"classification_labeling_label_text")
+        self.classification_labeling_label_text.setGeometry(QRect(178, 11, 113, 22))
+        self.classification_clear_labels_button = QPushButton(self.groupBox_6)
+        self.classification_clear_labels_button.setObjectName(u"classification_clear_labels_button")
+        self.classification_clear_labels_button.setGeometry(QRect(300, 35, 101, 21))
+        self.calssification_segment_savetofolder_button = QPushButton(self.groupBox_6)
+        self.calssification_segment_savetofolder_button.setObjectName(u"calssification_segment_savetofolder_button")
+        self.calssification_segment_savetofolder_button.setGeometry(QRect(9, 56, 181, 24))
+        self.groupBox_7 = QGroupBox(self.groupBox_5)
+        self.groupBox_7.setObjectName(u"groupBox_7")
+        self.groupBox_7.setGeometry(QRect(1, 110, 411, 101))
+        self.classification_run_classification_button = QPushButton(self.groupBox_7)
+        self.classification_run_classification_button.setObjectName(u"classification_run_classification_button")
+        self.classification_run_classification_button.setGeometry(QRect(300, 15, 101, 41))
+        self.label_13 = QLabel(self.groupBox_7)
+        self.label_13.setObjectName(u"label_13")
+        self.label_13.setGeometry(QRect(8, 15, 41, 16))
+        self.classificationclassifier_dropdown = QComboBox(self.groupBox_7)
+        self.classificationclassifier_dropdown.addItem("")
+        self.classificationclassifier_dropdown.addItem("")
+        self.classificationclassifier_dropdown.setObjectName(u"classificationclassifier_dropdown")
+        self.classificationclassifier_dropdown.setGeometry(QRect(49, 12, 251, 24))
+        self.label_10 = QLabel(self.groupBox_7)
+        self.label_10.setObjectName(u"label_10")
+        self.label_10.setGeometry(QRect(10, 40, 51, 16))
+        self.classification_snippet_size_text = QLineEdit(self.groupBox_7)
+        self.classification_snippet_size_text.setObjectName(u"classification_snippet_size_text")
+        self.classification_snippet_size_text.setGeometry(QRect(56, 36, 71, 22))
+        self.classification_preproc_dropdown = QComboBox(self.groupBox_7)
+        self.classification_preproc_dropdown.addItem("")
+        self.classification_preproc_dropdown.setObjectName(u"classification_preproc_dropdown")
+        self.classification_preproc_dropdown.setGeometry(QRect(140, 36, 161, 24))
+        self.label_11 = QLabel(self.groupBox_7)
+        self.label_11.setObjectName(u"label_11")
+        self.label_11.setGeometry(QRect(10, 70, 51, 16))
+        self.classification_test_text = QLineEdit(self.groupBox_7)
+        self.classification_test_text.setObjectName(u"classification_test_text")
+        self.classification_test_text.setGeometry(QRect(54, 66, 71, 22))
+        self.classification_dataset_info_button = QPushButton(self.groupBox_7)
+        self.classification_dataset_info_button.setObjectName(u"classification_dataset_info_button")
+        self.classification_dataset_info_button.setGeometry(QRect(300, 58, 101, 41))
+        self.classification_dataset_info_button_2 = QPushButton(self.groupBox_7)
+        self.classification_dataset_info_button_2.setObjectName(u"classification_dataset_info_button_2")
+        self.classification_dataset_info_button_2.setGeometry(QRect(190, 58, 111, 41))
+        self.tabWidget_2.addTab(self.tab_4, "")
+        self.tab_5 = QWidget()
+        self.tab_5.setObjectName(u"tab_5")
+        self.tabWidget_2.addTab(self.tab_5, "")
+        self.tabWidget.addTab(self.tab_2, "")
+        self.tab_3 = QWidget()
+        self.tab_3.setObjectName(u"tab_3")
+        self.groupBox_8 = QGroupBox(self.tab_3)
+        self.groupBox_8.setObjectName(u"groupBox_8")
+        self.groupBox_8.setGeometry(QRect(0, 0, 421, 111))
+        self.label_12 = QLabel(self.groupBox_8)
+        self.label_12.setObjectName(u"label_12")
+        self.label_12.setGeometry(QRect(10, 20, 71, 16))
+        self.Settings_OpenFile_TrigChannelID_text = QLineEdit(self.groupBox_8)
+        self.Settings_OpenFile_TrigChannelID_text.setObjectName(u"Settings_OpenFile_TrigChannelID_text")
+        self.Settings_OpenFile_TrigChannelID_text.setGeometry(QRect(88, 18, 321, 22))
+        self.Segmentlabel14 = QLabel(self.groupBox_8)
+        self.Segmentlabel14.setObjectName(u"Segmentlabel14")
+        self.Segmentlabel14.setGeometry(QRect(10, 50, 121, 16))
+        self.Settings_openfile_segmentation_mode_text = QComboBox(self.groupBox_8)
+        self.Settings_openfile_segmentation_mode_text.addItem("")
+        self.Settings_openfile_segmentation_mode_text.addItem("")
+        self.Settings_openfile_segmentation_mode_text.setObjectName(u"Settings_openfile_segmentation_mode_text")
+        self.Settings_openfile_segmentation_mode_text.setGeometry(QRect(135, 47, 131, 24))
+        self.Settings_Segmentation_TriggerThreshold_text = QLineEdit(self.groupBox_8)
+        self.Settings_Segmentation_TriggerThreshold_text.setObjectName(u"Settings_Segmentation_TriggerThreshold_text")
+        self.Settings_Segmentation_TriggerThreshold_text.setGeometry(QRect(270, 48, 131, 22))
+        self.tabWidget.addTab(self.tab_3, "")
+        self.groupBox_9 = QGroupBox(self.centralwidget)
+        self.groupBox_9.setObjectName(u"groupBox_9")
+        self.groupBox_9.setGeometry(QRect(0, 0, 421, 61))
+        self.label_14 = QLabel(self.groupBox_9)
+        self.label_14.setObjectName(u"label_14")
+        self.label_14.setGeometry(QRect(10, 27, 41, 16))
+        self.label_15 = QLabel(self.groupBox_9)
+        self.label_15.setObjectName(u"label_15")
+        self.label_15.setGeometry(QRect(60, 20, 31, 31))
+        self.label_15.setAutoFillBackground(True)
+        EmpaGUI.setCentralWidget(self.centralwidget)
+        self.menubar = QMenuBar(EmpaGUI)
+        self.menubar.setObjectName(u"menubar")
+        self.menubar.setGeometry(QRect(0, 0, 430, 33))
+        EmpaGUI.setMenuBar(self.menubar)
+        self.statusbar = QStatusBar(EmpaGUI)
+        self.statusbar.setObjectName(u"statusbar")
+        EmpaGUI.setStatusBar(self.statusbar)
 
-        # Make output text boxes read-only
-        self.ui.load_data_output.setReadOnly(True)
-        self.ui.load_model_output.setReadOnly(True)
-        self.ui.train_output.setReadOnly(True)
+        self.retranslateUi(EmpaGUI)
 
-        # Connect button click
-        self.ui.load_data_button.clicked.connect(self.load_data)
-        self.ui.load_model_button.clicked.connect(self.load_model)
-        self.ui.train_button.clicked.connect(self.train_model)
-        self.ui.plot_button.clicked.connect(self.plot_signal)
-        self.ui.predict_button.clicked.connect(self.predict)
-
-        # Set dropdown options
-        model_names = [m.split(".")[0] for m in os.listdir("models") if m.endswith(".pkl")]
-        self.ui.load_model_dropdown.addItems(model_names)
-
-        self.load_data_thread = None
-        self.load_data_worker = None
-        self.extract_features_worker = None
-        self.train_thread = None
-        self.train_worker = None
-        self.predict_thread = None
-        self.predict_worker = None
-        self.dl = None  # To store the DataLoaderBPPLines object
-        self.fe = None  # To store the FeatureExtractorBPPLines object
-        self.ms = None  # To store the ModelSelectorBPPLines object
-        self.ps = None  # To store the PredictorScorerBPPLines object
-        self.model = None  # To store the trained model
-        self.threshold_params = None  # To store threshold parameters for trained model
-
-    def set_buttons(self, enabled: bool):
-        self.ui.load_data_button.setEnabled(enabled)
-        self.ui.load_model_button.setEnabled(enabled)
-        self.ui.train_button.setEnabled(enabled)
-        self.ui.predict_button.setEnabled(enabled)
-        self.ui.plot_button.setEnabled(enabled)
-
-    def load_data(self):
-
-        self.set_buttons(enabled=False)
-
-        # Clear previous output
-        self.ui.load_data_output.clear()
-
-        data_path = self.ui.load_data_path.text()
-        bpp_type = self.ui.load_data_plate_type_dropdown.currentText()
-
-        # Setup QThread + Worker
-        self.load_data_thread = QThread()
-        load_data_args = [bpp_type, data_path]
-        self.load_data_worker = Worker(DataLoaderBPPLines, *load_data_args, output_widget=self.ui.load_data_output)
-        extract_features_args = [self.dl]  # will be updated later
-        self.extract_features_worker = Worker(FeatureExtractorBPPLines, *extract_features_args, output_widget=self.ui.load_data_output)
-        self.load_data_worker.moveToThread(self.load_data_thread)
-        self.extract_features_worker.moveToThread(self.load_data_thread)
-
-        # Connect signals:
-        # When thread starts, run load_data_worker
-        self.load_data_thread.started.connect(self.load_data_worker.run)
-        # When the workers emit an error signal (using error.emit()), it triggers the self.load_data_error method
-        self.load_data_worker.error.connect(self.load_data_error)
-        # When the load_data_worker emits the message signal (using message.emit()), it triggers the self.load_data_finished method
-        self.load_data_worker.message.connect(self.load_data_finished)
-        # When load_data_worker emits the message, use it to update the input dl for extract_features_worker
-        self.load_data_worker.message.connect(self.extract_features_worker.update_args)
-        # When load_data_worker finishes, run extract_features_worker
-        self.load_data_worker.finished.connect(self.extract_features_worker.run)
-        # When the workers emit an error signal (using error.emit()), it triggers the self.load_data_error method
-        self.extract_features_worker.error.connect(self.load_data_error)
-        # When the extract_features_worker emits the message signal (using message.emit()), it triggers the self.extract_features_finished method
-        self.extract_features_worker.message.connect(self.extract_features_finished)
-        # When extract_features_worker finishes, quit the thread
-        self.extract_features_worker.finished.connect(self.load_data_thread.quit)
-        # When the thread completes (successfully or with error), it emits the finished signal
-        # The deleteLater() method is called, which schedules the thread object for deletion
-        # Memory is cleaned up automatically when Qt's event loop processes the deletion
-        self.load_data_thread.finished.connect(self.load_data_thread.deleteLater)
-        
-        # Start thread
-        self.load_data_thread.start()
-
-    def load_data_error(self, err_text):
-        # Option 1: append to text box
-        self.ui.load_data_output.append(f"ERROR\n{err_text}")
-        # # Option 2: pop up a message box
-        # from PySide6.QtWidgets import QMessageBox
-        # QMessageBox.critical(self, "Error", err_text)
-
-        # ensure thread stops
-        if hasattr(self, "load_data_thread") and self.load_data_thread.isRunning():
-            self.load_data_thread.quit()
-
-        # re-enable buttons
-        self.set_buttons(enabled=True)
-
-    def load_data_finished(self, result):
-        # Store the DataLoaderBPPLines object
-        self.dl = result
-        filenames = [plate.identifier for plate in self.dl.list_bpp]
-        # Add available options for plotting to dropdown
-        self.ui.plot_plate_dropdown.clear()
-        self.ui.plot_plate_dropdown.addItems(filenames)
-        segments = ["ALL"]+[f"{seg[0]}_{seg[1]}" for seg in self.dl.segment_keys]
-        self.ui.plot_segment_dropdown.clear()
-        self.ui.plot_segment_dropdown.addItems(segments)
-
-    def extract_features_finished(self, result):
-        # Store the FeatureExtractorBPPLines object
-        self.fe = result
-        self.ui.load_data_output.append("Extracted features successfully.")
-        self.ui.load_data_output.append("DONE")
-        self.set_buttons(enabled=True)
-        # # Reset worker and thread references after cleanup
-        # self.load_data_worker = None
-        # self.extract_features_worker = None
-        # self.load_data_thread = None
-
-    def train_model(self):
-
-        # Clear previous output
-        self.ui.train_output.clear()
-        self.set_buttons(enabled=False)
-
-        # Setup QThread + Worker
-        self.train_thread = QThread()
-        self.train_worker = Worker(ModelSelectorBPPLines, self.fe, output_widget=self.ui.train_output)
-        self.train_worker.moveToThread(self.train_thread)
-
-        # Connect signals:
-        # When thread starts, run train_worker
-        self.train_thread.started.connect(self.train_worker.run)
-        # When the worker emits an error signal (using error.emit()), it triggers the self.train_error method
-        self.train_worker.error.connect(self.train_error)
-        # When the worker emits the message signal (using message.emit()), it triggers the self.train_finished method
-        self.train_worker.message.connect(self.train_finished)
-        # When the worker finishes, quit the thread
-        self.train_worker.finished.connect(self.train_thread.quit)
-        # When the thread completes (successfully or with error), it emits the finished signal
-        # The deleteLater() method is called, which schedules the thread object for deletion
-        # Memory is cleaned up automatically when Qt's event loop processes the deletion
-        self.train_thread.finished.connect(self.train_thread.deleteLater)
-        
-        # Start thread
-        self.train_thread.start()
-
-    def train_error(self, err_text):
-        # Option 1: append to text box
-        self.ui.train_output.append(f"ERROR\n{err_text}")
-        # # Option 2: pop up a message box
-        # from PySide6.QtWidgets import QMessageBox
-        # QMessageBox.critical(self, "Error", err_text)
-
-        # ensure thread stops
-        if hasattr(self, "train_thread") and self.train_thread.isRunning():
-            self.train_thread.quit()
-
-        # re-enable button
-        self.set_buttons(enabled=True)
-
-    def train_finished(self, result):
-        # Store the ModelSelectorBPPLines object
-        self.ms = result
-        self.model = result.trained_model
-        self.threshold_params = result.best_threshold_params
-        self.ui.train_output.append("DONE")
-        # Set dropdown options
-        self.ui.load_model_dropdown.clear()
-        model_names = [m.split(".")[0] for m in os.listdir("models") if m.endswith(".pkl")]
-        self.ui.load_model_dropdown.addItems(model_names)
-        self.set_buttons(enabled=True)
-        # # Reset worker and thread references
-        # self.train_worker = None
-        # self.train_thread = None
-
-    def load_model(self):
-        self.ui.load_model_output.clear()
-        self.set_buttons(enabled=False)
-        try:
-            model_name = self.ui.load_model_dropdown.currentText()
-            model_path = os.path.join("models", f"{model_name}.pkl")
-            loaded_model_data = joblib.load(model_path)
-            self.model = loaded_model_data['trained_model']
-            self.threshold_params = loaded_model_data['best_threshold_params']
-            self.ui.load_model_output.append(f"Loaded model {model_name}.\nDONE")
-        except Exception as e:
-            self.ui.load_model_output.append(f"ERROR loading model {model_name}:\n{str(e)}")
-        finally:
-            self.set_buttons(enabled=True)
+        self.tabWidget.setCurrentIndex(0)
+        self.load_data_plate_type_dropdown.setCurrentIndex(-1)
+        self.classification_preproc_dropdown.setCurrentIndex(0)
+        self.Settings_openfile_segmentation_mode_text.setCurrentIndex(0)
 
 
-    def predict(self):
+        QMetaObject.connectSlotsByName(EmpaGUI)
+    # setupUi
 
-        # Clear previous output
-        self.ui.predict_output.clear()
-        self.set_buttons(enabled=False)
+    def retranslateUi(self, EmpaGUI):
+        EmpaGUI.setWindowTitle(QCoreApplication.translate("EmpaGUI", u"MainWindow", None))
+        self.groupBox.setTitle(QCoreApplication.translate("EmpaGUI", u"Train data source", None))
+        self.Brows_data_folder_button.setText(QCoreApplication.translate("EmpaGUI", u"Browse folder", None))
+        self.load_data_plate_type_dropdown.setItemText(0, QCoreApplication.translate("EmpaGUI", u"default", None))
+        self.load_data_plate_type_dropdown.setItemText(1, QCoreApplication.translate("EmpaGUI", u"bpp", None))
+        self.load_data_plate_type_dropdown.setItemText(2, QCoreApplication.translate("EmpaGUI", u"long_bpp", None))
+        self.load_data_plate_type_dropdown.setItemText(3, QCoreApplication.translate("EmpaGUI", u"from file", None))
 
-        # Setup QThread + Worker
-        self.predict_thread = QThread()
-        self.predict_worker = Worker(PredictorScorerBPPLines, self.fe, self.model, self.threshold_params, output_widget=self.ui.predict_output)
-        self.predict_worker.moveToThread(self.predict_thread)
+        self.load_data_plate_type_dropdown.setCurrentText("")
+        self.load_data_plate_type_dropdown.setPlaceholderText(QCoreApplication.translate("EmpaGUI", u"Choose BPP type", None))
+        self.load_data_button.setText(QCoreApplication.translate("EmpaGUI", u"Load", None))
+        self.label.setText(QCoreApplication.translate("EmpaGUI", u"Plate layout:", None))
+        self.groupBox_2.setTitle(QCoreApplication.translate("EmpaGUI", u"Model", None))
+        self.load_model_button.setText(QCoreApplication.translate("EmpaGUI", u"Load pre-trained model", None))
+        self.train_dropdown.setItemText(0, QCoreApplication.translate("EmpaGUI", u"autoencoder", None))
+        self.train_dropdown.setItemText(1, QCoreApplication.translate("EmpaGUI", u"load from file", None))
 
-        # Connect signals:
-        # When thread starts, run train_worker
-        self.predict_thread.started.connect(self.predict_worker.run)
-        # When the worker emits an error signal (using error.emit()), it triggers the self.train_error method
-        self.predict_worker.error.connect(self.predict_error)
-        # When the worker emits the message signal (using message.emit()), it triggers the self.train_finished method
-        self.predict_worker.message.connect(self.predict_finished)
-        # When the worker finishes, quit the thread
-        self.predict_worker.finished.connect(self.predict_thread.quit)
-        # When the thread completes (successfully or with error), it emits the finished signal
-        # The deleteLater() method is called, which schedules the thread object for deletion
-        # Memory is cleaned up automatically when Qt's event loop processes the deletion
-        self.predict_thread.finished.connect(self.predict_thread.deleteLater)
-        
-        # Start thread
-        self.predict_thread.start()
+        self.train_dropdown.setPlaceholderText(QCoreApplication.translate("EmpaGUI", u"Choose model architecture", None))
+        self.train_button.setText(QCoreApplication.translate("EmpaGUI", u"Train model", None))
+        self.groupBox_3.setTitle(QCoreApplication.translate("EmpaGUI", u"GroupBox", None))
+        self.predict_button.setText(QCoreApplication.translate("EmpaGUI", u"Run model (identify defects)", None))
+        self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab), QCoreApplication.translate("EmpaGUI", u"Main", None))
+        self.groupBox_4.setTitle(QCoreApplication.translate("EmpaGUI", u"Segments", None))
+        self.plot_plate_dropdown.setPlaceholderText(QCoreApplication.translate("EmpaGUI", u"Choose plate to plot", None))
+        self.plot_segment_dropdown.setPlaceholderText(QCoreApplication.translate("EmpaGUI", u"Choose segment to plot", None))
+        self.plot_button.setText(QCoreApplication.translate("EmpaGUI", u"Plot signal", None))
+        self.platre_data_button_2.setText(QCoreApplication.translate("EmpaGUI", u"Segments - full list show", None))
+        self.Channel_segment_plot.setPlaceholderText(QCoreApplication.translate("EmpaGUI", u"Choose channel to plot", None))
+        self.type_of_signal_dropdown.setItemText(0, QCoreApplication.translate("EmpaGUI", u"Raw signals", None))
+        self.type_of_signal_dropdown.setItemText(1, QCoreApplication.translate("EmpaGUI", u"Segments", None))
 
-    def predict_error(self, err_text):
-        # Option 1: append to text box
-        self.ui.predict_output.append(f"ERROR\n{err_text}")
-        # # Option 2: pop up a message box
-        # from PySide6.QtWidgets import QMessageBox
-        # QMessageBox.critical(self, "Error", err_text)
+        self.type_of_signal_dropdown.setPlaceholderText(QCoreApplication.translate("EmpaGUI", u"Choose segment to plot", None))
+        self.label_2.setText(QCoreApplication.translate("EmpaGUI", u"Plate:", None))
+        self.label_3.setText(QCoreApplication.translate("EmpaGUI", u"Type:", None))
+        self.label_4.setText(QCoreApplication.translate("EmpaGUI", u"Segment:", None))
+        self.label_5.setText(QCoreApplication.translate("EmpaGUI", u"Channel:", None))
+        self.unload_as_csv_button_data_button_3.setText(QCoreApplication.translate("EmpaGUI", u"Save as *.SCV", None))
+        self.groupBox_5.setTitle(QCoreApplication.translate("EmpaGUI", u"Classification (applicable only for segments)", None))
+        self.calssification_plot_segment.setText(QCoreApplication.translate("EmpaGUI", u"Plot/update segment", None))
+        self.groupBox_6.setTitle(QCoreApplication.translate("EmpaGUI", u"Labeling", None))
+        self.classification_set_category.setText(QCoreApplication.translate("EmpaGUI", u"Assign", None))
+        self.label_6.setText(QCoreApplication.translate("EmpaGUI", u"Elements:", None))
+        self.label_7.setText(QCoreApplication.translate("EmpaGUI", u"end-", None))
+        self.label_8.setText(QCoreApplication.translate("EmpaGUI", u"label-", None))
+        self.label_9.setText(QCoreApplication.translate("EmpaGUI", u"Start:", None))
+        self.classification_clear_labels_button.setText(QCoreApplication.translate("EmpaGUI", u"Clear", None))
+        self.calssification_segment_savetofolder_button.setText(QCoreApplication.translate("EmpaGUI", u" Labelled patterns to folder(.csv)", None))
+        self.groupBox_7.setTitle(QCoreApplication.translate("EmpaGUI", u"Classification train/test", None))
+        self.classification_run_classification_button.setText(QCoreApplication.translate("EmpaGUI", u"Run", None))
+        self.label_13.setText(QCoreApplication.translate("EmpaGUI", u"Model:", None))
+        self.classificationclassifier_dropdown.setItemText(0, QCoreApplication.translate("EmpaGUI", u"XGBoost", None))
+        self.classificationclassifier_dropdown.setItemText(1, QCoreApplication.translate("EmpaGUI", u"NonStatKern_1", None))
 
-        # ensure thread stops
-        if hasattr(self, "predict_thread") and self.predict_thread.isRunning():
-            self.predict_thread.quit()
+        self.classificationclassifier_dropdown.setPlaceholderText(QCoreApplication.translate("EmpaGUI", u"XGBoost", None))
+        self.label_10.setText(QCoreApplication.translate("EmpaGUI", u"Snippet:", None))
+        self.classification_snippet_size_text.setText(QCoreApplication.translate("EmpaGUI", u"1000", None))
+        self.classification_preproc_dropdown.setItemText(0, QCoreApplication.translate("EmpaGUI", u"Preprocessing - none", None))
 
-        # re-enable button
-        self.set_buttons(enabled=True)
+        self.classification_preproc_dropdown.setCurrentText(QCoreApplication.translate("EmpaGUI", u"Preprocessing - none", None))
+        self.classification_preproc_dropdown.setPlaceholderText(QCoreApplication.translate("EmpaGUI", u"XGBoost", None))
+        self.label_11.setText(QCoreApplication.translate("EmpaGUI", u"Test (%):", None))
+        self.classification_test_text.setText(QCoreApplication.translate("EmpaGUI", u"20", None))
+        self.classification_dataset_info_button.setText(QCoreApplication.translate("EmpaGUI", u"Dataset info", None))
+        self.classification_dataset_info_button_2.setText(QCoreApplication.translate("EmpaGUI", u"Set as main model", None))
+        self.tabWidget_2.setTabText(self.tabWidget_2.indexOf(self.tab_4), QCoreApplication.translate("EmpaGUI", u"Page 1", None))
+        self.tabWidget_2.setTabText(self.tabWidget_2.indexOf(self.tab_5), QCoreApplication.translate("EmpaGUI", u"Tab 2", None))
+        self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_2), QCoreApplication.translate("EmpaGUI", u"Tools", None))
+        self.groupBox_8.setTitle(QCoreApplication.translate("EmpaGUI", u"Train data source", None))
+        self.label_12.setText(QCoreApplication.translate("EmpaGUI", u"Trigger chan.:", None))
+        self.Settings_OpenFile_TrigChannelID_text.setText(QCoreApplication.translate("EmpaGUI", u"Trigger", None))
+        self.Segmentlabel14.setText(QCoreApplication.translate("EmpaGUI", u"Segmentation mode:", None))
+        self.Settings_openfile_segmentation_mode_text.setItemText(0, QCoreApplication.translate("EmpaGUI", u"automatic", None))
+        self.Settings_openfile_segmentation_mode_text.setItemText(1, QCoreApplication.translate("EmpaGUI", u"user defined thershold:", None))
 
-    def predict_finished(self, result):
-        # Store the PredictorScorerBPPLines object
-        self.ps = result
-        self.ui.predict_output.append("DONE")
-        self.set_buttons(enabled=True)
+        self.Settings_openfile_segmentation_mode_text.setCurrentText(QCoreApplication.translate("EmpaGUI", u"automatic", None))
+        self.Settings_openfile_segmentation_mode_text.setPlaceholderText(QCoreApplication.translate("EmpaGUI", u"Choose BPP type", None))
+        self.Settings_Segmentation_TriggerThreshold_text.setText(QCoreApplication.translate("EmpaGUI", u"Trigger", None))
+        self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_3), QCoreApplication.translate("EmpaGUI", u"Settings", None))
+        self.groupBox_9.setTitle(QCoreApplication.translate("EmpaGUI", u"Readiness", None))
+        self.label_14.setText(QCoreApplication.translate("EmpaGUI", u"Model:", None))
+        self.label_15.setText("")
+    # retranslateUi
 
-    def plot_signal(self):
-
-        self.set_buttons(enabled=False)
-
-        try:
-            
-            # Create your plot here - replace this with your actual plotting function
-            plate_id = self.ui.plot_plate_dropdown.currentText()
-            segment = self.ui.plot_segment_dropdown.currentText()
-            plate = next((p for p in self.dl.list_bpp if p.identifier == plate_id), None)
-            if plate is None:
-                raise ValueError(f"Plate with identifier '{plate_id}' not found.")
-
-            fig, ax = self.prepare_plot(plate = plate, segment = segment)
-            
-            # Create a new window to display the plot
-            plot_dialog = QDialog(self)
-            plot_dialog.setWindowTitle("Empa GUI Plot")
-            # Get screen dimensions and fit plot to screen
-            screen = QApplication.primaryScreen().geometry()
-            plot_dialog.resize(int(screen.width()), int(screen.height()*0.9))
-            
-            layout = QVBoxLayout()
-            canvas = FigureCanvasQTAgg(fig)
-            layout.addWidget(canvas)
-            plot_dialog.setLayout(layout)
-            
-            plot_dialog.show()
-            
-        except Exception as e:
-            QMessageBox.critical(self, "Error", f"Failed to create plot: {str(e)}")
-
-        finally:
-            self.set_buttons(enabled=True)
-
-    def prepare_plot(
-        self,
-        plate,
-        segment: str,
-        plot_every: int = 1,
-        include_trigger: bool = False,
-    ) -> None:
-        """
-        TBC
-        """
-        plot_kwargs = {
-            "x": "Time",
-            "xlabel": "Time [s]",
-            "ylabel": "Amplitude [V]",
-        }
-
-        colors = ["purple", "orange", "blue"]
-
-        # Get screen dimensions for maximum figure size
-        # screen = QApplication.primaryScreen().geometry()
-        # figsize = (screen.width()/100, screen.height()/100)  # Convert pixels to inches (approximate)
-
-        data = plate.dataframe[::plot_every] if segment == "ALL" else plate.segments[tuple(segment.split("_"))][::plot_every]
-
-        channels=(
-            plate.data_channels + [plate.trigger_channel]
-            if include_trigger
-            else plate.data_channels
-        )
-
-        fig, ax = plt.subplots(nrows = len(channels), sharex=True)#figsize=figsize)
-
-        for idx, channel in enumerate(channels):
-            ax[idx] = data.plot(
-                y=channel,
-                ax=ax[idx],
-                color = colors[idx % len(colors)],
-                **plot_kwargs,
-            )
-
-        fig.suptitle(f"Segment {segment} from plate {plate.identifier}" if segment != "ALL" else f"Complete signal from plate {plate.identifier}")
-
-        # Mark defective segments with a red vertical band
-        if self.ps is not None and hasattr(self.ps, 'pred_defect_seg'):  
-            if segment == "ALL":
-                pred_defect_seg_plate = [(seg[1],seg[2]) for seg in self.ps.pred_defect_seg if seg[0]==plate.identifier]
-                for seg in pred_defect_seg_plate:
-                    seg_start, seg_end = plate.segments[seg]["Time"].iloc[[0, -1]]
-                    for idx in range(len(channels)):
-                        ax[idx].axvspan(seg_start, seg_end, alpha=0.2, color='red')
-            else:
-                seg_key = tuple(segment.split("_"))
-                df_all = self.fe.df_all_locations
-                df_seg = df_all[(df_all['plate']==plate.identifier) & (df_all['segment_type']==seg_key[0]) & (df_all['segment_number']==seg_key[1])]
-                
-                for _, row in df_seg.iterrows():
-                    for idx in range(len(channels)):
-                        ax[idx].axvspan(row["start_time"], row["end_time"], alpha=row["pred_proba"], color='red')
-
-        return fig, ax
-
-# Runs functions in background threads to prevent UI freezing
-class Worker(QObject):
-    message = Signal(object)  # Changed to object to pass any result type
-    error = Signal(str)
-    finished = Signal()
-
-    def __init__(self, func, *args, output_widget=None):
-        super().__init__()
-        self.func = func
-        self.args = args
-        self.output_widget = output_widget
-        self.original_stdout = sys.stdout
-        self.original_stderr = sys.stderr
-
-    def update_args(self, *new_args):
-        self.args = new_args
-
-    def run(self):
-        try:
-            # Redirect stdout/stderr to this worker if output_widget is provided
-            if self.output_widget and not DEBUG_MODE:
-                sys.stdout = self
-                sys.stderr = self
-            
-            result = self.func(*self.args)   # run your module
-            self.message.emit(result)  # Emit the actual result object
-        except Exception:
-            self.error.emit(traceback.format_exc())
-        finally:
-            # Restore original stdout/stderr
-            sys.stdout = self.original_stdout
-            sys.stderr = self.original_stderr
-            self.finished.emit()
-
-    def write(self, text):
-        if text.strip() and self.output_widget:
-            self.output_widget.append(text.strip())
-        
-
-    def flush(self):
-        pass
-
-if __name__ == "__main__":
-    app = QApplication(sys.argv)
-    window = MainWindow()
-    window.show()
-    sys.exit(app.exec())
