@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 ################################################################################
-## Form generated from reading UI file 'empa_guictfVtx.ui'
+## Form generated from reading UI file 'empa_guihEFjdq.ui'
 ##
 ## Created by: Qt User Interface Compiler version 6.9.0
 ##
@@ -23,7 +23,7 @@ class Ui_EmpaGUI(object):
     def setupUi(self, EmpaGUI):
         if not EmpaGUI.objectName():
             EmpaGUI.setObjectName(u"EmpaGUI")
-        EmpaGUI.resize(436, 554)
+        EmpaGUI.resize(430, 541)
         self.centralwidget = QWidget(EmpaGUI)
         self.centralwidget.setObjectName(u"centralwidget")
         self.tabWidget = QTabWidget(self.centralwidget)
@@ -191,6 +191,7 @@ class Ui_EmpaGUI(object):
         self.classificationclassifier_dropdown.addItem("")
         self.classificationclassifier_dropdown.addItem("")
         self.classificationclassifier_dropdown.addItem("")
+        self.classificationclassifier_dropdown.addItem("")
         self.classificationclassifier_dropdown.setObjectName(u"classificationclassifier_dropdown")
         self.classificationclassifier_dropdown.setGeometry(QRect(49, 12, 271, 24))
         self.label_11 = QLabel(self.groupBox_7)
@@ -284,7 +285,7 @@ class Ui_EmpaGUI(object):
         EmpaGUI.setCentralWidget(self.centralwidget)
         self.menubar = QMenuBar(EmpaGUI)
         self.menubar.setObjectName(u"menubar")
-        self.menubar.setGeometry(QRect(0, 0, 436, 33))
+        self.menubar.setGeometry(QRect(0, 0, 430, 33))
         EmpaGUI.setMenuBar(self.menubar)
         self.statusbar = QStatusBar(EmpaGUI)
         self.statusbar.setObjectName(u"statusbar")
@@ -373,6 +374,7 @@ class Ui_EmpaGUI(object):
         self.classificationclassifier_dropdown.setItemText(2, QCoreApplication.translate("EmpaGUI", u"DBSCAN", None))
         self.classificationclassifier_dropdown.setItemText(3, QCoreApplication.translate("EmpaGUI", u"Autoencoder", None))
         self.classificationclassifier_dropdown.setItemText(4, QCoreApplication.translate("EmpaGUI", u"NonStatKern_1", None))
+        self.classificationclassifier_dropdown.setItemText(5, QCoreApplication.translate("EmpaGUI", u"GHKern", None))
 
         self.classificationclassifier_dropdown.setPlaceholderText(QCoreApplication.translate("EmpaGUI", u"XGBoost", None))
         self.label_11.setText(QCoreApplication.translate("EmpaGUI", u"Test (%):", None))

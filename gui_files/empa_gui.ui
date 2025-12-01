@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>436</width>
-    <height>554</height>
+    <width>430</width>
+    <height>541</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -732,6 +732,11 @@
             <string>NonStatKern_1</string>
            </property>
           </item>
+          <item>
+           <property name="text">
+            <string>GHKern</string>
+           </property>
+          </item>
          </widget>
          <widget class="QLabel" name="label_11">
           <property name="geometry">
@@ -1135,7 +1140,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>436</width>
+     <width>430</width>
      <height>33</height>
     </rect>
    </property>
