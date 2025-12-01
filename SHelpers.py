@@ -11,6 +11,7 @@ import matplotlib.pyplot as plt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
 from matplotlib.figure import Figure
 import time
+from sklearn import preprocessing
 
 #classifiers
 from xgboost import XGBClassifier
@@ -167,7 +168,7 @@ def print_progress_bar(index, total, label):
     sys.stdout.flush()
 
 class SPlate:
-    
+
     def __init__(self,plate_name=""):
         self.name=plate_name
         self.raw_signals=[]
@@ -547,7 +548,7 @@ def XGBoostClassifRun(X_train=[], X_test=[], y_train=[], y_test=[]):
                         xgb_lab_test[i]=int(xgb_unique_labs[indx1])                    
                     #print("xgb_test_labs:"+str(xgb_lab_test))            
                     #print("unique_labels:"+str(unique_labels))                              
-                    bst = XGBClassifier(n_estimators=200, max_depth=8, learning_rate=1, objective='binary:logistic')
+                    bst = XGBClassifier(n_estimators=8000, max_depth=12, learning_rate=0.01, objective='binary:logistic')
                     bst.fit(X_train, xgb_lab_train)
                     preds = bst.predict(X_test)
                     #show in figure  
@@ -578,12 +579,12 @@ class S_Classif:
         labs=np.empty
         if(str(cls_type) == "<class 'xgboost.sklearn.XGBClassifier'>"):
             labs=self.classifier.predict(feat)
-        if(self.orig_labels!=[]) and (self.intern_labels!=[]):
-            new_labs=[]
-            for k in range(0,len(labs)):
-                cur_lab=labs[k]
-                indx=self.intern_labels.index(cur_lab)
-                new_labs.append(self.orig_labels[indx])
+        #if(self.orig_labels!=[]) and (self.intern_labels!=[]):
+        #    new_labs=[]
+        #    for k in range(0,len(labs)):
+        #        cur_lab=labs[k]
+        #        indx=self.intern_labels.index(cur_lab)
+        #        new_labs.append(self.orig_labels[indx])
         return labs
     def getClassifType(self):
         cls_type=type(self.classifier)
@@ -597,122 +598,7 @@ class S_Classif:
 #*****************************************************************************************
 #******************************PREPROCESSING**********************************************
 #*****************************************************************************************
-"""
-class DataPreproc:
-    def __init__ (self):
-        #SplitEntireSignalIntoSnippets
-        self.sign_1=torch.empty
-        self.sign_2=torch.empty
-        self.sign_3=torch.empty
-        self.sign_4=torch.empty      
-        self.preproc_1=torch.empty
-        self.proceed=False
-        #SplitLabPlateSegmentIntoSnips
-        self.sign_5=torch.empty   
-        self.sign_6=torch.empty
-        self.np_signal1=np.empty
-        self.np_signal2=np.empty
-        #preprocessing
-        self.preproc=torch.empty                
-        self.preproc_in=torch.empty     
-        self.preproc_flat=torch.empty
-        self.preproc_final=torch.empty
-        
-    #split obnly labeled data within a segment into snyppets
-    def SplitLabPlateSegmentIntoSnips(self,plate,
-                                           snip_size=5,
-                                           segm_index=0,
-                                           channs_indx=-1,
-                                           torch_tensor=False, 
-                                           preproc_type="None",
-                                     ):
 
-        self.np_signal1=np.empty
-        self.np_signal2=np.empty
-        self.sign_6=torch.empty
-        
-        lab=[]        
-        labeled_data_l=len(plate.sigments_labels[segm_index])    
-        self.np_signal1 = np.asarray(plate.sigments_sign[segm_index])        
-        for hj in range(0,labeled_data_l):             
-            #read labeled data first
-            label=plate.sigments_labels[segm_index][hj][2]
-            first_el=plate.sigments_labels[segm_index][hj][0]
-            last_el=plate.sigments_labels[segm_index][hj][1]
-            self.np_signal2=self.np_signal1[:,first_el:last_el]            
-            self.sign_5=torch.empty   
-            self.sign_5= self.SplitEntireSignalIntoSnippets(  signal=self.np_signal2, 
-                                                              channs_indx=channs_indx, 
-                                                              snip_size=snip_size,
-                                                              torch_tensor=True, 
-                                                              preproc_type=preproc_type,
-                                                              proc_time=False
-                                                            )
-            if(self.sign_6==torch.empty):  self.sign_6=self.sign_5
-            else: self.sign_6 = torch.cat([self.sign_6,self.sign_5],dim=0)     
-            print(self.sign_5.shape)
-            print(preproc_type)
-            for k in range(0,self.sign_5.shape[0]):
-                lab.append(label)
-                    
-        if(torch_tensor==True):
-                    torch_labels=toprch.tensor(np.asarray(lab))
-                    if(torch.cuda.is_available()): self.torch_labels.cuda()
-                    return self.sign_6,torch_labels
-        else:                    
-                    feat=self.sign_6.cpu().numpy()
-                    return feat, np.asarray(lab)                
-        
-        
-    #split into snippets the given signal
-    def SplitEntireSignalIntoSnippets(self,signal=None, 
-                                      channs_indx=[], 
-                                      snip_size=5,
-                                      torch_tensor=True, 
-                                      preproc_type="None",
-                                      proc_time=False
-                                     ):
-        self.sign_1=torch.empty
-        self.sign_2=torch.empty
-        self.sign_3=torch.empty
-        self.sign_4=torch.empty        
-
-        if(proc_time==True):
-            start_t = time.time()
-        self.sign_1=torch.tensor(np.asarray(signal))
-        if(torch.cuda.is_available()): self.sign_1.cuda()
-        sign_shape=self.sign_1.shape         
-        num_snipps=np.round(sign_shape[1]/snip_size)
-        for k in range(0,sign_shape[0]):            
-            self.proceed = False
-            if(type(channs_indx) is not list):
-                if(channs_indx == -1): self.proceed=True  
-                else: 
-                    if(k==channs_indx): self.proceed=True  
-            else:
-                if(k in channs_indx): self.proceed=True  
-                
-            if(self.proceed==True):                
-                self.sign_2=torch.split(self.sign_1[k],snip_size,dim=0)        
-                self.sign_2 = list(self.sign_2)
-                while(True): 
-                    if(len(self.sign_2)<num_snipps):break                                                      
-                    del self.sign_2[-1]
-                self.sign_3=torch.stack(self.sign_2, dim=0) 
-                #preprocessing
-                if(preproc_type=="None"): pass
-                else: self.sign_3=self.DataPreprocessing(self.sign_3,preproc_type=preproc_type)
-                #assign further
-                if(self.sign_4 == torch.empty): self.sign_4 = self.sign_3 
-                else: self.sign_4 = torch.cat([self.sign_4,self.sign_3],dim=1)#stack((self.sign_4,self.sign_3),dim=1) 
-        if(proc_time==True):
-            end_t = time.time()
-            print("Feat. extr. time(s): "+str(end_t - start_t))
-        if(torch_tensor==True):
-            return self.sign_4
-        else:
-            return self.sign_4.cpu().numpy()      
-"""
     #------------------obtain spectrograms-------------------------
     #------------------as a preprocessing step---------------------
     #--------------------------------------------------------------
@@ -745,6 +631,13 @@ class DataPreproc:
         self.sign_9=torch.empty 
         self.segm_labels_list=[]
         self.segm_sign_list=[]
+        #SplitAllLabPlateOfAllSegmentsIntoSnips
+        self.np_sign_4=torch.empty 
+        self.segm_labels_list1=[]
+        self.segm_sign_list1=[]       
+        self.segm_labels_list2=[]
+        self.segm_sign_list2=[]       
+        
     #this splits the entire number of segments pf the plate
     def SplitAllPlateSegmentsIntoSnippets(self,plate, 
                                           channs_indx=[], 
@@ -772,6 +665,34 @@ class DataPreproc:
                 self.segm_snips_list.append(self.sign_7.clone())
         return self.segm_snips_list.copy()
 
+#pass through all plates and 
+    def SplitAllLabPlateOfAllSegmentsIntoSnips(self,plates,
+                                               snip_size=5,
+                                               channs_indx=0,
+                                               torch_tensor=False, 
+                                               preproc_type="None",                                                
+                                              ):
+        self.segm_labels_list2=[]
+        self.segm_sign_list2=[]       
+        
+        for pl in plates:
+            self.segm_labels_list1=[]
+            self.segm_sign_list1=[]       
+            self.segm_sign_list1,self.segm_labels_list1=self.SplitAllLabPlateSegmentsIntoSnips(pl,
+                                                                                               snip_size=snip_size,
+                                                                                               channs_indx=channs_indx,
+                                                                                               torch_tensor=torch_tensor, 
+                                                                                               preproc_type=preproc_type,  
+                                                                                               )
+            self.segm_sign_list1,self.segm_labels_list1=self.Helper_FlatListOfLabeledFeat(self.segm_sign_list1,
+                                                                                          self.segm_labels_list1
+                                                                                         )
+            for k in range(0,len(self.segm_sign_list1)):
+                self.segm_labels_list2.append(self.segm_labels_list1[k])
+                self.segm_sign_list2.append(self.segm_sign_list1[k])      
+
+        return self.segm_sign_list2.copy(),self.segm_labels_list2.copy()
+
     #this splits all labeled segments into snippets for the given plate
     def SplitAllLabPlateSegmentsIntoSnips(self,plate,
                                          snip_size=5,
@@ -786,7 +707,7 @@ class DataPreproc:
         
         for t in range(0,segm_num):           
             self.sign_8=torch.empty 
-            self.sign_9=torch.empty            
+            self.sign_9=np.empty            
             self.sign_8,self.sign_9=self.SplitLabPlateSegmentIntoSnips(plate,
                                                                        snip_size=snip_size,
                                                                        segm_index=t,
@@ -798,18 +719,17 @@ class DataPreproc:
             if(self.sign_9 is None or self.sign_8 is None):
                 if(torch_tensor==True):
                     self.segm_sign_list.append(torch.empty)
-                    self.segm_labels_list.append(torch.empty)
+                    self.segm_labels_list.append(np.empty)
                 else:
                     self.segm_sign_list.append(np.empty)
                     self.segm_labels_list.append(np.empty)
             else:
                 if(torch_tensor==True):
                     self.segm_sign_list.append(self.sign_8.clone())
-                    self.segm_labels_list.append(self.sign_9.clone())
-                    
+                    self.segm_labels_list.append(np.asarray(self.sign_9.clone()))                    
                 else:                    
                     self.segm_sign_list.append(self.sign_8.cpu().numpy().copy())
-                    self.segm_labels_list.append(self.sign_9.cpu().numpy().copy())
+                    self.segm_labels_list.append(self.sign_9.copy())#.cpu().numpy().copy())
         return self.segm_sign_list.copy(),self.segm_labels_list.copy()
             
     #split obnly labeled data within a segment into snyppets
@@ -828,6 +748,8 @@ class DataPreproc:
         lab=[]        
         labeled_data_l=len(plate.sigments_labels[segm_index])    
         self.np_signal1 = np.asarray(plate.sigments_sign[segm_index])        
+        #service labels_names
+        #lab_tmp=[]
         for hj in range(0,labeled_data_l):             
             #read labeled data first
             label=plate.sigments_labels[segm_index][hj][2]
@@ -835,6 +757,7 @@ class DataPreproc:
             last_el=plate.sigments_labels[segm_index][hj][1]
             self.np_signal2=self.np_signal1[:,first_el:last_el].copy()         
             self.sign_5=torch.empty   
+            #if(label not in lab_tmp): lab_tmp.append(label)
             #print(preproc_type)
             #print(self.np_signal2.shape)
             self.sign_5= self.SplitEntireSignalIntoSnippets(  signal=self.np_signal2, 
@@ -850,14 +773,24 @@ class DataPreproc:
                 else: self.sign_6 = torch.cat([self.sign_6,self.sign_5],dim=0)     
                 for k in range(0,self.sign_5.shape[0]):
                     lab.append(label)
-            else: pass                
-                    
+            else: pass     
+                
         if(torch_tensor==True):
                     if((self.sign_6!=torch.empty) and (self.sign_6 is not None)):
-                        torch_labels_1=torch.tensor(np.asarray(lab))
-                        if(torch.cuda.is_available()): torch_labels_1.cuda()                    
+                        #le = preprocessing.LabelEncoder()
+                        #lab_tags = le.fit_transform(lab)
+                        #new_lab=[]
+                        #tag_tmp=np.linspace(0,len(lab_tmp),len(lab_tmp))
+                        #for xx in range(0,len(lab)):
+                        #    indx=lab_tmp.index(lab[xx])
+                        #    tag=tag_tmp[indx]
+                        #    new_lab.append(tag)
+                            
+                        #torch_labels_1=torch.empty
+                        #torch_labels_1=torch.tensor(np.asarray(new_lab))
+                        #if(torch.cuda.is_available()): torch_labels_1.cuda()                    
                         feat=self.sign_6.clone()
-                        return feat, torch_labels_1
+                        return feat, np.asarray(lab.copy())#torch_labels_1
                     else: return None,None
         else:    
             if(self.sign_6==torch.empty):
