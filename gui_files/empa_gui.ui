@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>430</width>
-    <height>541</height>
+    <width>436</width>
+    <height>554</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -697,12 +697,12 @@
            <rect>
             <x>49</x>
             <y>12</y>
-            <width>251</width>
+            <width>271</width>
             <height>24</height>
            </rect>
           </property>
           <property name="currentIndex">
-           <number>0</number>
+           <number>-1</number>
           </property>
           <property name="placeholderText">
            <string>XGBoost</string>
@@ -715,6 +715,11 @@
           <item>
            <property name="text">
             <string>IsolationForest</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>DBSCAN</string>
            </property>
           </item>
           <item>
@@ -804,10 +809,10 @@
           </rect>
          </property>
          <property name="currentText">
-          <string/>
+          <string>this_plate_this_segment</string>
          </property>
          <property name="currentIndex">
-          <number>-1</number>
+          <number>0</number>
          </property>
          <property name="placeholderText">
           <string>this_plate_this_segment</string>
@@ -1130,7 +1135,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>430</width>
+     <width>436</width>
      <height>33</height>
     </rect>
    </property>

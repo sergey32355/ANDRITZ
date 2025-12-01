@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 ################################################################################
-## Form generated from reading UI file 'empa_guiGSVoin.ui'
+## Form generated from reading UI file 'empa_guictfVtx.ui'
 ##
 ## Created by: Qt User Interface Compiler version 6.9.0
 ##
@@ -23,7 +23,7 @@ class Ui_EmpaGUI(object):
     def setupUi(self, EmpaGUI):
         if not EmpaGUI.objectName():
             EmpaGUI.setObjectName(u"EmpaGUI")
-        EmpaGUI.resize(430, 541)
+        EmpaGUI.resize(436, 554)
         self.centralwidget = QWidget(EmpaGUI)
         self.centralwidget.setObjectName(u"centralwidget")
         self.tabWidget = QTabWidget(self.centralwidget)
@@ -175,7 +175,7 @@ class Ui_EmpaGUI(object):
         self.classification_all_segments_to_label_button_2.setGeometry(QRect(219, 58, 131, 21))
         self.classification_clear_all_segments_labels_button_2 = QPushButton(self.groupBox_6)
         self.classification_clear_all_segments_labels_button_2.setObjectName(u"classification_clear_all_segments_labels_button_2")
-        self.classification_clear_all_segments_labels_button_2.setGeometry(QRect(300, 32, 91, 21))
+        self.classification_clear_all_segments_labels_button_2.setGeometry(QRect(300, 32, 101, 21))
         self.groupBox_7 = QGroupBox(self.groupBox_5)
         self.groupBox_7.setObjectName(u"groupBox_7")
         self.groupBox_7.setGeometry(QRect(1, 130, 411, 81))
@@ -190,14 +190,15 @@ class Ui_EmpaGUI(object):
         self.classificationclassifier_dropdown.addItem("")
         self.classificationclassifier_dropdown.addItem("")
         self.classificationclassifier_dropdown.addItem("")
+        self.classificationclassifier_dropdown.addItem("")
         self.classificationclassifier_dropdown.setObjectName(u"classificationclassifier_dropdown")
-        self.classificationclassifier_dropdown.setGeometry(QRect(49, 12, 251, 24))
+        self.classificationclassifier_dropdown.setGeometry(QRect(49, 12, 271, 24))
         self.label_11 = QLabel(self.groupBox_7)
         self.label_11.setObjectName(u"label_11")
-        self.label_11.setGeometry(QRect(10, 41, 51, 16))
+        self.label_11.setGeometry(QRect(10, 44, 51, 16))
         self.classification_test_text = QLineEdit(self.groupBox_7)
         self.classification_test_text.setObjectName(u"classification_test_text")
-        self.classification_test_text.setGeometry(QRect(58, 37, 71, 22))
+        self.classification_test_text.setGeometry(QRect(58, 42, 71, 22))
         self.classification_dataset_info_button = QPushButton(self.groupBox_7)
         self.classification_dataset_info_button.setObjectName(u"classification_dataset_info_button")
         self.classification_dataset_info_button.setGeometry(QRect(138, 40, 81, 31))
@@ -283,7 +284,7 @@ class Ui_EmpaGUI(object):
         EmpaGUI.setCentralWidget(self.centralwidget)
         self.menubar = QMenuBar(EmpaGUI)
         self.menubar.setObjectName(u"menubar")
-        self.menubar.setGeometry(QRect(0, 0, 430, 33))
+        self.menubar.setGeometry(QRect(0, 0, 436, 33))
         EmpaGUI.setMenuBar(self.menubar)
         self.statusbar = QStatusBar(EmpaGUI)
         self.statusbar.setObjectName(u"statusbar")
@@ -294,8 +295,8 @@ class Ui_EmpaGUI(object):
         self.tabWidget.setCurrentIndex(1)
         self.load_data_plate_type_dropdown.setCurrentIndex(-1)
         self.tabWidget_2.setCurrentIndex(0)
-        self.classificationclassifier_dropdown.setCurrentIndex(0)
-        self.classification_preproc_dropdown_2.setCurrentIndex(-1)
+        self.classificationclassifier_dropdown.setCurrentIndex(-1)
+        self.classification_preproc_dropdown_2.setCurrentIndex(0)
         self.classification_plot_choice_dropdown_3.setCurrentIndex(0)
         self.Settings_openfile_segmentation_mode_text.setCurrentIndex(0)
         self.classification_preproc_dropdown.setCurrentIndex(0)
@@ -369,8 +370,9 @@ class Ui_EmpaGUI(object):
         self.label_13.setText(QCoreApplication.translate("EmpaGUI", u"Model:", None))
         self.classificationclassifier_dropdown.setItemText(0, QCoreApplication.translate("EmpaGUI", u"XGBoost", None))
         self.classificationclassifier_dropdown.setItemText(1, QCoreApplication.translate("EmpaGUI", u"IsolationForest", None))
-        self.classificationclassifier_dropdown.setItemText(2, QCoreApplication.translate("EmpaGUI", u"Autoencoder", None))
-        self.classificationclassifier_dropdown.setItemText(3, QCoreApplication.translate("EmpaGUI", u"NonStatKern_1", None))
+        self.classificationclassifier_dropdown.setItemText(2, QCoreApplication.translate("EmpaGUI", u"DBSCAN", None))
+        self.classificationclassifier_dropdown.setItemText(3, QCoreApplication.translate("EmpaGUI", u"Autoencoder", None))
+        self.classificationclassifier_dropdown.setItemText(4, QCoreApplication.translate("EmpaGUI", u"NonStatKern_1", None))
 
         self.classificationclassifier_dropdown.setPlaceholderText(QCoreApplication.translate("EmpaGUI", u"XGBoost", None))
         self.label_11.setText(QCoreApplication.translate("EmpaGUI", u"Test (%):", None))
@@ -382,7 +384,7 @@ class Ui_EmpaGUI(object):
         self.classification_preproc_dropdown_2.setItemText(1, QCoreApplication.translate("EmpaGUI", u"this_plate_all_segments", None))
         self.classification_preproc_dropdown_2.setItemText(2, QCoreApplication.translate("EmpaGUI", u"all_plates_all_segments", None))
 
-        self.classification_preproc_dropdown_2.setCurrentText("")
+        self.classification_preproc_dropdown_2.setCurrentText(QCoreApplication.translate("EmpaGUI", u"this_plate_this_segment", None))
         self.classification_preproc_dropdown_2.setPlaceholderText(QCoreApplication.translate("EmpaGUI", u"this_plate_this_segment", None))
         self.label_17.setText(QCoreApplication.translate("EmpaGUI", u"Apply to:", None))
         self.classification_plot_choice_dropdown_3.setItemText(0, QCoreApplication.translate("EmpaGUI", u"Segment", None))

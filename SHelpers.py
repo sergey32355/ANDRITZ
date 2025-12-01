@@ -12,6 +12,8 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
 from matplotlib.figure import Figure
 import time
 from sklearn import preprocessing
+from sklearn.ensemble import IsolationForest
+from sklearn.cluster import DBSCAN
 
 #classifiers
 from xgboost import XGBClassifier
@@ -560,6 +562,74 @@ def XGBoostClassifRun(X_train=[], X_test=[], y_train=[], y_test=[]):
                     print(str(ex))                    
                 return bst, xgb_labs_back,unique_labels,xgb_unique_labs
 
+def IsolTreesTraining(feat=None,labels=None):
+    if(feat is None) or (len(feat)==0): 
+        print("")
+        print("features are emopty - training aborted...")
+        return
+    
+    unique_labs=list(set(labels))
+    if(len(unique_labs)==0):
+        print("No labeled data is defined. One label is needed for training...")
+        pass
+    #https://www.eyer.ai/blog/anomaly-detection-in-time-series-data-python-a-starter-guide/            
+    x_sf=[]
+    ref_l=labels[0]
+    for m in range(0,len(labels)):
+        if(ref_l==labels[m]):
+            cur_feat=(np.asarray(feat)[m,:])
+            x_sf.append(cur_feat)
+    shp_training_set=np.shape(np.asarray(x_sf))
+    print("")
+    print("Isolation trees dataset inlcudes lab. - "+str(ref_l))
+    print("Trainset shape - "+str(shp_training_set))
+    print("Isolation trees training...")
+    clf = IsolationForest(n_estimators=8000, contamination=0.01)
+    start_t = time.time()
+    clf.fit(np.asarray(x_sf))
+    end_t = time.time()
+    print("Training is done in "+str(end_t-start_t)+ str(" s"))
+    start_t = time.time()
+    y_pred = clf.predict(x_sf)
+    end_t = time.time()
+    print("Pridiction time: "+str(end_t-start_t)+" s for " +str(shp_training_set[0])+" features")
+    return clf
+#IsolTreesTraining(feat=CLASSIF_FEAT,labels=CLASSIF_LABS)
+
+def DBSCANTraining(feat=None,labels=None):
+    if(feat is None) or (len(feat)==0): 
+        print("")
+        print("features are empty - training aborted...")
+        return
+    
+    unique_labs=list(set(labels))
+    if(len(unique_labs)==0):
+        print("No labeled data is defined. One label is needed for training...")
+        pass
+    #https://www.eyer.ai/blog/anomaly-detection-in-time-series-data-python-a-starter-guide/            
+    x_sf=[]
+    ref_l=labels[0]
+    for m in range(0,len(labels)):
+        if(ref_l==labels[m]):
+            cur_feat=(np.asarray(feat)[m,:])
+            x_sf.append(cur_feat)
+    shp_training_set=np.shape(np.asarray(x_sf))
+    print("")
+    print("DBSCAN dataset inlcude lab. - "+str(ref_l))
+    print("Trainset shape - "+str(shp_training_set))
+    print("DBSCAN training...")
+    clf = DBSCAN(eps=0.1, min_samples=41)
+    start_t = time.time()
+    clf.fit(np.asarray(x_sf))
+    end_t = time.time()
+    print("Training is done in "+str(end_t-start_t)+ str(" s"))
+    start_t = time.time()
+    y_pred = clf.fit_predict(x_sf)
+    end_t = time.time()
+    print("Pridiction time: "+str(end_t-start_t)+" s for " +str(shp_training_set[0])+" features")
+    return clf
+#clg=DBSCANTraining(feat=CLASSIF_FEAT,labels=CLASSIF_LABS) 
+
 #****************************************************************************************
 #****************************************************************************************
 #   CLASSIFIER
@@ -578,18 +648,34 @@ class S_Classif:
         shp=np.shape(feat)
         labs=np.empty
         if(str(cls_type) == "<class 'xgboost.sklearn.XGBClassifier'>"):
-            labs=self.classifier.predict(feat)
-        #if(self.orig_labels!=[]) and (self.intern_labels!=[]):
-        #    new_labs=[]
-        #    for k in range(0,len(labs)):
-        #        cur_lab=labs[k]
-        #        indx=self.intern_labels.index(cur_lab)
-        #        new_labs.append(self.orig_labels[indx])
+            labs=self.classifier.predict(feat)      
+        if(str(cls_type) == "<class 'sklearn.ensemble._iforest.IsolationForest'>"):            
+            labs_tmp=self.classifier.predict(feat)
+            labs=[]
+            for i in range(0,len(labs_tmp)):
+                if(labs_tmp[i]==1):
+                    labs.append(0)
+                else:
+                    labs.append(1)
+            labs=np.asarray(labs)
+        if(str(cls_type) == "<class 'sklearn.cluster._dbscan.DBSCAN'>"):            
+            labs_tmp=self.classifier.fit_predict(feat)
+            labs=[]
+            for i in range(0,len(labs_tmp)):
+                if(labs_tmp[i]==1):
+                    labs.append(0)
+                else:
+                    labs.append(1)
+            labs=np.asarray(labs)
         return labs
     def getClassifType(self):
         cls_type=type(self.classifier)
         if(str(cls_type) == "<class 'xgboost.sklearn.XGBClassifier'>"):
             return "XGBoost"
+        if(str(cls_type) == "<class 'sklearn.ensemble._iforest.IsolationForest'>"):
+            return "IsolationTrees"
+        if(str(cls_type) == "<class 'sklearn.cluster._dbscan.DBSCAN'>"):
+            return "DBSCAN"
 
 #example
 #cl=S_Classif()
