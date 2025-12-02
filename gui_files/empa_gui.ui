@@ -24,7 +24,7 @@
      </rect>
     </property>
     <property name="currentIndex">
-     <number>1</number>
+     <number>0</number>
     </property>
     <widget class="QWidget" name="tab">
      <attribute name="title">
@@ -233,13 +233,13 @@
        <property name="geometry">
         <rect>
          <x>10</x>
-         <y>15</y>
-         <width>311</width>
+         <y>40</y>
+         <width>81</width>
          <height>24</height>
         </rect>
        </property>
        <property name="currentText">
-        <string/>
+        <string>Folder</string>
        </property>
        <property name="placeholderText">
         <string>Autoencoder</string>
@@ -266,6 +266,19 @@
        </property>
        <property name="text">
         <string>Browse folder</string>
+       </property>
+      </widget>
+      <widget class="QLineEdit" name="load_data_path_2">
+       <property name="geometry">
+        <rect>
+         <x>7</x>
+         <y>14</y>
+         <width>311</width>
+         <height>22</height>
+        </rect>
+       </property>
+       <property name="text">
+        <string>C:\SERGEY\ANDRITZ_DATA\trial</string>
        </property>
       </widget>
      </widget>
