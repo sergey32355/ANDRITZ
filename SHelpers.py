@@ -14,6 +14,7 @@ import time
 from sklearn import preprocessing
 from sklearn.ensemble import IsolationForest
 from sklearn.cluster import DBSCAN
+from sklearn.svm import OneClassSVM
 import logging
 import threading
 import sys
@@ -21,9 +22,10 @@ import trace
 
 #classifiers
 from xgboost import XGBClassifier
+
 import torch
 import torchaudio
-
+from torch import nn
 
 SEGMENTS_MISSED_SEGMENT_NAME="noname_"
 LABEL_DEFAULT_NAME="Label_"
@@ -688,7 +690,7 @@ def DBSCANTraining(feat=None,labels=None):
     if(feat is None) or (len(feat)==0): 
         print("")
         print("features are empty - training aborted...")
-        return
+        return None
     
     unique_labs=list(set(labels))
     if(len(unique_labs)==0):
@@ -718,6 +720,38 @@ def DBSCANTraining(feat=None,labels=None):
     return clf
 #clg=DBSCANTraining(feat=CLASSIF_FEAT,labels=CLASSIF_LABS) 
 
+def OneCLassSVMTraining(feat=None,labels=None):
+
+    if(feat is None) or (len(feat)==0): 
+        print("")
+        print("features are empty - training aborted...")
+        return None  
+
+    unique_labs=list(set(labels))
+    if(len(unique_labs)==0):
+        print("No labeled data is defined. One label is needed for training...")
+        pass
+
+    x_sf=[]
+    ref_l=labels[0]
+    for m in range(0,len(labels)):
+        if(ref_l==labels[m]):
+            cur_feat=(np.asarray(feat)[m,:])
+            x_sf.append(cur_feat)
+    shp_training_set=np.shape(np.asarray(x_sf))
+    print("")
+    print("SVM dataset inlcude lab. - "+str(ref_l))
+    print("Trainset shape - "+str(shp_training_set))
+    print("DBSCAN training...")
+    start_t = time.time()
+    clf = OneClassSVM(nu=0.1, kernel="rbf",gamma=0.2).fit(feat)     
+    end_t = time.time()
+    print("Training is done in "+str(end_t-start_t)+ str(" s"))
+    start_t = time.time()
+    y_pred = clf.fit_predict(x_sf)
+    end_t = time.time()
+    print("Pridiction time: "+str(end_t-start_t)+" s for " +str(shp_training_set[0])+" features")
+    return clf
 #****************************************************************************************
 #****************************************************************************************
 #   CLASSIFIER
@@ -726,6 +760,8 @@ class S_Classif:
         self.classifier=None
         self.orig_labels=[]
         self.intern_labels=[]
+        #for torch autoencoder_1
+        self.tocrh_autoencoder_threshold_factor=3.5
     def AssignClassif(self,classif,orig_labels,intern_labels,categ_names=[]):
         self.classifier=classif
         self.orig_labels=orig_labels              
@@ -764,6 +800,9 @@ class S_Classif:
                 else:
                     labs.append(1)
             labs=np.asarray(labs)
+        if(str(cls_type) == "<class '__main__.Autoencoder'>"):     
+            print("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX")
+            labs=PredictTorchAutoencoder(model=self.classifier,feat=feat,thresh_fact=self.tocrh_autoencoder_threshold_factor)
         return labs
     def getClassifType(self):
         cls_type=type(self.classifier)
@@ -775,7 +814,8 @@ class S_Classif:
             return "DBSCAN"
         if(str(cls_type) == "<class 'sklearn.svm._classes.OneClassSVM'>"):
             return "SVM"
-
+        if(str(cls_type) == "<class '__main__.Autoencoder'>"):
+            return "TorchAutoEnc_1"
 #example
 #cl=S_Classif()
 #cl.AssignClassif(CLASSIFIER,None)
@@ -1240,6 +1280,14 @@ def ReadSettings(window):
     settings["real_time_source"] = real_time_source
     real_time_folder=window.ui.real_time_folder_text.text()
     settings["real_time_folder_text"] = real_time_folder
+
+    #CLASIFIERS AND ANOMALY DETECTORS
+    autoencoder_torch_thershold=window.ui.Autoencoder_torch_threshold_factor.text()
+    settings["autoencoder_torch_thershold"] = autoencoder_torch_thershold
+    autoencoder_torch_epochs_num=window.ui.Autoencoder_torch_epochs_num.text()
+    settings["autoencoder_torch_epochs_num"] = autoencoder_torch_epochs_num
+    autoencoder_torch_learn_rate=window.ui.Autoencoder_torch_learn_rate.text()
+    settings["autoencoder_torch_learn_rate"] = autoencoder_torch_learn_rate
     
     return settings
 
@@ -1732,3 +1780,110 @@ long_bpp2_layout = (
                 ('LBO', '1'),
                 ('LZ', '4')
             )
+
+#*************************************************************************************
+#****************************MODELS***************************************************
+#*************************************************************************************
+class Autoencoder(nn.Module):
+    #https://www.geeksforgeeks.org/deep-learning/how-to-use-pytorch-for-anomaly-detection/
+    def __init__(self,window_size=100):
+        super(Autoencoder, self).__init__()
+        self.encoder = nn.Sequential(
+            nn.Linear(window_size, 5000),
+            nn.ReLU(),
+            nn.Linear(5000, 2000),
+            nn.ReLU(),
+            nn.Linear(2000, 100),
+        )
+        self.decoder = nn.Sequential(
+            nn.Linear(100, 2000),
+            nn.ReLU(),
+            nn.Linear(2000, 5000),
+            nn.ReLU(),
+            nn.Linear(5000, window_size),
+            nn.ReLU()
+        )
+        
+    def forward(self, x):
+        x = self.encoder(x)
+        x = self.decoder(x)
+        return x
+
+def TrainTorchAutoencoder(feat=None,labels=None,num_epochs=100,lr=1e-7):
+    if(feat is None) or (len(feat)==0): 
+        print("")
+        print("features are empty - training aborted...")
+        return None
+
+    unique_labs=list(set(labels))
+    if(len(unique_labs)==0):
+        print("No labeled data is defined. One label is needed for training...")
+        pass
+
+    torch.use_deterministic_algorithms(False)
+    #https://www.eyer.ai/blog/anomaly-detection-in-time-series-data-python-a-starter-guide/            
+    x_sf=[]
+    ref_l=labels[0]
+    for m in range(0,len(labels)):
+        if(ref_l==labels[m]):
+            cur_feat=(np.asarray(feat)[m,:])
+            x_sf.append(cur_feat)
+    shp_training_set=np.shape(np.asarray(x_sf))
+    if(len(shp_training_set)==1):d_size=shp_training_set[0]
+    else: d_size=shp_training_set[1]
+    print("")
+    print("Torch autoencoder dataset inlcude lab. - "+str(ref_l))
+    print("Trainset shape - "+str(shp_training_set))
+    print("Torch autoencoder training...")
+    #initialize
+    model = Autoencoder(window_size=d_size)
+    if torch.cuda.is_available(): model = model.cuda()
+    criterion = nn.MSELoss()
+    optimizer = torch.optim.Adam(model.parameters(), lr=lr)
+
+    sequences = torch.tensor(np.asarray(x_sf), dtype=torch.float32)
+    if torch.cuda.is_available(): sequences = sequences.cuda()
+    
+    start_t = time.time()
+    for epoch in range(num_epochs):
+        optimizer.zero_grad()
+        output = model(sequences)
+        loss = criterion(output, sequences)
+        loss.backward()
+        optimizer.step()    
+        if (epoch+1) % 10 == 0:
+            print(f'Epoch {epoch+1}, Loss: {loss.item()}')
+    end_t = time.time()
+    
+    print("Training is done in "+str(end_t-start_t)+ str(" s"))
+    
+    start_t = time.time()
+    y_pred = model(sequences)
+    end_t = time.time()
+    print("Pridiction time: "+str(end_t-start_t)+" s for " +str(shp_training_set[0])+" features")
+    return model  
+
+def PredictTorchAutoencoder(model=None, feat=None,thresh_fact=2):
+    shp=np.shape(np.asarray(feat))
+    sequences = torch.tensor(np.asarray(feat), dtype=torch.float32)
+    if torch.cuda.is_available(): sequences = sequences.cuda()
+    print("=======================================LLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL")
+    with torch.no_grad():
+        predictions = model(sequences)
+        losses = torch.mean((predictions - sequences)**2, dim=1)
+        #plt.hist(losses.cpu().numpy(), bins=50)
+        #plt.xlabel("Loss")
+        #plt.ylabel("Frequency")
+        #plt.show()
+        # Threshold for defining an anomaly
+        threshold =losses.mean() + thresh_fact* losses.std()#losses.mean() + 2 * losses.std()
+        #print(f"Anomaly threshold: {threshold.item()}")
+        # Detecting anomalies
+        anomalies = losses > threshold
+        if torch.cuda.is_available(): anomaly_positions = np.where(anomalies.cpu().numpy())[0]
+        else:                         anomaly_positions = np.where(anomalies.numpy())[0]
+        labels=np.zeros(shp[0])
+        for i in range(0,len(anomaly_positions)):
+            labels[anomaly_positions[i]]=1
+        #print(f"Anomalies found at positions: {np.where(anomalies.cpu().numpy())[0]}")        
+        return list(labels)
