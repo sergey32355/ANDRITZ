@@ -1080,7 +1080,7 @@
        </rect>
       </property>
       <property name="currentIndex">
-       <number>0</number>
+       <number>1</number>
       </property>
       <widget class="QWidget" name="tab_6">
        <attribute name="title">
@@ -1264,6 +1264,19 @@
           </property>
           <property name="text">
            <string>0.00005</string>
+          </property>
+         </widget>
+         <widget class="QPushButton" name="pushButton">
+          <property name="geometry">
+           <rect>
+            <x>170</x>
+            <y>0</y>
+            <width>81</width>
+            <height>24</height>
+           </rect>
+          </property>
+          <property name="text">
+           <string>Set/test</string>
           </property>
          </widget>
         </widget>

@@ -752,73 +752,7 @@ def OneCLassSVMTraining(feat=None,labels=None):
     end_t = time.time()
     print("Pridiction time: "+str(end_t-start_t)+" s for " +str(shp_training_set[0])+" features")
     return clf
-#****************************************************************************************
-#****************************************************************************************
-#   CLASSIFIER
-class S_Classif:
-    def __init__(self):
-        self.classifier=None
-        self.orig_labels=[]
-        self.intern_labels=[]
-        #for torch autoencoder_1
-        self.tocrh_autoencoder_threshold_factor=3.5
-    def AssignClassif(self,classif,orig_labels,intern_labels,categ_names=[]):
-        self.classifier=classif
-        self.orig_labels=orig_labels              
-        self.intern_labels=intern_labels    
-        self.categ_names=[]
-    def np_predict(self,feat): #input is numpy array
-        cls_type=type(self.classifier)
-        shp=np.shape(feat)
-        labs=np.empty
-        if(str(cls_type) == "<class 'xgboost.sklearn.XGBClassifier'>"):
-            labs=self.classifier.predict(feat)      
-        if(str(cls_type) == "<class 'sklearn.ensemble._iforest.IsolationForest'>"):            
-            labs_tmp=self.classifier.predict(feat)
-            labs=[]
-            for i in range(0,len(labs_tmp)):
-                if(labs_tmp[i]==1):
-                    labs.append(0)
-                else:
-                    labs.append(1)
-            labs=np.asarray(labs)
-        if(str(cls_type) == "<class 'sklearn.cluster._dbscan.DBSCAN'>"):            
-            labs_tmp=self.classifier.fit_predict(feat)
-            labs=[]
-            for i in range(0,len(labs_tmp)):
-                if(labs_tmp[i]==1):
-                    labs.append(0)
-                else:
-                    labs.append(1)
-            labs=np.asarray(labs)
-        if(str(cls_type) == "<class 'sklearn.svm._classes.OneClassSVM'>"):      
-            labs_tmp=self.classifier.predict(feat)
-            labs=[]
-            for i in range(0,len(labs_tmp)):
-                if(labs_tmp[i]==1):
-                    labs.append(0)
-                else:
-                    labs.append(1)
-            labs=np.asarray(labs)
-        if(str(cls_type) == "<class '__main__.Autoencoder'>"):     
-            print("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX")
-            labs=PredictTorchAutoencoder(model=self.classifier,feat=feat,thresh_fact=self.tocrh_autoencoder_threshold_factor)
-        return labs
-    def getClassifType(self):
-        cls_type=type(self.classifier)
-        if(str(cls_type) == "<class 'xgboost.sklearn.XGBClassifier'>"):
-            return "XGBoost"
-        if(str(cls_type) == "<class 'sklearn.ensemble._iforest.IsolationForest'>"):
-            return "IsolationTrees"
-        if(str(cls_type) == "<class 'sklearn.cluster._dbscan.DBSCAN'>"):
-            return "DBSCAN"
-        if(str(cls_type) == "<class 'sklearn.svm._classes.OneClassSVM'>"):
-            return "SVM"
-        if(str(cls_type) == "<class '__main__.Autoencoder'>"):
-            return "TorchAutoEnc_1"
-#example
-#cl=S_Classif()
-#cl.AssignClassif(CLASSIFIER,None)
+
 
 #*****************************************************************************************
 #******************************PREPROCESSING**********************************************
@@ -1866,8 +1800,7 @@ def TrainTorchAutoencoder(feat=None,labels=None,num_epochs=100,lr=1e-7):
 def PredictTorchAutoencoder(model=None, feat=None,thresh_fact=2):
     shp=np.shape(np.asarray(feat))
     sequences = torch.tensor(np.asarray(feat), dtype=torch.float32)
-    if torch.cuda.is_available(): sequences = sequences.cuda()
-    print("=======================================LLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL")
+    if torch.cuda.is_available(): sequences = sequences.cuda()    
     with torch.no_grad():
         predictions = model(sequences)
         losses = torch.mean((predictions - sequences)**2, dim=1)
@@ -1887,3 +1820,73 @@ def PredictTorchAutoencoder(model=None, feat=None,thresh_fact=2):
             labels[anomaly_positions[i]]=1
         #print(f"Anomalies found at positions: {np.where(anomalies.cpu().numpy())[0]}")        
         return list(labels)
+
+#****************************************************************************************
+#****************************************************************************************
+#   CLASSIFIER
+class S_Classif:
+    def __init__(self):
+        self.classifier=None
+        self.orig_labels=[]
+        self.intern_labels=[]
+        #for torch autoencoder_1
+        self.tocrh_autoencoder_threshold_factor=3.5
+    def AssignClassif(self,classif,orig_labels,intern_labels,categ_names=[]):
+        self.classifier=classif
+        self.orig_labels=orig_labels              
+        self.intern_labels=intern_labels    
+        self.categ_names=[]
+    def np_predict(self,feat): #input is numpy array               
+        cls_type=type(self.classifier)        
+        shp=np.shape(feat)
+        labs=np.empty
+        if(str(cls_type) == "<class 'xgboost.sklearn.XGBClassifier'>"):
+            labs=self.classifier.predict(feat)      
+        if(str(cls_type) == "<class 'sklearn.ensemble._iforest.IsolationForest'>"):            
+            labs_tmp=self.classifier.predict(feat)
+            labs=[]
+            for i in range(0,len(labs_tmp)):
+                if(labs_tmp[i]==1):
+                    labs.append(0)
+                else:
+                    labs.append(1)
+            labs=np.asarray(labs)
+        if(str(cls_type) == "<class 'sklearn.cluster._dbscan.DBSCAN'>"):            
+            labs_tmp=self.classifier.fit_predict(feat)
+            labs=[]
+            for i in range(0,len(labs_tmp)):
+                if(labs_tmp[i]==1):
+                    labs.append(0)
+                else:
+                    labs.append(1)
+            labs=np.asarray(labs)
+        if(str(cls_type) == "<class 'sklearn.svm._classes.OneClassSVM'>"):      
+            labs_tmp=self.classifier.predict(feat)
+            labs=[]
+            for i in range(0,len(labs_tmp)):
+                if(labs_tmp[i]==1):
+                    labs.append(0)
+                else:
+                    labs.append(1)
+            labs=np.asarray(labs)
+        if(str(cls_type) == "<class 'SHelpers.Autoencoder'>"):           
+            labs=PredictTorchAutoencoder(model=self.classifier,feat=feat,thresh_fact=self.tocrh_autoencoder_threshold_factor)
+            labs=np.asarray(labs)
+            
+        return labs
+        
+    def getClassifType(self):
+        cls_type=type(self.classifier)
+        if(str(cls_type) == "<class 'xgboost.sklearn.XGBClassifier'>"):
+            return "XGBoost"
+        if(str(cls_type) == "<class 'sklearn.ensemble._iforest.IsolationForest'>"):
+            return "IsolationTrees"
+        if(str(cls_type) == "<class 'sklearn.cluster._dbscan.DBSCAN'>"):
+            return "DBSCAN"
+        if(str(cls_type) == "<class 'sklearn.svm._classes.OneClassSVM'>"):
+            return "SVM"
+        if(str(cls_type) == "<class '__main__.Autoencoder'>"):
+            return "TorchAutoEnc_1"
+#example
+#cl=S_Classif()
+#cl.AssignClassif(CLASSIFIER,None)
