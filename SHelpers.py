@@ -755,6 +755,15 @@ class S_Classif:
                 else:
                     labs.append(1)
             labs=np.asarray(labs)
+        if(str(cls_type) == "<class 'sklearn.svm._classes.OneClassSVM'>"):      
+            labs_tmp=self.classifier.predict(feat)
+            labs=[]
+            for i in range(0,len(labs_tmp)):
+                if(labs_tmp[i]==1):
+                    labs.append(0)
+                else:
+                    labs.append(1)
+            labs=np.asarray(labs)
         return labs
     def getClassifType(self):
         cls_type=type(self.classifier)
@@ -764,6 +773,8 @@ class S_Classif:
             return "IsolationTrees"
         if(str(cls_type) == "<class 'sklearn.cluster._dbscan.DBSCAN'>"):
             return "DBSCAN"
+        if(str(cls_type) == "<class 'sklearn.svm._classes.OneClassSVM'>"):
+            return "SVM"
 
 #example
 #cl=S_Classif()
