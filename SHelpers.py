@@ -14,6 +14,10 @@ import time
 from sklearn import preprocessing
 from sklearn.ensemble import IsolationForest
 from sklearn.cluster import DBSCAN
+import logging
+import threading
+import sys
+import trace
 
 #classifiers
 from xgboost import XGBClassifier
@@ -169,6 +173,79 @@ def print_progress_bar(index, total, label):
     sys.stdout.write(f"[{'=' * int(n_bar * progress):{n_bar}s}] {int(100 * progress)}%  {label}")
     sys.stdout.flush()
 
+def ShowResultsInFigure_AllSegmentsInRow(signals,labels,chans_indx,snip_size,colorscheme,fig,fig_ax,orig_label_tags):    
+    """
+    if plt.fignum_exists(fig_id)==False:
+        fig=plt.figure(fig_id)        
+    else:
+        fig=plt.figure(fig_id)           
+    fig.clf() 
+    ax= fig.add_subplot(111)
+    """   
+    fig_ax.clear()
+    
+    unique_l=[]
+    colors_l=[]
+    line_v=[]
+    ymin=[]    
+    ymax=[]
+    ymin_tmp=[]
+    ymax_tmp=[]
+    legend_tags=[]
+    
+    borders=[]
+    borders.append(0)
+    
+    for kl in range(0,len(signals)):
+        #ymin.append(np.min(signals[kl]))
+        #ymax.append(np.max(signals[kl]))        
+        start_=borders[kl]
+        l_shp=np.shape(np.asarray(signals[kl]))
+        if(len(l_shp)==2): l_=l_shp[1]
+        if(len(l_shp)==1): l_=l_shp[0]
+        end_=start_+l_
+        borders.append(end_)
+        x_=np.arange(start_,end_)
+
+        ymin_tmp=[]
+        ymax_tmp=[]
+        for nnb in range(0,len(chans_indx)):
+            ymin_tmp.append(np.min(signals[kl][nnb]))
+            ymax_tmp.append(np.max(signals[kl][nnb]))
+            fig_ax.plot(x_,signals[kl][nnb],color="blue")     
+        ymin.append(np.min(np.asarray(ymin_tmp)))
+        ymax.append(np.max(np.asarray(ymax_tmp)))
+
+        st_=start_
+        en_=st_+snip_size
+        
+        #fill the backgrounds
+        for l in range(0,len(labels[kl])):            
+            cur_color=colorscheme[int(labels[kl][l])]
+            line_=fig_ax.axvspan(st_, en_, alpha=0.1, color=cur_color)
+            st_=en_
+            en_=en_+snip_size   
+            if(int(labels[kl][l]) not in unique_l):
+                unique_l.append(int(labels[kl][l]))
+                colors_l.append(cur_color)
+                line_v.append(line_)                            
+                
+    for l in range(0,len(unique_l)):
+       if(orig_label_tags is not None):
+           legend_tags.append(str(orig_label_tags[l]))  
+       else:
+           legend_tags.append(str(unique_l[l]))  
+
+    for jj in range(0,len(borders)):
+        if(jj<len(borders) and jj<len(ymin) and jj<len(ymax)):
+            fig_ax.vlines(borders[jj], ymin[jj], ymax[jj], colors="red")
+            
+    fig_ax.legend(line_v,legend_tags)
+    fig.canvas.draw()
+    fig.canvas.flush_events()
+    #fig_ax.update()
+    #plt.show()
+
 class SPlate:
 
     def __init__(self,plate_name=""):
@@ -300,27 +377,38 @@ class SPlate:
 def OpenDataFromFolder(PATH="",
                        SEGMENTATION_REF_CHAN_NAME="Trigger",
                        SEGMENTATION_THRESHOLD="automatic",
-                       SEGMENTATION_SEGMENTS_NAMES_LIST=[]
+                       SEGMENTATION_SEGMENTS_NAMES_LIST=[],
+                       ONLY_SINGLE_FILE=False,
+                       SINGLE_FILE_PATH_BIN="",
+                       SINGLE_FILE_PATH_TXT="",
                       ):
 
-    #print(SEGMENTATION_SEGMENTS_NAMES_LIST)
-    
-    arr = next(os.walk(PATH))[2]
+    #print(SEGMENTATION_SEGMENTS_NAMES_LIST)            
     arr_txt=[]
     arr_bin=[]
-    for k in arr:
-        filename, file_extension = os.path.splitext(k)
-        if(file_extension==".txt"):
-            arr_txt.append(k)
-            for l in arr:
-                filename_1, file_extension_1 = os.path.splitext(l)
-                if((l!=k) and (file_extension_1==".bin") and (filename_1 in filename)):
-                    arr_bin.append(l)
-                    break
+    if(ONLY_SINGLE_FILE==False):        
+        arr = next(os.walk(PATH))[2]
+        for k in arr:
+            filename, file_extension = os.path.splitext(k)
+            if(file_extension==".txt"):
+                arr_txt.append(k)
+                for l in arr:
+                    filename_1, file_extension_1 = os.path.splitext(l)
+                    if((l!=k) and (file_extension_1==".bin") and (filename_1 in filename)):
+                        arr_bin.append(l)
+                        break
+    else:        
+        arr_txt.append(SINGLE_FILE_PATH_TXT)
+        arr_bin.append(SINGLE_FILE_PATH_BIN)
+        
     plates=[]             
     for l in range(0,len(arr_txt)):
-        path_txt=PATH+"\\"+arr_txt[l]
-        path_bin=PATH+"\\"+arr_bin[l]    
+        if(ONLY_SINGLE_FILE==False):
+            path_txt=PATH+"\\"+arr_txt[l]
+            path_bin=PATH+"\\"+arr_bin[l]    
+        else:
+            path_txt=arr_txt[l]
+            path_bin=arr_bin[l]
         df,d_chan,samp_r= read_bin_data(path_txt,path_bin)
         cur_plate=SPlate(plate_name=arr_bin[l])
         cur_plate.segments_names = SEGMENTATION_SEGMENTS_NAMES_LIST
@@ -1136,6 +1224,12 @@ def ReadSettings(window):
     #how to process the data
     proc_plates_segments=window.ui.classification_preproc_dropdown_2.currentText()
     settings["plate_segm_process"] = proc_plates_segments
+    #real time source
+    real_time_source=window.ui.real_time_source_dropdown_2.currentText()
+    settings["real_time_source"] = real_time_source
+    real_time_folder=window.ui.real_time_folder_text.text()
+    settings["real_time_folder_text"] = real_time_folder
+    
     return settings
 
 #setings for display and graphics
@@ -1159,6 +1253,45 @@ def getSegmentNames(plate_type):
         return list_names
     else:
         return []
+
+#****************************************************************************************
+#*******************************threading************************************************
+#****************************************************************************************
+class thread_with_trace(threading.Thread):
+  #https://www.geeksforgeeks.org/python/python-different-ways-to-kill-a-thread/
+  def __init__(self, *args, **keywords):
+    threading.Thread.__init__(self, *args, **keywords)
+    self.killed = False
+
+  def start(self):
+    self.__run_backup = self.run
+    self.run = self.__run      
+    threading.Thread.start(self)
+
+  def __run(self):
+    sys.settrace(self.globaltrace)
+    self.__run_backup()
+    self.run = self.__run_backup
+
+  def globaltrace(self, frame, event, arg):
+    if event == 'call':
+      return self.localtrace
+    else:
+      return None
+
+  def localtrace(self, frame, event, arg):
+    if self.killed:
+      if event == 'line':
+        raise SystemExit()
+    return self.localtrace
+
+  def kill(self):
+    self.killed = True
+
+def func():
+  while True:
+    print('thread running')
+    
 
 #****************************************************************************************
 #*******************************bipolar plates layout************************************

@@ -229,17 +229,17 @@
       <property name="title">
        <string>Real time</string>
       </property>
-      <widget class="QComboBox" name="train_dropdown_2">
+      <widget class="QComboBox" name="real_time_source_dropdown_2">
        <property name="geometry">
         <rect>
          <x>10</x>
          <y>40</y>
-         <width>81</width>
+         <width>301</width>
          <height>24</height>
         </rect>
        </property>
        <property name="currentText">
-        <string>Folder</string>
+        <string/>
        </property>
        <property name="placeholderText">
         <string>Autoencoder</string>
@@ -268,7 +268,7 @@
         <string>Browse folder</string>
        </property>
       </widget>
-      <widget class="QLineEdit" name="load_data_path_2">
+      <widget class="QLineEdit" name="real_time_folder_text">
        <property name="geometry">
         <rect>
          <x>7</x>
@@ -278,21 +278,86 @@
         </rect>
        </property>
        <property name="text">
-        <string>C:\SERGEY\ANDRITZ_DATA\trial</string>
+        <string>C:\SERGEY\ANDRITZ_DATA\REAL_TIME_FOLDER</string>
        </property>
       </widget>
      </widget>
-     <widget class="QPushButton" name="predict_button">
+     <widget class="QPushButton" name="Start_real_time_button">
       <property name="geometry">
        <rect>
         <x>0</x>
-        <y>240</y>
-        <width>421</width>
+        <y>250</y>
+        <width>211</width>
         <height>81</height>
        </rect>
       </property>
       <property name="text">
-       <string>Run model (identify defects)</string>
+       <string>Run real-time</string>
+      </property>
+     </widget>
+     <widget class="QPushButton" name="Stop_real_time_button_2">
+      <property name="geometry">
+       <rect>
+        <x>210</x>
+        <y>250</y>
+        <width>211</width>
+        <height>81</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Stop real-time</string>
+      </property>
+     </widget>
+     <widget class="QLabel" name="label_18">
+      <property name="geometry">
+       <rect>
+        <x>2</x>
+        <y>232</y>
+        <width>91</width>
+        <height>16</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Frame counter:</string>
+      </property>
+     </widget>
+     <widget class="QLabel" name="Real_time_Frame_counter_label">
+      <property name="geometry">
+       <rect>
+        <x>86</x>
+        <y>232</y>
+        <width>91</width>
+        <height>16</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>0</string>
+      </property>
+     </widget>
+     <widget class="QLabel" name="label_19">
+      <property name="geometry">
+       <rect>
+        <x>180</x>
+        <y>233</y>
+        <width>41</width>
+        <height>16</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Status:</string>
+      </property>
+     </widget>
+     <widget class="QLabel" name="real_time_status_label">
+      <property name="geometry">
+       <rect>
+        <x>220</x>
+        <y>233</y>
+        <width>91</width>
+        <height>16</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Not active</string>
       </property>
      </widget>
     </widget>
@@ -1061,7 +1126,7 @@
       <rect>
        <x>126</x>
        <y>11</y>
-       <width>121</width>
+       <width>101</width>
        <height>22</height>
       </rect>
      </property>
@@ -1074,7 +1139,7 @@
       <rect>
        <x>126</x>
        <y>33</y>
-       <width>121</width>
+       <width>101</width>
        <height>24</height>
       </rect>
      </property>
