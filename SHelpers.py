@@ -20,12 +20,25 @@ import threading
 import sys
 import trace
 
+#additional libs
+import librosa
+
 #classifiers
 from xgboost import XGBClassifier
 
 import torch
 import torchaudio
 from torch import nn
+import torchaudio.functional as F
+import torchaudio.transforms as T
+#this is needed for Autoencoder_1
+from torch.utils.data import DataLoader
+import pickle as pl
+import torch.nn as nn
+import torch.nn.functional as F
+from barbar import Bar
+from torch.autograd import Variable
+
 
 SEGMENTS_MISSED_SEGMENT_NAME="noname_"
 LABEL_DEFAULT_NAME="Label_"
@@ -248,6 +261,44 @@ def ShowResultsInFigure_AllSegmentsInRow(signals,labels,chans_indx,snip_size,col
     #fig_ax.update()
     #plt.show()
 
+#************************************************************************************************************************************
+#************************************************************************************************************************************
+#****************************************************SHOW SPECTRGRAMS****************************************************************
+#https://docs.pytorch.org/audio/main/tutorials/audio_feature_extractions_tutorial.html#sphx-glr-tutorials-audio-feature-extractions-tutorial-py
+def plot_waveform(waveform, sr, title="Waveform", ax=None):
+    waveform = waveform.numpy()
+
+    num_channels, num_frames = waveform.shape
+    time_axis = torch.arange(0, num_frames) / sr
+
+    if ax is None:
+        _, ax = plt.subplots(num_channels, 1)
+    ax.plot(time_axis, waveform[0], linewidth=1)
+    ax.grid(True)
+    ax.set_xlim([0, time_axis[-1]])
+    ax.set_title(title)
+
+
+def plot_spectrogram(specgram, title=None, ylabel="freq_bin", ax=None):
+    if ax is None:
+        _, ax = plt.subplots(1, 1)
+    if title is not None:
+        ax.set_title(title)
+    ax.set_ylabel(ylabel)
+    ax.imshow(librosa.power_to_db(specgram), origin="lower", aspect="auto", interpolation="nearest")
+
+
+def plot_fbank(fbank, title=None):
+    fig, axs = plt.subplots(1, 1)
+    axs.set_title(title or "Filter bank")
+    axs.imshow(fbank, aspect="auto")
+    axs.set_ylabel("frequency bin")
+    axs.set_xlabel("mel bin")
+
+#************************************************************************************************************************************
+#************************************************************************************************************************************
+#****************************************************PLATE***************************************************************************
+
 class SPlate:
 
     def __init__(self,plate_name=""):
@@ -261,6 +312,7 @@ class SPlate:
         self.sigments_labels=[]
         self.delta_t=0
         self.snipp_l=[]                                                     #snippets length (i.e. number of sampling points)
+        self.sr=[] 
 
     def get_data_from_df(self,df,time_col_name="Time"):
         jk = list(df.columns.values)        
@@ -284,8 +336,11 @@ class SPlate:
         print("Segments names: "+ str(self.segments_names))              
                 
     def get_segments(self,ref_chan_name="",threshold="automatic"):
-        
-        indx_trig = self.chans_names.index(ref_chan_name) 
+        indx_trig=-1
+        if(isinstance(ref_chan_name,str)):
+            indx_trig = self.chans_names.index(ref_chan_name) 
+        if(isinstance(ref_chan_name,int)):
+            indx_trig=ref_chan_name
         ref_sign=self.raw_signals[indx_trig]
         self.sigments_sign=[]        
         ref_threshold=-1
@@ -316,9 +371,8 @@ class SPlate:
                 else:
                     segment=self.raw_signals[k][raising_edge[l]:-1]                
                 segm_extr[l].append(segment) 
-            self.sigments_labels.append([])
-            
-        self.sigments_start_t.append(self.time[raising_edge[l]])        
+            self.sigments_labels.append([])            
+            self.sigments_start_t.append(self.time[raising_edge[l]])        
         self.sigments_sign=segm_extr
 
     #assign the lebel to selected segment pattern
@@ -373,8 +427,17 @@ class SPlate:
             cur_l=len(self.sigments_labels[l])
             for pp in range(0,cur_l):
                 labels_list.append(self.sigments_labels[l][pp][2])
-        unique_l=list(set(labels_list))
+        #unique_l=list(set(labels_list))
+        unique_l=GetUniqueElements_List(labels_list)
         return unique_l
+
+def GetUniqueElements_List(inputList):
+    list_out=[]
+    for k in range(0,len(inputList)):
+        if(inputList[k] not in list_out):
+            list_out.append(inputList[k])
+    return list_out
+        
 
 def OpenDataFromFolder(PATH="",
                        SEGMENTATION_REF_CHAN_NAME="Trigger",
@@ -413,6 +476,7 @@ def OpenDataFromFolder(PATH="",
             path_bin=arr_bin[l]
         df,d_chan,samp_r= read_bin_data(path_txt,path_bin)
         cur_plate=SPlate(plate_name=arr_bin[l])
+        cur_plate.sr=samp_r
         cur_plate.segments_names = SEGMENTATION_SEGMENTS_NAMES_LIST
         cur_plate.get_data_from_df(df)
         cur_plate.get_segments(ref_chan_name=SEGMENTATION_REF_CHAN_NAME,threshold=SEGMENTATION_THRESHOLD)
@@ -434,7 +498,8 @@ def OpenDataFromFolder(PATH="",
     return plates
 
 #find plates in list
-def FindPlateInArray(plates = [],plate_name="",chan_name="",segm_name=""):                        
+def FindPlateInArray(plates = [],plate_name="",chan_name="",segm_name=""):       
+    
             if(len(plates) == 0):
                 print("Plates list is empty")
                 return -1,-1,-1
@@ -552,10 +617,10 @@ def ShowSingleSegmentWithLabels(fig_id, plate,indx_segment=0,colors_code=None,in
     if isinstance(indx_chan, int)==True:     chan_num=[indx_chan]    
     if indx_chan==-1:     chan_num=list(np.linspace(0,len(plate.chans_names),len(plate.chans_names)))
     
-    unique_labels=plate.GetUniqueLabelsList()
-    #print(unique_labels)
-    indx_color=np.linspace(0,len(unique_labels),len(unique_labels))
-
+    unique_labels=plate.GetUniqueLabelsList()    
+    indx_color=np.arange(0,len(unique_labels),dtype=int)#,len(unique_labels)) #CHECK FUNCTIONALITY
+    print(indx_color)
+    print(unique_labels)
     sectors=[]
     labels_tags=[]
 
@@ -572,8 +637,9 @@ def ShowSingleSegmentWithLabels(fig_id, plate,indx_segment=0,colors_code=None,in
             for k in plate.sigments_labels[indx_segment]:     
                 start=k[0]
                 end=k[1]
-                label=k[2]                
-                c_ind=unique_labels.index(label)
+                label=k[2]   
+                index_label=unique_labels.index(label)                
+                c_ind=indx_color[index_label]
                 sector_=plt.axvspan(start, end, facecolor=colors_code[c_ind], alpha=aplpha)    
                 if(label not in labels_tags):
                     labels_tags.append(label)
@@ -975,8 +1041,12 @@ class DataPreproc:
             start_t = time.time()
         self.sign_1=torch.tensor(np.asarray(signal))
         if(torch.cuda.is_available()): self.sign_1.cuda()
-        sign_shape=self.sign_1.shape         
-        num_snipps=np.round(sign_shape[1]/snip_size)
+        sign_shape=self.sign_1.shape   
+        if(len(sign_shape)>1):
+            num_snipps=np.round(sign_shape[1]/snip_size)
+        if(len(sign_shape)<=1):
+            num_snipps=np.round(sign_shape[0]/snip_size)
+            
         for k in range(0,sign_shape[0]):            
             self.proceed = False
             if(type(channs_indx) is not list):
@@ -1005,7 +1075,10 @@ class DataPreproc:
         if(torch_tensor==True):
             return self.sign_4.clone()
         else:
-            return self.sign_4.cpu().numpy().copy()      
+            if(self.sign_4.is_cuda):
+                return self.sign_4.cpu().numpy().copy()      
+            else: return self.sign_4.numpy().copy()      
+                
 
     #------------------obtain spectrograms-------------------------
     #------------------as a preprocessing step---------------------
@@ -1191,18 +1264,41 @@ class DataPreproc:
 #fd= dp.SplitEntireSignalIntoSnippets(signal=PLATES_ARRAY[0].sigments_sign[0],channs_indx=0,torch_tensor=False,snip_size=1000)
 #fd,labs= dp.SplitLabPlateSegmentIntoSnips(PLATES_ARRAY[0],snip_size=5,segm_index=0,channs_indx=[0])
 
+#extract channels from the string
+def ExtractChannelsFromString(chans_string,separator=","):
+            #chans_string=self.proc_settings.get("chans_list_user")
+            if(chans_string==""):
+                print("Check the channels list and repeat. AT present the list is empty.")
+                return None
+            channels_to_use=[]
+            x_str = chans_string.split(separator) #",")
+            try:                
+                for l in range(0,len(x_str)):
+                    chan=int(x_str[l])
+                    channels_to_use.append(chan)
+            except:
+                print("The user channels input is incorrect.Check values and repeat...")
+                return None
+            return channels_to_use
+
 #******************************************************************************************************
 #******************************************************************************************************
 
 #read settings before execuring processing
 def ReadSettings(window):
     settings={}
-    #snippet 
+    
+    #snippet     
     snip_size=int(window.ui.classification_snippet_size_text.text())
-    settings["snippet_size"] = snip_size
+    settings["snippet_size"] = snip_size    
     #preprocessing
     preproc=window.ui.classification_preproc_dropdown.currentText()
-    settings["preprocessing"] = preproc
+    settings["preprocessing"] = preproc    
+    #channels
+    chans_to_use=window.ui.classification_channels_choice_drop_down.currentText()
+    settings["chans_to_use"] = chans_to_use
+    chans_list_user=window.ui.classification_user_channels_text_box.text()
+    settings["chans_list_user"] = chans_list_user
     #algorithm
     algorithm=window.ui.classificationclassifier_dropdown.currentText()
     settings["algorithm"] = algorithm
@@ -1214,7 +1310,36 @@ def ReadSettings(window):
     settings["real_time_source"] = real_time_source
     real_time_folder=window.ui.real_time_folder_text.text()
     settings["real_time_folder_text"] = real_time_folder
-
+    
+    #real time spectrum
+    trigger_level=window.ui.REAL_T_TRigger_Level_textbox.text()
+    settings["trigger_level"] = trigger_level
+    sampling_rate=window.ui.REAL_T_smp_rate_textbox_2.text()
+    settings["sampling_rate"] = sampling_rate
+    pre_trigger_duration=window.ui.REAL_T_PRE_TRigger_durat_textbox_3.text()
+    settings["pre_trigger_duration"] = pre_trigger_duration
+    post_trigger_duration=window.ui.REAL_Post_trig_durat_textbox_4.text()
+    settings["post_trigger_duration"] = post_trigger_duration
+    ampl_per_channel=window.ui.REAL_T_amp_chan_textbox_3.text()
+    settings["ampl_per_channel"] = ampl_per_channel
+    trig_chan_num=window.ui.REAL_T_trigger_channel_drop_box.currentText()
+    settings["trig_chan_num"] = trig_chan_num
+    show_info=window.ui.RealT_show_info_checkbox.isChecked()
+    settings["show_info"] = show_info
+    show_original_signals=window.ui.RealT_show_original_signals_checkbox_2.isChecked()
+    settings["show_original_signals"] = show_original_signals
+    show_proc_signals=window.ui.RealT_show_processed_signals_checkbox_3.isChecked()
+    settings["show_proc_signals"] = show_proc_signals
+    only_single_shot=window.ui.RealT_show_only_single_shot_checkbox_4.isChecked()
+    settings["only_single_shot"] = only_single_shot
+    
+    #SPECTROGRAMS SHOW
+    spectrogrym_type = window.ui.classification_preproc_dropdown_4.currentText()
+    settings["spectrogrym_type"] = spectrogrym_type
+    #MEL SPECTROGRAMS
+    spectrogrym_MEL_nfft = int(window.ui.Settings_MEL_num_ffts.text())
+    settings["spectrogrym_MEL_nfft"] = spectrogrym_MEL_nfft
+    
     #CLASIFIERS AND ANOMALY DETECTORS
     autoencoder_torch_thershold=window.ui.Autoencoder_torch_threshold_factor.text()
     settings["autoencoder_torch_thershold"] = autoencoder_torch_thershold
@@ -1222,7 +1347,9 @@ def ReadSettings(window):
     settings["autoencoder_torch_epochs_num"] = autoencoder_torch_epochs_num
     autoencoder_torch_learn_rate=window.ui.Autoencoder_torch_learn_rate.text()
     settings["autoencoder_torch_learn_rate"] = autoencoder_torch_learn_rate
-    
+    autoencoder_bin_number=window.ui.Autoencoderbins_text_input.text()
+    settings["autoencoder_bin_num"] = autoencoder_bin_number
+        
     return settings
 
 #setings for display and graphics
@@ -1231,7 +1358,24 @@ def ReadGraphSettings(window):
     #labeling data - show
     classif_show_type= window.ui.classification_plot_choice_dropdown_3.currentText()
     settings["classification_show_labeled_data_type"] = classif_show_type
+    #color list how to create it
+    classif_color_list_type= window.ui.Color_list_drop_down_.currentText()
+    settings["classif_color_list_type"] = classif_color_list_type
+    #colors number
+    classif_color_list_number= window.ui.Settings_Segmentation_colors_number_textbox.text()
+    settings["classif_color_list_number"] = classif_color_list_number
+    
     return settings
+
+#color list
+def ColorsListGen(type_list,col_num):
+    #https://stackoverflow.com/questions/22408237/named-colors-in-matplotlib
+    colors_list=[]
+    if(type_list=="Grades of red"):
+        colors_list=['#228B22','#FF0000','#8B0000']
+    if(type_list=="Random colors"):
+        colors_list=dc.get_colors(col_num)
+    return colors_list
     
 #get bipolar plate segments list
 def getSegmentNames(plate_type):
@@ -1797,18 +1941,24 @@ def TrainTorchAutoencoder(feat=None,labels=None,num_epochs=100,lr=1e-7):
     print("Pridiction time: "+str(end_t-start_t)+" s for " +str(shp_training_set[0])+" features")
     return model  
 
-def PredictTorchAutoencoder(model=None, feat=None,thresh_fact=2):
+def PredictTorchAutoencoder(model=None, feat=None,thresh_fact=2,show_hist=False,bins_num=50,fig_ax=None):
     shp=np.shape(np.asarray(feat))
     sequences = torch.tensor(np.asarray(feat), dtype=torch.float32)
     if torch.cuda.is_available(): sequences = sequences.cuda()    
     with torch.no_grad():
         predictions = model(sequences)
         losses = torch.mean((predictions - sequences)**2, dim=1)
-        #plt.hist(losses.cpu().numpy(), bins=50)
-        #plt.xlabel("Loss")
-        #plt.ylabel("Frequency")
-        #plt.show()
-        # Threshold for defining an anomaly
+        if(show_hist==True):
+            fig_ax.hist(losses.cpu().numpy(), bins=bins_num)
+            fig_ax.set_xlabel("Loss")
+            fig_ax.set_ylabel("Frequency")            
+            """
+            plt.hist(losses.cpu().numpy(), bins=bins_num)
+            plt.xlabel("Loss")
+            plt.ylabel("Frequency")
+            """
+            plt.show()
+        # Threshold for defining an anomaly        
         threshold =losses.mean() + thresh_fact* losses.std()#losses.mean() + 2 * losses.std()
         #print(f"Anomaly threshold: {threshold.item()}")
         # Detecting anomalies
@@ -1823,7 +1973,338 @@ def PredictTorchAutoencoder(model=None, feat=None,thresh_fact=2):
 
 #****************************************************************************************
 #****************************************************************************************
-#   CLASSIFIER
+#   AUTOENCODER 2
+class ComputeLoss:
+    def __init__(self, model, lambda_energy, lambda_cov, device, n_gmm):
+        self.model = model
+        self.lambda_energy = lambda_energy
+        self.lambda_cov = lambda_cov
+        self.device = device
+        self.n_gmm = n_gmm
+    
+    def forward(self, x, x_hat, z, gamma):
+        """Computing the loss function for DAGMM."""
+        reconst_loss = torch.mean((x-x_hat).pow(2))
+
+        sample_energy, cov_diag = self.compute_energy(z, gamma)
+
+        loss = reconst_loss + self.lambda_energy * sample_energy + self.lambda_cov * cov_diag
+        return Variable(loss, requires_grad=True)
+    
+    def compute_energy(self, z, gamma, phi=None, mu=None, cov=None, sample_mean=True):
+        """Computing the sample energy function"""
+        if (phi is None) or (mu is None) or (cov is None):
+            phi, mu, cov = self.compute_params(z, gamma)
+
+        z_mu = (z.unsqueeze(1)- mu.unsqueeze(0))
+
+        eps = 1e-12
+        cov_inverse = []
+        det_cov = []
+        cov_diag = 0
+        for k in range(self.n_gmm):
+            cov_k = cov[k] + (torch.eye(cov[k].size(-1))*eps).to(self.device)
+            cov_inverse.append(torch.inverse(cov_k).unsqueeze(0))
+            det_cov.append((Cholesky.apply(cov_k.cpu() * (2*np.pi)).diag().prod()).unsqueeze(0))
+            cov_diag += torch.sum(1 / cov_k.diag())
+        
+        cov_inverse = torch.cat(cov_inverse, dim=0)
+        det_cov = torch.cat(det_cov).to(self.device)
+
+        E_z = -0.5 * torch.sum(torch.sum(z_mu.unsqueeze(-1) * cov_inverse.unsqueeze(0), dim=-2) * z_mu, dim=-1)
+        E_z = torch.exp(E_z)
+        E_z = -torch.log(torch.sum(phi.unsqueeze(0)*E_z / (torch.sqrt(det_cov)).unsqueeze(0), dim=1) + eps)
+        if sample_mean==True:
+            E_z = torch.mean(E_z)            
+        return E_z, cov_diag
+
+    def compute_params(self, z, gamma):
+        """Computing the parameters phi, mu and gamma for sample energy function """ 
+        # K: number of Gaussian mixture components
+        # N: Number of samples
+        # D: Latent dimension
+        # z = NxD
+        # gamma = NxK
+
+        #phi = D
+        phi = torch.sum(gamma, dim=0)/gamma.size(0) 
+
+        #mu = KxD
+        mu = torch.sum(z.unsqueeze(1) * gamma.unsqueeze(-1), dim=0)
+        mu /= torch.sum(gamma, dim=0).unsqueeze(-1)
+
+        z_mu = (z.unsqueeze(1) - mu.unsqueeze(0))
+        z_mu_z_mu_t = z_mu.unsqueeze(-1) * z_mu.unsqueeze(-2)
+        
+        #cov = K x D x D
+        cov = torch.sum(gamma.unsqueeze(-1).unsqueeze(-1) * z_mu_z_mu_t, dim=0)
+        cov /= torch.sum(gamma, dim=0).unsqueeze(-1).unsqueeze(-1)
+
+        return phi, mu, cov
+        
+
+class Cholesky(torch.autograd.Function):
+    def forward(ctx, a):
+        l =  torch.linalg.cholesky(a)#torch.cholesky(a, False)
+        ctx.save_for_backward(l)
+        return l
+    def backward(ctx, grad_output):
+        l, = ctx.saved_variables
+        linv = l.inverse()
+        inner = torch.tril(torch.mm(l.t(), grad_output)) * torch.tril(
+            1.0 - Variable(l.data.new(l.size(1)).fill_(0.5).diag()))
+        s = torch.mm(linv.t(), torch.mm(inner, linv))
+        return s
+
+def weights_init_normal(m):
+    classname = m.__class__.__name__
+    if classname.find("Conv") != -1 and classname != 'Conv':
+        torch.nn.init.normal_(m.weight.data, 0.0, 0.02)
+        torch.nn.init.normal_(m.bias.data, 0.0, 0.02)
+    elif classname.find("Linear") != -1:
+        torch.nn.init.normal_(m.weight.data, 0.0, 0.02)
+        torch.nn.init.normal_(m.bias.data, 0.0, 0.02)
+    elif classname.find('BatchNorm') != -1:
+        m.weight.data.normal_(1.0, 0.01)
+        m.bias.data.fill_(0)
+
+class DAGMM(nn.Module):
+    def __init__(self, input_size=1000, n_gmm=2, z_dim=30):
+        """Network for DAGMM (KDDCup99)"""
+        super(DAGMM, self).__init__()
+        #Encoder network
+        print("input_size="+str(input_size))
+        self.fc0 = nn.Linear(input_size, 100)
+        self.fc1 = nn.Linear(100, 80)
+        self.fc2 = nn.Linear(80, 70)
+        self.fc3 = nn.Linear(70, 50)
+        self.fc4 = nn.Linear(50, z_dim)
+
+        #Decoder network
+        self.fc5 = nn.Linear(z_dim, 50)
+        self.fc6 = nn.Linear(50, 70)
+        self.fc7 = nn.Linear(70, 80)
+        self.fc8 = nn.Linear(80, 100)
+        self.fc9 = nn.Linear(100, input_size)
+        self.fc9_1 = nn.Linear(input_size, input_size)
+
+        #Estimation network
+        self.fc10 = nn.Linear(z_dim+2, 10)
+        self.fc11 = nn.Linear(10, n_gmm)
+
+    def encode(self, x):        
+        h = torch.tanh(self.fc0(x))
+        h = torch.tanh(self.fc1(h))
+        h = torch.tanh(self.fc2(h))
+        h = torch.tanh(self.fc3(h))
+        return self.fc4(h)
+
+    def decode(self, x):
+        h = torch.tanh(self.fc5(x))
+        h = torch.tanh(self.fc6(h))
+        h = torch.tanh(self.fc7(h))
+        h = torch.tanh(self.fc8(h))
+        h = torch.tanh(self.fc9(h))
+        return self.fc9_1(h)
+    
+    def estimate(self, z):
+        h = F.dropout(torch.tanh(self.fc10(z)), 0.5)
+        return F.softmax(self.fc11(h), dim=1)
+    
+    def compute_reconstruction(self, x, x_hat):
+        relative_euclidean_distance = (x-x_hat).norm(2, dim=1) / x.norm(2, dim=1)
+        cosine_similarity = F.cosine_similarity(x, x_hat, dim=1)
+        return relative_euclidean_distance, cosine_similarity
+    
+    def forward(self, x):
+        z_c = self.encode(x)
+        x_hat = self.decode(z_c)
+        rec_1, rec_2 = self.compute_reconstruction(x, x_hat)
+        z = torch.cat([z_c, rec_1.unsqueeze(-1), rec_2.unsqueeze(-1)], dim=1)
+        gamma = self.estimate(z)
+        return z_c, x_hat, z, gamma
+
+class TrainerDAGMM:
+    """Trainer class for DAGMM."""
+    def __init__(self, args, data, device):
+        self.args = args
+        self.train_loader = data
+        self.device = device
+        self.loss_list=[]
+
+    def train(self):
+        """Training the DAGMM model"""
+        self.model = DAGMM(input_size=self.args.input_size, 
+                           n_gmm=self.args.n_gmm, 
+                           z_dim=self.args.latent_dim
+                          ).to(self.device)#self.args.n_gmm, self.args.latent_dim).to(self.device)
+        
+        self.model.apply(weights_init_normal)
+        optimizer = torch.optim.Adam(self.model.parameters(), lr=self.args.lr)
+
+        self.compute = ComputeLoss(self.model, self.args.lambda_energy, self.args.lambda_cov, 
+                                   self.device, self.args.n_gmm)
+        
+        self.loss_list=[]
+        
+        self.model.train()
+        for epoch in range(self.args.num_epochs):
+            total_loss = 0
+            for x,y in Bar(self.train_loader):                    
+                x = x.float().to(self.device)
+                optimizer.zero_grad()                
+                _, x_hat, z, gamma = self.model(x)
+                loss = self.compute.forward(x, x_hat, z, gamma)
+                loss.backward(retain_graph=True)
+                torch.nn.utils.clip_grad_norm_(self.model.parameters(), 5)
+                optimizer.step()
+
+                total_loss += loss.item()                
+            print('Training DAGMM... Epoch: {}, Loss: {:.3f}'.format(
+                   epoch, total_loss/len(self.train_loader)))
+            self.loss_list.append(total_loss)
+
+def SeparateFeat_Norm_Anom(CLASSIF_FEAT,CLASSIF_LABS):
+    unique_labels=GetUniqueElements_List(CLASSIF_LABS)
+    feat_norm=[]
+    labs_norm=[]
+    feat_anomaly=[]
+    labs_anomaly=[]
+    label_0=CLASSIF_LABS[0]
+    for k in range(0,len(CLASSIF_LABS)):
+        if(CLASSIF_LABS[k]==label_0):
+            feat_norm.append(np.asarray(CLASSIF_FEAT[k][:]))
+            labs_norm.append(0)
+        else:
+            feat_anomaly.append(np.asarray(CLASSIF_FEAT[k][:]))
+            labs_anomaly.append(1)
+    return feat_norm,labs_norm,feat_anomaly,labs_anomaly
+
+def Train_Autoencoder_2(CLASSIF_FEAT,CLASSIF_LABS,
+                  num_of_epochs=200,
+                  patience=50,
+                  lr=1e-6,
+                  lr_milestones=[50],
+                  batch_size=10,
+                  latent_dim=1,
+                  n_gmm=5,
+                  lambda_energy=0.01,
+                  lambda_cov=0.0005,                  
+                 ):
+    
+    unique_labels=GetUniqueElements_List(CLASSIF_LABS)
+    if(len(unique_labels)<=1):
+        print("for this algorithms two labels are needed")
+    """
+    feat_norm=[]
+    labs_norm=[]
+    feat_anomaly=[]
+    labs_anomaly=[]
+    label_0=CLASSIF_LABS[0]
+    for k in range(0,len(CLASSIF_LABS)):
+        if(CLASSIF_LABS[k]==label_0):
+            feat_norm.append(np.asarray(CLASSIF_FEAT[k][:]))
+            labs_norm.append(0)
+        else:
+            feat_anomaly.append(np.asarray(CLASSIF_FEAT[k][:]))
+            labs_anomaly.append(1)
+    """
+    feat_norm,labs_norm,feat_anomaly,labs_anomaly= SeparateFeat_Norm_Anom(CLASSIF_FEAT,CLASSIF_LABS)
+
+    class Args:
+        def __init__(self):
+            self.num_epochs=num_of_epochs#200
+            self.patience=patience#50
+            self.lr=lr#1e-6
+            self.lr_milestones=lr_milestones#[50]
+            self.batch_size=batch_size#10
+            self.latent_dim=latent_dim#1
+            self.n_gmm=n_gmm#5
+            self.lambda_energy=lambda_energy#0.01
+            self.lambda_cov=lambda_cov#0.0005
+            self.input_size=np.shape(np.asarray(feat_norm))[1]
+
+    torch.use_deterministic_algorithms(False)
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    args=Args()    
+    #datal_train,datal_test = get_KDDCup99(args,feat_norm,labs_norm,feat_anomaly,labs_anomaly)
+    norm_x = torch.Tensor(np.asarray(feat_norm)).to(device) 
+    norm_y = torch.Tensor(np.asarray(labs_norm)).to(device) 
+    norm_dataset = torch.utils.data.TensorDataset(norm_x,norm_y)
+    norm_dataloader = torch.utils.data.DataLoader(norm_dataset)
+    dagmm = TrainerDAGMM(args, norm_dataloader, device)
+    dagmm.train()
+    loss_training=dagmm.loss_list
+
+    train_phi = 0    #gamma_sum / N_samples
+    train_mu = 0     #mu_sum / gamma_sum.unsqueeze(-1)
+    train_cov = 0    #cov_sum / gamma_sum.unsqueeze(-1).unsqueeze(-1)
+    
+    with torch.no_grad():
+        
+        N_samples = 0
+        gamma_sum = 0
+        mu_sum = 0
+        cov_sum = 0
+        
+        n_gmm=args.n_gmm
+        model= dagmm.model
+        compute = ComputeLoss(model, None, None, device, n_gmm)
+        
+        for x, _ in norm_dataloader:
+            _, _, z, gamma = model(x)
+            phi_batch, mu_batch, cov_batch = compute.compute_params(z, gamma)
+            
+            batch_gamma_sum = torch.sum(gamma, dim=0)
+            gamma_sum += batch_gamma_sum
+            mu_sum += mu_batch * batch_gamma_sum.unsqueeze(-1)
+            cov_sum += cov_batch * batch_gamma_sum.unsqueeze(-1).unsqueeze(-1)
+            N_samples += x.size(0)
+        
+        train_phi = gamma_sum / N_samples
+        train_mu = mu_sum / gamma_sum.unsqueeze(-1)
+        train_cov = cov_sum / gamma_sum.unsqueeze(-1).unsqueeze(-1)
+
+        dagmm=None
+        
+        return model,train_phi,train_mu,train_cov,args,loss_training
+
+def model_run(model,args,anomaly_dataloader,train_phi,train_mu,train_cov):
+    energy_test = []
+    n_gmm=args.n_gmm
+    #model= dagmm.model
+    device= torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    compute = ComputeLoss(model, None, None, device, n_gmm)
+    for x, _ in anomaly_dataloader:
+            x = x.float().to(device)
+    
+            _, _, z, gamma = model(x)
+            sample_energy, cov_diag  = compute.compute_energy(z, gamma, train_phi,
+                                                              train_mu, train_cov,
+                                                              sample_mean=False)
+            if(str(device) == 'cuda'):            
+                energy_test.append(sample_energy.detach().cpu())
+            else:
+                 energy_test.append(sample_energy)
+    shp=len(energy_test)
+    energy=[]
+    for k in range(0,shp):
+        #for l in range(0,energy_test[l]):
+        energy.append(energy_test[k].numpy())
+    energy=np.asarray(energy)
+    print(cov_diag.shape)
+    return energy
+
+#****************************************************************************************
+#****************************************************************************************
+#   DEEP GP
+
+
+    
+#****************************************************************************************
+#****************************************************************************************
+#   CLASSIFIER OBJECT
+
 class S_Classif:
     def __init__(self):
         self.classifier=None
@@ -1831,11 +2312,21 @@ class S_Classif:
         self.intern_labels=[]
         #for torch autoencoder_1
         self.tocrh_autoencoder_threshold_factor=3.5
+        #train sets
+        self.train_feat = None
+        self.train_labs = None
+        #autoencoder 2 (DAGMM)
+        self.autoenc2_train_phi=0
+        self.autoenc2_train_mu=0
+        self.autoenc2_train_cov=0
+        self.autoenc2_args=0
+        
     def AssignClassif(self,classif,orig_labels,intern_labels,categ_names=[]):
         self.classifier=classif
         self.orig_labels=orig_labels              
         self.intern_labels=intern_labels    
         self.categ_names=[]
+        print("Classifier of type assigned: "+str(type(self.classifier)))
     def np_predict(self,feat): #input is numpy array               
         cls_type=type(self.classifier)        
         shp=np.shape(feat)
@@ -1872,6 +2363,27 @@ class S_Classif:
         if(str(cls_type) == "<class 'SHelpers.Autoencoder'>"):           
             labs=PredictTorchAutoencoder(model=self.classifier,feat=feat,thresh_fact=self.tocrh_autoencoder_threshold_factor)
             labs=np.asarray(labs)
+
+        if(str(cls_type) == "<class 'SHelpers.DAGMM'>"): 
+            device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+            x = torch.Tensor(feat).to(device) 
+            y = torch.zeros(x.shape[0]).to(device) 
+            dataset = torch.utils.data.TensorDataset(x,y)
+            dataloader = torch.utils.data.DataLoader(dataset)
+            energies = model_run(self.classifier,
+                                 self.autoenc2_args,
+                                 dataloader,
+                                 self.autoenc2_train_phi,
+                                 self.autoenc2_train_mu,
+                                 self.autoenc2_train_cov)#model,args,anomaly_dataloader,train_phi,train_mu,train_cov
+            labs=[]
+            for m in range(0,len(energies)):
+                ind=0
+                while(True):
+                    if(ind*self.tocrh_autoencoder_threshold_factor > energies[m]):
+                        break
+                    else: ind+=1
+                labs.append(int(ind))
             
         return labs
         
@@ -1885,7 +2397,7 @@ class S_Classif:
             return "DBSCAN"
         if(str(cls_type) == "<class 'sklearn.svm._classes.OneClassSVM'>"):
             return "SVM"
-        if(str(cls_type) == "<class '__main__.Autoencoder'>"):
+        if(str(cls_type) == "<class 'SHelpers.Autoencoder'>"):
             return "TorchAutoEnc_1"
 #example
 #cl=S_Classif()
