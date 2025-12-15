@@ -24,7 +24,7 @@
      </rect>
     </property>
     <property name="currentIndex">
-     <number>2</number>
+     <number>0</number>
     </property>
     <widget class="QWidget" name="tab">
      <attribute name="title">
@@ -784,9 +784,9 @@
          <widget class="QPushButton" name="classification_run_classification_button">
           <property name="geometry">
            <rect>
-            <x>327</x>
+            <x>287</x>
             <y>11</y>
-            <width>81</width>
+            <width>121</width>
             <height>31</height>
            </rect>
           </property>
@@ -812,7 +812,7 @@
            <rect>
             <x>59</x>
             <y>12</y>
-            <width>261</width>
+            <width>221</width>
             <height>24</height>
            </rect>
           </property>
@@ -892,9 +892,9 @@
          <widget class="QPushButton" name="classification_dataset_info_button">
           <property name="geometry">
            <rect>
-            <x>325</x>
+            <x>285</x>
             <y>68</y>
-            <width>81</width>
+            <width>121</width>
             <height>31</height>
            </rect>
           </property>
@@ -905,7 +905,7 @@
          <widget class="QPushButton" name="Classification_set_as_main_model_button">
           <property name="geometry">
            <rect>
-            <x>207</x>
+            <x>160</x>
             <y>68</y>
             <width>121</width>
             <height>31</height>
@@ -918,14 +918,14 @@
          <widget class="QPushButton" name="Classification_run_test_on_complete_segment_button">
           <property name="geometry">
            <rect>
-            <x>325</x>
+            <x>285</x>
             <y>39</y>
-            <width>81</width>
+            <width>121</width>
             <height>31</height>
            </rect>
           </property>
           <property name="text">
-           <string>Test</string>
+           <string>Test segment</string>
           </property>
          </widget>
          <widget class="QLabel" name="label_17">
@@ -946,7 +946,7 @@
            <rect>
             <x>60</x>
             <y>40</y>
-            <width>261</width>
+            <width>221</width>
             <height>24</height>
            </rect>
           </property>
@@ -1035,20 +1035,20 @@
         <rect>
          <x>10</x>
          <y>20</y>
-         <width>71</width>
+         <width>171</width>
          <height>16</height>
         </rect>
        </property>
        <property name="text">
-        <string>Trigger chan.:</string>
+        <string>Trigger chan.(name or number):</string>
        </property>
       </widget>
       <widget class="QLineEdit" name="Settings_OpenFile_TrigChannelID_text">
        <property name="geometry">
         <rect>
-         <x>88</x>
-         <y>18</y>
-         <width>321</width>
+         <x>178</x>
+         <y>16</y>
+         <width>231</width>
          <height>22</height>
         </rect>
        </property>
@@ -1122,7 +1122,7 @@
        </rect>
       </property>
       <property name="currentIndex">
-       <number>0</number>
+       <number>2</number>
       </property>
       <widget class="QWidget" name="tab_11">
        <attribute name="title">
@@ -1651,10 +1651,10 @@
          <widget class="QPushButton" name="Autoencoder_set_threshold_button">
           <property name="geometry">
            <rect>
-            <x>130</x>
-            <y>12</y>
-            <width>81</width>
-            <height>24</height>
+            <x>140</x>
+            <y>4</y>
+            <width>121</width>
+            <height>41</height>
            </rect>
           </property>
           <property name="text">
