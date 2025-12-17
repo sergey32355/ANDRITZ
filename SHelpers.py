@@ -22,7 +22,7 @@ import trace
 
 #additional libs
 import librosa
-
+import csv
 #classifiers
 from xgboost import XGBClassifier
 
@@ -334,7 +334,73 @@ class SPlate:
         print("Time: start -  " + str(min(self.time))+" , end - "+str(max(self.time))+" , step -"+str(float(self.time[1])-float(self.time[0])))
         print("Segments num: "+ str(len(self.sigments_sign)))
         print("Segments names: "+ str(self.segments_names))              
-                
+
+    def get_segments_PRECITEC_TORCH(self):
+        device= torch.device('cuda' if torch.cuda.is_available() else 'cpu')        
+        indx = self.chans_names.index("Area")               
+        
+        cnt_area=0
+        cnt_segm=0
+        start=[]        
+        trigger=torch.tensor(self.raw_signals[indx]).to(device)
+        
+        for k in range(0,len(self.raw_signals[indx])):            
+            if(k==0):start.append(k)
+            if(trigger[k]!=trigger[k-1]):
+                start.append(k-1)
+                start.append(k)
+            start.append(len(self.raw_signals[indx]))
+                         
+        segments=[]
+        raw_sign_list_torch=[]
+        for l in range(0,len(self.raw_signals)):
+            segments.append([])
+            signs=torch.tensor(self.raw_signals).to(device)
+            raw_sign_list_torch.append(signs)
+            
+        for l in range(0,len(self.raw_signals)):
+            tmp_sign=[]
+            for p in range(0,len(start),2):
+                if(device=="cuda"):
+                    tmp_sign.append((raw_sign_list_torch[l][start[p]:start[p+1]]).cpu().numpy())
+                if(device=="cpu"):
+                    tmp_sign.append((raw_sign_list_torch[l][start[p]:start[p+1]]).numpy())
+            segments[l].append(tmp_sign)
+        return segments
+    
+    def get_segments_PRECITEC(self):
+        #device= torch.device('cuda' if torch.cuda.is_available() else 'cpu')        
+        indx = self.chans_names.index("Area")               
+        #unique=GetUniqueElements_List(self.raw_signals[indx])        
+        #for k in range(0,len(unique)): segments.append([])
+        cnt_area=0
+        cnt_segm=0
+        start=[]        
+        for k in range(0,len(self.raw_signals[indx])):
+            if(k==0):start.append(0)
+            else:
+                if(self.raw_signals[indx][k]!=self.raw_signals[indx][k-1]):
+                    start.append(k)
+        start.append(len(self.raw_signals[indx]))
+                         
+        segments=[]
+        tmp_sign=[]
+
+        for p in range(0,len(start)-1):        
+            segments.append([])
+            tmp_sign=[]
+            #print(len(self.raw_signals))
+            for lks in range(0,len(self.raw_signals)):    
+                if((start[p+1]-start[p])>0):
+                    #tmp_sign.append(self.raw_signals[lks][start[p]:start[p+1]])
+                    segments[p].append(self.raw_signals[lks][start[p]:start[p+1]])
+            #print(len(tmp_sign))
+        self.sigments_sign=[]
+        self.sigments_sign=segments        
+        self.sigments_labels=[]
+        if(len(segments)!=0):
+            for ip in range(0,len(segments)):self.sigments_labels.append([])
+    
     def get_segments(self,ref_chan_name="",threshold="automatic"):
         indx_trig=-1
         if(isinstance(ref_chan_name,str)):
@@ -424,7 +490,7 @@ class SPlate:
         labels_list=[]
         for l in range(0,l_sgm):
             #self.sigments_labels[segment_indx].append(list([start_el,end_el,label]))
-            cur_l=len(self.sigments_labels[l])
+            cur_l = len(self.sigments_labels[l])
             for pp in range(0,cur_l):
                 labels_list.append(self.sigments_labels[l][pp][2])
         #unique_l=list(set(labels_list))
@@ -446,11 +512,13 @@ def OpenDataFromFolder(PATH="",
                        ONLY_SINGLE_FILE=False,
                        SINGLE_FILE_PATH_BIN="",
                        SINGLE_FILE_PATH_TXT="",
+                       SINGLE_FILE_PATH_CSV="",
                       ):
 
     #print(SEGMENTATION_SEGMENTS_NAMES_LIST)            
-    arr_txt=[]
-    arr_bin=[]
+    arr_txt=[]#spectrum files
+    arr_bin=[]#spectreum files
+    arr_csv=[]
     if(ONLY_SINGLE_FILE==False):        
         arr = next(os.walk(PATH))[2]
         for k in arr:
@@ -462,41 +530,122 @@ def OpenDataFromFolder(PATH="",
                     if((l!=k) and (file_extension_1==".bin") and (filename_1 in filename)):
                         arr_bin.append(l)
                         break
-    else:        
+            if(file_extension==".csv"):
+                arr_csv.append(k)                
+    else:   
         arr_txt.append(SINGLE_FILE_PATH_TXT)
         arr_bin.append(SINGLE_FILE_PATH_BIN)
+        arr_csv.append(SINGLE_FILE_PATH_CSV)
         
     plates=[]             
-    for l in range(0,len(arr_txt)):
-        if(ONLY_SINGLE_FILE==False):
-            path_txt=PATH+"\\"+arr_txt[l]
-            path_bin=PATH+"\\"+arr_bin[l]    
-        else:
-            path_txt=arr_txt[l]
-            path_bin=arr_bin[l]
-        df,d_chan,samp_r= read_bin_data(path_txt,path_bin)
-        cur_plate=SPlate(plate_name=arr_bin[l])
-        cur_plate.sr=samp_r
-        cur_plate.segments_names = SEGMENTATION_SEGMENTS_NAMES_LIST
-        cur_plate.get_data_from_df(df)
-        cur_plate.get_segments(ref_chan_name=SEGMENTATION_REF_CHAN_NAME,threshold=SEGMENTATION_THRESHOLD)
-        if(cur_plate.segments_names == []):
-            for q in range(0,len(cur_plate.sigments_sign)):
-                cur_plate.segments_names.append(SEGMENTS_MISSED_SEGMENT_NAME+str(q))
-        elif(len(cur_plate.segments_names)<len(cur_plate.sigments_sign)):
-            num_to_add=len(cur_plate.sigments_sign) - len(cur_plate.segments_names)
-            for mm in range(0,num_to_add):
-                cur_plate.segments_names.append(SEGMENTS_MISSED_SEGMENT_NAME+str(mm))
-        elif(len(cur_plate.segments_names)>len(cur_plate.sigments_sign)):
-            num_to_remove = len(cur_plate.segments_names) - len(cur_plate.sigments_sign)
-            for k in range(0,num_to_remove):
-                del cur_plate.segments_names[-1]
+    #we open the classical binary format from SPECTRUM cards
+    if(len(arr_txt)!=0 and len(arr_bin)!=0):
+        for l in range(0,len(arr_txt)):
+            if(ONLY_SINGLE_FILE==False):
+                path_txt=PATH+"\\"+arr_txt[l]
+                path_bin=PATH+"\\"+arr_bin[l]    
+            else:
+                path_txt=arr_txt[l]
+                path_bin=arr_bin[l]
+            df,d_chan,samp_r= read_bin_data(path_txt,path_bin)
+            cur_plate=SPlate(plate_name=arr_bin[l])
+            cur_plate.sr=samp_r
+            cur_plate.segments_names = SEGMENTATION_SEGMENTS_NAMES_LIST
+            cur_plate.get_data_from_df(df)
+            cur_plate.get_segments(ref_chan_name=SEGMENTATION_REF_CHAN_NAME,threshold=SEGMENTATION_THRESHOLD)
+            if(cur_plate.segments_names == []):
+                for q in range(0,len(cur_plate.sigments_sign)):
+                    cur_plate.segments_names.append(SEGMENTS_MISSED_SEGMENT_NAME+str(q))
+            elif(len(cur_plate.segments_names)<len(cur_plate.sigments_sign)):
+                num_to_add=len(cur_plate.sigments_sign) - len(cur_plate.segments_names)
+                for mm in range(0,num_to_add):
+                    cur_plate.segments_names.append(SEGMENTS_MISSED_SEGMENT_NAME+str(len(cur_plate.sigments_sign)+mm))
+            elif(len(cur_plate.segments_names)>len(cur_plate.sigments_sign)):
+                num_to_remove = len(cur_plate.segments_names) - len(cur_plate.sigments_sign)
+                for k in range(0,num_to_remove):
+                    del cur_plate.segments_names[-1]
+                    
+            plates.append(cur_plate)
+            print_progress_bar(l+1, len(arr_txt), "Opening files (SPECTRUM *.bin)")
+
+    #csv format
+    
+    if(len(arr_csv)!=0):        
+        cnt=0
+        files_cnt=0
+        for l in arr_csv:
+            path_csv=PATH+"\\"+l
+            #precitec format - multicolumn csv
+            #try:
+            with open(path_csv, mode ='r') as file:
+                cur_plate=SPlate(plate_name=l)
+                csvFile = csv.reader(file)
+                cnt=0
                 
-        plates.append(cur_plate)
-        print_progress_bar(l+1, len(arr_txt), "Opening files")
-        
+                time=[]
+                signals=[]
+                
+                for line in csvFile:                    
+                    cnt+=1
+                    if(cnt==3):                        
+                        spl_str=line[0].split(":")                        
+                        sr=-1
+                        try: sr=int(spl_str[1].split(" ")[1])
+                        except: pass
+                        if(spl_str[1].split(" ")[2]=="kHz"):
+                            sr=sr*1000
+                        if(spl_str[1].split(" ")[2]=="MHz"):
+                            sr=sr*1000000
+                        cur_plate.sr=sr
+                    if(cnt==10):
+                        #headers
+                        str_columns=line[0].split(";")
+                        cur_plate.chans_names=[]
+                        for lp in range(2,len(str_columns)):
+                            signals.append([])
+                            cur_plate.chans_names.append(str_columns[lp])                        
+                    if(cnt>10):
+                        str_line=line[0].split(";")
+                        sgn_count=0
+                        for gh in range(0,len(str_line)):
+                            if(gh==0):pass
+                            elif(gh==1): time.append(float(str_line[gh]))
+                            else:
+                                signals[sgn_count].append(float(str_line[gh]))
+                                sgn_count+=1
+               
+                cur_plate.time=[]
+                cur_plate.time=time
+                cur_plate.raw_signals=[]
+                cur_plate.raw_signals=signals
+                cur_plate.get_segments_PRECITEC()#cur_plate.get_segments_PRECITEC()
+                cur_plate.segments_names = SEGMENTATION_SEGMENTS_NAMES_LIST
+                
+                if(len(cur_plate.sigments_sign)!=0):
+                    
+                    segm_num=len(cur_plate.sigments_sign)#we assume the number of segments in all channels is the same (as originated from trigger channel
+                    #print(segm_num)
+                    if(cur_plate.segments_names == []):
+                        for q in range(0,segm_num):
+                            cur_plate.segments_names.append(SEGMENTS_MISSED_SEGMENT_NAME+str(q))
+                    elif(len(cur_plate.segments_names)<len(cur_plate.sigments_sign)):
+                        num_to_add=segm_num - len(cur_plate.segments_names)
+                        for mm in range(0,num_to_add):
+                            cur_plate.segments_names.append(SEGMENTS_MISSED_SEGMENT_NAME+str(len(cur_plate.sigments_sign)+mm))
+                    elif(len(cur_plate.segments_names)>len(cur_plate.sigments_sign)):
+                        num_to_remove = len(cur_plate.segments_names) - segm_num
+                        for k in range(0,num_to_remove):
+                            del cur_plate.segments_names[-1]
+                    
+                plates.append(cur_plate)
+            
+            #except: pass
+            files_cnt+=1
+            print_progress_bar(files_cnt, len(arr_csv), "Opening files (*.csv)")
+    print("")            
     return plates
 
+    
 #find plates in list
 def FindPlateInArray(plates = [],plate_name="",chan_name="",segm_name=""):       
     

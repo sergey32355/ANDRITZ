@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 ################################################################################
-## Form generated from reading UI file 'empa_guiusYUlH.ui'
+## Form generated from reading UI file 'empa_guiTFZHNO.ui'
 ##
 ## Created by: Qt User Interface Compiler version 6.9.0
 ##
@@ -123,10 +123,10 @@ class Ui_EmpaGUI(object):
         self.plot_segment_dropdown.setGeometry(QRect(60, 59, 361, 24))
         self.plot_button = QPushButton(self.groupBox_4)
         self.plot_button.setObjectName(u"plot_button")
-        self.plot_button.setGeometry(QRect(4, 101, 81, 24))
+        self.plot_button.setGeometry(QRect(4, 101, 81, 31))
         self.platre_data_button_2 = QPushButton(self.groupBox_4)
         self.platre_data_button_2.setObjectName(u"platre_data_button_2")
-        self.platre_data_button_2.setGeometry(QRect(83, 101, 71, 24))
+        self.platre_data_button_2.setGeometry(QRect(79, 101, 41, 31))
         self.Channel_segment_plot = QComboBox(self.groupBox_4)
         self.Channel_segment_plot.setObjectName(u"Channel_segment_plot")
         self.Channel_segment_plot.setGeometry(QRect(60, 80, 361, 24))
@@ -149,14 +149,14 @@ class Ui_EmpaGUI(object):
         self.label_5.setGeometry(QRect(8, 82, 49, 16))
         self.unload_as_csv_button_data_button_3 = QPushButton(self.groupBox_4)
         self.unload_as_csv_button_data_button_3.setObjectName(u"unload_as_csv_button_data_button_3")
-        self.unload_as_csv_button_data_button_3.setGeometry(QRect(152, 101, 81, 24))
+        self.unload_as_csv_button_data_button_3.setGeometry(QRect(115, 101, 81, 31))
         self.tools_show_scpetrogram_button = QPushButton(self.groupBox_4)
         self.tools_show_scpetrogram_button.setObjectName(u"tools_show_scpetrogram_button")
-        self.tools_show_scpetrogram_button.setGeometry(QRect(230, 100, 51, 24))
+        self.tools_show_scpetrogram_button.setGeometry(QRect(192, 101, 51, 31))
         self.classification_preproc_dropdown_4 = QComboBox(self.groupBox_4)
         self.classification_preproc_dropdown_4.addItem("")
         self.classification_preproc_dropdown_4.setObjectName(u"classification_preproc_dropdown_4")
-        self.classification_preproc_dropdown_4.setGeometry(QRect(280, 100, 71, 24))
+        self.classification_preproc_dropdown_4.setGeometry(QRect(240, 103, 71, 24))
         self.groupBox_5 = QGroupBox(self.tab_4)
         self.groupBox_5.setObjectName(u"groupBox_5")
         self.groupBox_5.setGeometry(QRect(0, 130, 421, 211))
@@ -491,7 +491,7 @@ class Ui_EmpaGUI(object):
 
         self.retranslateUi(EmpaGUI)
 
-        self.tabWidget.setCurrentIndex(2)
+        self.tabWidget.setCurrentIndex(1)
         self.load_data_plate_type_dropdown.setCurrentIndex(-1)
         self.tabWidget_2.setCurrentIndex(0)
         self.classification_preproc_dropdown_4.setCurrentIndex(0)
