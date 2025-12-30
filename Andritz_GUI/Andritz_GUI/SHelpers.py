@@ -315,8 +315,8 @@ class SPlate:
         self.chans_names=[]
         self.segments_names=[]                                     #names of the segments
         self.sigments_sign=[]                                     #signals for each signal
-        self.sigments_start_t=[]     #we store the labelling results in segments for supervised classwification, format - [start el,end el,label]
-        self.sigments_labels=[]
+        self.sigments_start_t=[]    #start time of each segment
+        self.sigments_labels=[]     #we store the labelling results in segments for supervised classwification, format - [start el,end el,label]
         self.delta_t=0
         self.snipp_l=[]                                                     #snippets length (i.e. number of sampling points)
         self.sr=[] 
@@ -706,7 +706,14 @@ def SplitIntoSnips(plates=[],snip_size=50,plate_name="",chan_name="",segment_nam
     return feat, labs
 
 #show all segments with labels assigned by user (for the given plate)
-def ShowAllSingleSegmentsWithLabels(fig_id, plate,colors_code=None,indx_chan=0,aplpha=0.1):
+def ShowAllSingleSegmentsWithLabels(fig_id, 
+                                    plate,colors_code=None,
+                                    indx_chan=0,
+                                    aplpha=0.1,
+                                    show_labels=True,
+                                    points_num_limit_check=False,
+                                    points_num_limit=3000,
+                                    ):
     chan_num=0    
     if isinstance(indx_chan, list)==True:    chan_num=indx_chan
     if isinstance(indx_chan, np.ndarray)==True:chan_num=list(indx_chan)        
@@ -726,6 +733,77 @@ def ShowAllSingleSegmentsWithLabels(fig_id, plate,colors_code=None,indx_chan=0,a
     fig=plt.figure(fig_id)
     fig.clf()
     
+    #make full signals first
+    full_sign=[]
+    sample_stamp=[]    
+    for kks in range(0,len(chan_num)):    
+        full_sign.append([])       
+        sample_stamp.append([])
+        sample_stamp[-1].append(0)
+        for segment in plate.sigments_sign:               
+            if(len(full_sign[-1])==0):full_sign[-1]=np.asarray(segment[chan_num[kks]])                                
+            else:
+                sfg = np.asarray(full_sign[-1])            
+                sfg1=np.concatenate((sfg,segment[chan_num[kks]]),axis=None)
+                full_sign[-1]=np.empty
+                full_sign[-1]=np.asarray(sfg1)            
+                sample_stamp[-1].append(len(sfg1)+sample_stamp[-1][len(sample_stamp[-1])-1])
+
+    step_size=1
+    if(points_num_limit_check==True):
+        for m in range(0,len(full_sign)):
+            shp_=np.shape(full_sign[m])
+            l_segm_=-1
+            if(len(shp_)==1): l_segm_=shp_[0]
+            else:            l_segm_=shp_[1]
+            if l_segm_>points_num_limit:
+                step_size=int(l_segm_/points_num_limit)
+                reduced_signal=[]
+                points_steps=[]
+                for kk in range(0,l_segm_,step_size):
+                    reduced_signal.append(full_sign[m][kk])
+                    points_steps.append(kk)                
+                plt.plot(points_steps,reduced_signal)
+            else: 
+                plt.plot(full_sign[m])
+
+    else:
+        for m in range(0,len(full_sign)):
+            plt.plot(full_sign[m])
+
+    if(show_labels==True):
+        for kkj in range(0,len(chan_num)):
+            cnt=0            
+            for k in range(0,len(plate.sigments_labels)):                
+                if (k!=0): cnt=cnt+len(plate.sigments_sign[k-1][kkj])
+                for j in range(0,len(plate.sigments_labels[k])):     
+                    curs_start=int((plate.sigments_labels[k][j][0]+cnt))
+                    curs_end=int((plate.sigments_labels[k][j][1]+cnt))
+                    label=plate.sigments_labels[k][j][2]                
+                    c_ind=unique_labels.index(label)
+                    if(c_ind>len(colors_code)-1): c_ind=len(colors_code)-1
+                    sector_=plt.axvspan(curs_start, curs_end, facecolor=colors_code[c_ind], alpha=aplpha)    
+                    if(label not in labels_tags):
+                       labels_tags.append(label)
+                       sectors.append(sector_)
+            
+            """
+            shp_=np.shape(plate.sigments_sign[indx_segment][chan_num[i]])
+            l_segm_=-1
+            if(len(shp_)==1): l_segm_=shp_[0]
+            else:            l_segm_=shp_[1]
+            if l_segm_>points_num_limit:
+                step_size=int(l_segm_/points_num_limit)
+                reduced_signal=[]
+                points_steps=[]
+                for kk in range(0,l_segm_,step_size):
+                    reduced_signal.append(plate.sigments_sign[indx_segment][chan_num[i]][kk])
+                    points_steps.append(kk)
+                plt.plot(points_steps,reduced_signal)
+            else:
+                plt.plot(plate.sigments_sign[indx_segment][chan_num[i]])
+            """
+    """
     for kks in range(0,len(plate.sigments_sign)):        
         shp=np.shape(plate.sigments_sign[kks])
         l_segm=-1
@@ -744,8 +822,10 @@ def ShowAllSingleSegmentsWithLabels(fig_id, plate,colors_code=None,indx_chan=0,a
         for i in range(0,len(chan_num)):           
             y_min=np.min(plate.sigments_sign[kks][chan_num[i]])
             y_max=np.max(plate.sigments_sign[kks][chan_num[i]])            
+            
             plt.plot(x_axis,plate.sigments_sign[kks][chan_num[i]],color="blue")
-            if(plate.sigments_labels[kks]!=[]):
+
+            if(plate.sigments_labels[kks]!=[]) and (show_labels==True):
                 for k in plate.sigments_labels[kks]:     
                     curs_start=k[0]+start
                     curs_end=k[1]+start
@@ -756,7 +836,8 @@ def ShowAllSingleSegmentsWithLabels(fig_id, plate,colors_code=None,indx_chan=0,a
                         labels_tags.append(label)
                         sectors.append(sector_)                
         plt.vlines(border[kks], y_min,y_max,colors="red", linestyles='solid')
-        
+    """
+
     fig.legend(sectors,labels_tags)
     fig.canvas.draw()
     fig.canvas.flush_events()
@@ -771,7 +852,10 @@ def ShowSingleSegmentWithLabels(fig_id, plate,
                                 colors_code=None,
                                 indx_chan=0,
                                 show_labels=True,
-                                aplpha=0.1):
+                                aplpha=0.1,
+                                points_num_limit_check=False,
+                                points_num_limit=3000
+                                ):
     chan_num=0    
     if isinstance(indx_chan, list)==True:    chan_num=indx_chan
     if isinstance(indx_chan, np.ndarray)==True:chan_num=list(indx_chan)        
@@ -793,7 +877,24 @@ def ShowSingleSegmentWithLabels(fig_id, plate,
     fig.clf()  
     
     for i in range(0,len(chan_num)):
-        plt.plot(plate.sigments_sign[indx_segment][chan_num[i]])
+        if(points_num_limit_check==False):
+            plt.plot(plate.sigments_sign[indx_segment][chan_num[i]])
+        else:#show in sparse to be faster
+            shp_=np.shape(plate.sigments_sign[indx_segment][chan_num[i]])
+            l_segm_=-1
+            if(len(shp_)==1): l_segm_=shp_[0]
+            else:            l_segm_=shp_[1]
+            if l_segm_>points_num_limit:
+                step_size=int(l_segm_/points_num_limit)
+                reduced_signal=[]
+                points_steps=[]
+                for kk in range(0,l_segm_,step_size):
+                    reduced_signal.append(plate.sigments_sign[indx_segment][chan_num[i]][kk])
+                    points_steps.append(kk)
+                plt.plot(points_steps,reduced_signal)
+            else:
+                plt.plot(plate.sigments_sign[indx_segment][chan_num[i]])
+
         if(plate.sigments_labels[indx_segment]!=[]) and (show_labels==True):
             for k in plate.sigments_labels[indx_segment]:     
                 start=k[0]
@@ -1494,6 +1595,7 @@ def ReadSettings(window):
     only_single_shot=window.ui.RealT_show_only_single_shot_checkbox_4.isChecked()
     settings["only_single_shot"] = only_single_shot
     
+    
     #SPECTROGRAMS SHOW
     spectrogrym_type = window.ui.classification_preproc_dropdown_4.currentText()
     settings["spectrogrym_type"] = spectrogrym_type
@@ -1513,6 +1615,7 @@ def ReadSettings(window):
     #resnet specific settings
     Autoencoder_ResNet_weight_decay_input_text=window.ui.Autoencoder_ResNet_weight_decay_input_text.text()
     settings["Autoencoder_ResNet_weight_decay_input_text"] = Autoencoder_ResNet_weight_decay_input_text
+
     return settings
 
 #*********************************************************************************************************************
@@ -1541,6 +1644,11 @@ def LoadInterfaceFromFile(window,path):
 
     #settings - Visualization page
     window.ui.GUI_load_default_on_start.setChecked(bool(my_set["SETTINGS_VIZUALIZATION_load_default_GUI"]))    
+    window.ui.Color_list_drop_down_.setCurrentIndex(int(my_set["Color_list_drop_down_"])) 
+    window.ui.Settings_Segmentation_colors_number_textbox.setText(str(my_set["Settings_Segmentation_colors_number_textbox"])) 
+    window.ui.Show_results_color_scheme_drop_down_1.setCurrentIndex(int(my_set["Show_results_color_scheme_drop_down_1"])) 
+    window.ui.GUI_show_results_points_number_limit_textbox.setText(str(my_set["GUI_show_results_points_number_limit_textbox"])) 
+    window.ui.GUI_show_results_points_number_limit_checkbox.setChecked(bool(my_set["GUI_show_results_points_number_limit_checkbox"]))
 
 #save interface
 def SaveInterfaceIntoFile(window,path):
@@ -1549,6 +1657,21 @@ def SaveInterfaceIntoFile(window,path):
     #settings - Visualization page
     SETTINGS_VIZUALIZATION_load_default_GUI=window.ui.GUI_load_default_on_start.isChecked()
     gui["SETTINGS_VIZUALIZATION_load_default_GUI"]=SETTINGS_VIZUALIZATION_load_default_GUI
+
+    Color_list_drop_down_=window.ui.Color_list_drop_down_.currentIndex()
+    gui["Color_list_drop_down_"]=Color_list_drop_down_
+
+    Settings_Segmentation_colors_number_textbox=window.ui.Settings_Segmentation_colors_number_textbox.text()
+    gui["Settings_Segmentation_colors_number_textbox"]=Settings_Segmentation_colors_number_textbox
+
+    Show_results_color_scheme_drop_down_1=window.ui.Show_results_color_scheme_drop_down_1.currentIndex()
+    gui["Show_results_color_scheme_drop_down_1"]=Show_results_color_scheme_drop_down_1
+
+    GUI_show_results_points_number_limit_textbox=window.ui.GUI_show_results_points_number_limit_textbox.text()
+    gui["GUI_show_results_points_number_limit_textbox"]=GUI_show_results_points_number_limit_textbox
+
+    GUI_show_results_points_number_limit_checkbox= bool(window.ui.GUI_show_results_points_number_limit_checkbox.isChecked())#if to check points limit limit
+    gui["GUI_show_results_points_number_limit_checkbox"] = GUI_show_results_points_number_limit_checkbox
     
     #first page - MAIN
     MAIN_signals_folder=window.ui.load_data_path.text()
@@ -1584,6 +1707,13 @@ def ReadGraphSettings(window):
     #colors number
     classif_color_list_number= window.ui.Settings_Segmentation_colors_number_textbox.text()
     settings["classif_color_list_number"] = classif_color_list_number
+    #how to show the results
+    GUI_show_results_points_number_limit_checkbox= bool(window.ui.GUI_show_results_points_number_limit_checkbox.isChecked())#if to check points limit limit
+    settings["GUI_show_results_points_number_limit_checkbox"] = GUI_show_results_points_number_limit_checkbox
+
+    GUI_show_results_points_number_limit_textbox= window.ui.GUI_show_results_points_number_limit_textbox.text()#points limit
+    settings["GUI_show_results_points_number_limit_textbox"] = GUI_show_results_points_number_limit_textbox
+
     
     return settings
 
@@ -2757,13 +2887,13 @@ class Decoder(nn.Module):
         output = self.tanh(out_conv)
         return output
 
-class Autoencoder(nn.Module):
+class Autoencoder_S1(nn.Module):
     """
     Autoencoder class, combines encoder and decoder model.
     """
     
     def __init__(self):
-        super(Autoencoder, self).__init__()
+        super(Autoencoder_S1, self).__init__()
         self.encoder = Encoder()
         self.decoder = Decoder()
     
@@ -2806,7 +2936,7 @@ def Train_ResNetAE(feat,labels,
     test_loader = torch.utils.data.DataLoader(non_norm_dataset,batch_size=batch_size)
     
     # Instantiate a network model
-    ae = Autoencoder().to(device)
+    ae = Autoencoder_S1().to(device)
     # Define optimizer
     optimizer = optim.SGD(ae.parameters(), lr=init_lr, momentum=0.9, weight_decay=weight_decay)
     scheduler = optim.lr_scheduler.StepLR(optimizer, 60, 0.1)
@@ -2938,20 +3068,21 @@ class S_Classif:
                     else: ind+=1
                 labs.append(int(ind))
 
-        if( str(cls_type) == 'SHelpers.CNNAutoencoder_Shallow_498sp_1'): #class 'SHelpers.CNNAutoencoder_Shallow_498sp_1'
+        if( str(cls_type) == 'SHelpers.CNNAutoencoder_Shallow_498sp_1') or ('SHelpers.Autoencoder_S1'): #class 'SHelpers.CNNAutoencoder_Shallow_498sp_1'
+
             device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-            x = torch.Tensor(feat).to(device) 
-            y = torch.zeros(x.shape[0]).to(device) 
+            #x = torch.Tensor(feat).to(device) 
+            #y = torch.zeros(x.shape[0]).to(device) 
             
             threshold_factor=self.tocrh_autoencoder_threshold_factor
             proximity=3 
             
-            non_norm_torch=torch.tensor(non_norm,dtype=torch.float32).to(device)
-            non_norm_torch=non_norm_torch[:,None,:]
-            preds=self.model.forward(non_norm_torch)
+            non_norm_torch=torch.tensor(feat,dtype=torch.float32).to(device)
+            if(len(non_norm_torch.shape)<=2): non_norm_torch=non_norm_torch[:,None,:]
+            preds=self.classifier.forward(non_norm_torch)
             losses = torch.mean((preds - non_norm_torch)**2, dim=1)
             labs=[]            
-            threshold =losses.mean() + factor * losses.std()
+            threshold =losses.mean() + threshold_factor * losses.std()
             anomalies = losses > threshold
             labs=[]
             lk=int(anomalies.shape[1]/proximity)

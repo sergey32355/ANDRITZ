@@ -1,0 +1,2192 @@
+
+import numpy as np
+import os
+from os import walk
+import sys
+from time import sleep
+import traceback
+import joblib
+import pandas as pd
+import uuid 
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
+from sklearn.ensemble import IsolationForest
+from sklearn.cluster import DBSCAN
+from sklearn.svm import OneClassSVM
+from sklearn import preprocessing
+import distinctipy as dc
+import time
+import logging
+import threading
+import sys
+import trace
+import glob
+from barbar import Bar
+
+from PySide6.QtWidgets import QApplication, QMainWindow, QTextEdit,QFileDialog
+from PySide6.QtCore import QThread, Signal, QObject
+from gui_files.empa_gui import Ui_EmpaGUI
+from mod.mod_gui_data_loader_bpp_lines import DataLoaderBPPLines
+from mod.mod_gui_feature_extractor_bpp_lines import FeatureExtractorBPPLines
+from mod.mod_gui_model_selector_bpp_lines import ModelSelectorBPPLines, PredictorScorerBPPLines
+from PySide6.QtWidgets import QMessageBox
+import matplotlib
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
+from matplotlib.figure import Figure
+from PySide6.QtWidgets import QDialog, QVBoxLayout
+from PySide6.QtWidgets import QMessageBox
+
+#additional libs
+import librosa
+import spcm #the DAQ card library
+from spcm import units # spcm uses the pint library for unit handling (units is a UnitRegistry object)
+import datetime
+
+#classifiers
+from xgboost import XGBClassifier
+import pywt
+import ptwt
+
+import torch
+import torchaudio
+from torch import nn
+import torchaudio.functional as F
+import torchaudio.transforms as T
+
+import SHelpers as shlp
+
+#LINKS TOOLS
+
+#pyside6-designer - call designer
+#LINKS
+##https://github.com/EnsiyeTahaei/DeepAnT-Time-Series-Anomaly-Detection/blob/main/deepant/model.py
+
+
+#************************************************************************
+#*************************************************************************
+# Main Window Class
+#*************************************************************************
+#************************************************************************
+
+
+DEBUG_MODE = False
+
+class MainWindow(QMainWindow):
+    
+    def __init__(self):
+        super().__init__()
+        self.ui = Ui_EmpaGUI()
+        self.ui.setupUi(self)
+        # Make output text boxes read-only
+        # Connect button click
+        self.ui.load_data_button.clicked.connect(self.load_data)
+        self.ui.load_model_button.clicked.connect(self.load_model)
+        #self.ui.train_button.clicked.connect(self.train_model)
+        self.ui.List_segments_names_button.clicked.connect(self.List_segment_names_click)
+        #self.ui.plot_button.clicked.connect(self.plot_signal)
+        #self.ui.predict_button.clicked.connect(self.predict)
+        #SSH ADD-ON
+        self.ui.Brows_data_folder_button.clicked.connect(self.browse_data_folder_click)
+        self.ui.load_data_plate_type_dropdown.currentIndexChanged.connect(self.PlateLayout_click) #choose the layout of the plate
+        self.ui.train_dropdown.currentIndexChanged.connect(self.ModelChoiceDropDown_click)#choose the model
+        #SSH TOOLS tab
+        #page 1
+        self.ui.plot_plate_dropdown.currentIndexChanged.connect(self.PlateChoiceChanged_click)#drop box with plates names list
+        self.ui.plot_button.clicked.connect(self.Plot_selected_segment_click)
+        self.ui.platre_data_button_2.clicked.connect(self.Plate_info_click)
+        self.ui.unload_as_csv_button_data_button_3.clicked.connect(self.Save_signal_as_scv_click)
+        self.ui.calssification_plot_segment.clicked.connect(self.Classification_Plot_Segment) #for supervised clasification labelling we plot the signal
+        self.ui.classification_set_category.clicked.connect(self.Classification_Set_Category_Click)
+        self.ui.classification_clear_labels_button.clicked.connect(self.Classification_ClearLabelling_Click)
+        self.ui.classification_clear_all_segments_labels_button_2.clicked.connect(self.Classification_ClearLabellingForAllSegments_Click)
+        self.ui.classification_run_classification_button.clicked.connect(self.RunClassificationClick)
+        self.ui.calssification_segment_savetofolder_button.clicked.connect(self.SaveLabelingAsCSV_Click)
+        self.ui.Classification_set_as_main_model_button.clicked.connect(self.SetAsMainModelButton_Click)
+        self.ui.Classification_run_test_on_complete_segment_button.clicked.connect(self.RunClassifForSegment_Click)
+        self.ui.classification_dataset_info_button.clicked.connect(self.Classification_Dataset_Info_Click)
+        self.ui.classification_entire_segment_to_label_button.clicked.connect(self.Classification_Entire_Segm_To_Label_Click)
+        self.ui.classification_all_segments_to_label_button_2.clicked.connect(self.Classification_All_Segm_To_Label_Click)
+        self.ui.tools_show_scpetrogram_button.clicked.connect(self.Tool_Show_Spectrograms_Botton_Click)
+        #classification add-onns
+        self.ui.Classification_save_to_file_labeling_button.clicked.connect(self.SaveLabelingToFile_Click)
+        self.ui.Classification_load_from_file_labeling_button_2.clicked.connect(self.LoadLabelingFromFile_Click)
+        #settings
+        #colors
+        self.ui.COlors_list_generate_button.clicked.connect(self.GenerateCOlors_Botton_Click)
+        self.ui.save_interface_button.clicked.connect(self.Save_Interface_Click)
+        self.ui.load_interface_button.clicked.connect(self.Load_Interface_Click)
+        #classifiiers
+        #autoencoder
+        self.ui.Autoencoder_set_threshold_button.clicked.connect(self.Autoencoder_set_threshold_click)
+
+        #SPECTROGARMS
+        self.ui.Settings_test_MEL_Segment.clicked.connect(self.Tool_Test_Spectrograms_MEL_Botton_Click)
+        self.ui.Settings_Test_MEL_snippet.clicked.connect(self.Tool_Show_Spectrograms_MEL_Botton_Click)
+        
+        #real time
+        self.ui.Start_real_time_button.clicked.connect(self.Real_Time_Button_Click)
+        self.ui.Stop_real_time_button_2.clicked.connect(self.Real_Time_Stop_Click)
+        # Set dropdown options
+        #model_names = [m.split(".")[0] for m in os.listdir("models") if m.endswith(".pkl")]
+        #self.ui.load_model_dropdown.addItems(model_names)
+        #set widgets starting conditions
+        self.WidgetsStartingConditions()
+
+        #local vairables
+        self.load_data_thread = None
+        self.load_data_worker = None
+        self.extract_features_worker = None
+        self.train_thread = None
+        self.train_worker = None
+        self.predict_thread = None
+        self.predict_worker = None
+        self.dl = None  # To store the DataLoaderBPPLines object
+        self.fe = None  # To store the FeatureExtractorBPPLines object
+        self.ms = None  # To store the ModelSelectorBPPLines object
+        self.ps = None  # To store the PredictorScorerBPPLines object
+        self.model = None  # To store the trained model
+        self.threshold_params = None  # To store threshold parameters for trained model
+
+        #SSH ADD-ON
+        #plate
+        self.plate_segments_id=[] #segnents of the plate as a string list
+        self.plates=[] #plate segments with signals   
+        #data preprocessing
+        self.DataPreproc=None
+        #classifier or regressor
+        self.s_model = None
+        #service
+        self.proc_settings=None  #processing pipeline from GUI
+        self.proc_graph_settings=None #display graphics settings from GUI        
+        self.classif_plot_fig_id=""
+        self.classif_fig=None
+        #self.classif_tmp=None #here we store the classifier from the intermidiate test runs
+        self.autoencoder_hist_form_id=""
+        
+        #threading for real time
+        #folder check
+        self.RT_Figure_if_orig_sgn = ""
+        self.RT_Figure_if_proc_results_id = ""
+        self.ExitFilesInFolderFlag=False
+        self.Real_time_FolderTrackerThread=None
+        #DAQ acquisition
+        self.RT_SpectrumThread=None
+        global EXIT_DAQ_FLAG
+        EXIT_DAQ_FLAG=True
+        #generate colors lists
+        self.colors_id = None
+        self.GenerateCOlors_Botton_Click() #dc.get_colors(500)   
+        self.CheckToLoadDefaultGUI()
+
+    def WidgetsStartingConditions(self):
+        self.ui.Model_ready_label.setStyleSheet("background-color: red")
+
+    ##GUI save/load
+    def Save_Interface_Click(self):
+        path=os.getcwd()
+        path=path+"\\default_gui.cfg"
+        try:
+            shlp.SaveInterfaceIntoFile(self,path)
+            print("GUI saved into: "+str(path))
+        except Exception as exs:
+            print("Could not save GUI to file. Exception: "+str(exs))
+
+    def CheckToLoadDefaultGUI(self):
+        path=os.getcwd()
+        path=path+"\\default_gui.cfg"
+        try:
+            shlp.CheckOnStartToLoadGUI(self,path)
+        except: print("Default GUI file is corrupted or absent")
+
+    def Load_Interface_Click(self):
+        path=os.getcwd()
+        path=path+"\\default_gui.cfg"
+        try:
+            shlp.LoadInterfaceFromFile(self,path)
+            print("GUI loaded: "+str(path))
+        except Exception as exs: print("Cant load interface from file. Exception: "+str(exs))
+        
+    def GenerateCOlors_Botton_Click(self):        
+        graph_sets=shlp.ReadGraphSettings(self)
+        type_list=graph_sets.get("classif_color_list_type")
+        col_num=int(graph_sets.get("classif_color_list_number"))
+        
+        def ColorsListGen(type_list,col_num):
+            #https://stackoverflow.com/questions/22408237/named-colors-in-matplotlib
+            colors_list=[]
+            if(type_list=="Grades of red"):
+                colors_list=['#228B22','#FF0000','#8B0000']
+            if(type_list=="Random colors"):
+                colors_list=dc.get_colors(col_num)
+            return colors_list
+        self.colors_id = shlp.ColorsListGen(type_list,col_num)
+    
+    #BUTTONS EVENTS
+    #find folder with signal files
+    def browse_data_folder_click(self):
+        path_dir = QFileDialog.getExistingDirectory()         
+        self.ui.load_data_path.setText(path_dir)
+
+    def List_segment_names_click(self):
+        print("")        
+        print("SEGMENT NAMES LIST:")  
+        print("Segm.num. - "+str(len(self.plate_segments_id)))
+        print(self.plate_segments_id)
+
+    def PlateLayout_click(self):        
+        plate_type=self.ui.load_data_plate_type_dropdown.currentText()
+        self.plate_segments_id=shlp.getSegmentNames(plate_type)
+        
+    def ModelChoiceDropDown_click(self):
+        model_choice = self.ui.train_dropdown.currentIndex()  
+        if(model_choice==1):
+            path_dir = QFileDialog.getOpenFileName(self, str("Open File"),
+                                                   "/home",
+                                                   str("Model (*.plk)"))   
+            if(path_dir==""):#if was canceled
+                self.ui.load_data_plate_type_dropdown.setCurrentIndex(0)
+                model_choice=0
+            else:
+                loaded_model_data = joblib.load(model_path)
+                self.model = loaded_model_data['trained_model']
+                self.threshold_params = loaded_model_data['best_threshold_params']
+                
+        if(model_choice==0):
+            pass#this is for autoencoder
+
+    #SSH TOOLS TAB EVENTS 
+    def PlateChoiceChanged_click(self):
+        if(self.plates is None):
+            return        
+        if(self.plates==[]):
+            return
+        cur_plate_name=self.ui.plot_plate_dropdown.currentText()
+        indx_plate=-1
+        for k in range(0,len(self.plates)):
+            if(self.plates[k].name==cur_plate_name):
+                indx_plate=k
+                break
+        #fill segments
+        segm_available=self.plates[indx_plate].segments_names#
+        self.ui.plot_segment_dropdown.clear()
+        self.ui.plot_segment_dropdown.addItems(segm_available)
+        self.ui.plot_segment_dropdown.setCurrentIndex(0)
+        #fill channels
+        chans_available=self.plates[indx_plate].chans_names.copy()
+        chans_available.insert(0, "all")
+        self.ui.Channel_segment_plot.clear()
+        self.ui.Channel_segment_plot.addItems(chans_available)
+        self.ui.Channel_segment_plot.setCurrentIndex(0)
+        
+    #plot sepctrogram for selected segment
+    def Tool_Show_Spectrograms_Botton_Click(self):
+        if(self.plates==None):
+            print("plates are not loaded...")
+            return
+        if(self.plates==[]):
+            print("plates are not loaded...")
+            return
+        self.proc_settings = shlp.ReadSettings(self)
+        p_name = self.ui.plot_plate_dropdown.currentText()
+        ch_name=self.ui.Channel_segment_plot.currentText()        
+        segment_name=self.ui.plot_segment_dropdown.currentText()   
+        indx_plate,indx_chan, indx_segment = shlp.FindPlateInArray(plates=self.plates.copy(),plate_name=p_name,chan_name=ch_name,segm_name=segment_name)
+        signals=[]
+        end_=indx_chan+1
+        start_=indx_chan
+        if(end_==-1): 
+            end_ = len(self.plates[indx_plate].segment_sign[indx_segment]) #we taek all signals
+            start=0
+        SAMPLE_RATE=int(self.plates[indx_plate].sr)
+        spec_type=self.proc_settings.get("spectrogrym_type")
+        for i in range(start_,end_):
+            # Define transform            
+            waveform=torch.tensor(self.plates[indx_plate].sigments_sign[indx_segment][i])
+            if(len(waveform.shape)==1): waveform = waveform[None, :]
+            if(spec_type=="MEL"):
+                    spectrogrym_MEL_nfft=int(self.proc_settings.get("spectrogrym_MEL_nfft"))
+                    spectrogram = T.Spectrogram(n_fft=spectrogrym_MEL_nfft)
+                    # Perform transform
+                    spec = spectrogram(waveform)
+                    #%matplotlib qt
+                    fig, axs = plt.subplots(2, 1)
+                    shlp.plot_waveform(waveform, SAMPLE_RATE, title="Original waveform", ax=axs[0])
+                    shlp.plot_spectrogram(spec[0], title="spectrogram", ax=axs[1])
+                    fig.tight_layout()
+        
+    #plot selected segment
+    def Plot_selected_segment_click(self):
+        
+        if(self.plates==[]):
+            return
+
+        graph_settings=shlp.ReadGraphSettings(self)
+
+        p_name = self.ui.plot_plate_dropdown.currentText()
+        ch_name=self.ui.Channel_segment_plot.currentText()
+        signal_type=self.ui.type_of_signal_dropdown.currentText()
+        segment_name=self.ui.plot_segment_dropdown.currentText()   
+
+        indx_plate,indx_chan, indx_segment = shlp.FindPlateInArray(plates=self.plates.copy(),plate_name=p_name,chan_name=ch_name,segm_name=segment_name)
+        
+        """
+        #find plate in list
+        indx_plate=-1
+        for k in range(0,len(self.plates)):
+            if(self.plates[k].name==p_name):
+                indx_plate=k
+                break
+        #find channel in list
+        indx_chan=-1
+        if(ch_name!="all"):
+            for k in range(0,len(self.plates[indx_plate].chans_names)):
+                if(self.plates[indx_plate].chans_names[k]==ch_name):
+                    indx_chan=k
+                    break
+        #find the segment
+        indx_segment=-1
+        for k in range(0,len(self.plates[indx_plate].segments_names)):
+                if(self.plates[indx_plate].segments_names[k]==segment_name):
+                    indx_segment=k
+                    break
+        """
+        
+        #print(ch_name)
+        #print(indx_chan)
+        #print(self.plates[indx_plate].chans_names)
+        """
+        %matplotlib qt
+        if(plot_type=="Segment"):
+            shlp.ShowSingleSegmentWithLabels(self.classif_plot_fig_id,self.plates[indx_plate],indx_segment=indx_segment,
+                                                                                              colors_code=self.colors_id,
+                                                                                              indx_chan=indx_chan)
+        if(plot_type=="All_segments"):
+            shlp.ShowAllSingleSegmentsWithLabels(self.classif_plot_fig_id, self.plates[indx_plate],
+                                                 colors_code=self.colors_id,
+                                                 indx_chan=indx_chan,
+                                                 aplpha=0.1
+                                                )
+        """
+        #%matplotlib qt
+        if(signal_type=="Raw signals"):
+            if(indx_chan!=-1):#this is the case of not all channels are selected
+                fig=plt.figure(1)
+                plt.clf()
+                plt.plot(self.plates[indx_plate].time, self.plates[indx_plate].raw_signals[indx_chan])
+                plt.show()
+            else:
+                fig=plt.figure(1)
+                plt.clf()
+                for kp in range(0,len(self.plates[indx_plate].chans_names)):
+                    plt.plot(self.plates[indx_plate].time, self.plates[indx_plate].raw_signals[kp])
+                plt.show()
+        else: #segments
+            if(indx_chan!=-1):#this is the case when single channel is selected                
+                shlp.ShowSingleSegmentWithLabels(self.classif_plot_fig_id,
+                                                 self.plates[indx_plate],
+                                                 indx_segment=indx_segment,
+                                                 colors_code=self.colors_id,
+                                                 indx_chan=[indx_chan],
+                                                 show_labels=False,
+                                                 points_num_limit_check=bool(graph_settings.get("GUI_show_results_points_number_limit_checkbox")),
+                                                 points_num_limit=int(graph_settings.get("GUI_show_results_points_number_limit_textbox")),
+
+                                                )
+            else:
+                shlp.ShowAllSingleSegmentsWithLabels(self.classif_plot_fig_id, 
+                                                     self.plates[indx_plate],
+                                                     colors_code=self.colors_id,
+                                                     indx_chan=indx_chan,
+                                                     aplpha=0.1,
+                                                     show_labels=False,
+                                                     points_num_limit_check=bool(graph_settings.get("GUI_show_results_points_number_limit_checkbox")),
+                                                     points_num_limit=int(graph_settings.get("GUI_show_results_points_number_limit_textbox")),
+                                                    )
+                
+                """
+                t_start=self.plates[indx_plate].sigments_start_t
+                d_t=self.plates[indx_plate].delta_t
+                durat=d_t*len(self.plates[indx_plate].sigments_sign[indx_segment][indx_chan])
+                time=np.linspace(t_start,t_start+durat,len(self.plates[indx_plate].sigments_sign[indx_segment][indx_chan]))                
+                fig=plt.figure(1)
+                plt.clf()
+                plt.plot(time, self.plates[indx_plate].sigments_sign[indx_segment][indx_chan])
+                plt.show()
+                
+            else:
+                
+                fig=plt.figure(1)
+                plt.clf()
+                for kp in range(0,len(self.plates[indx_plate].chans_names)):
+                    t_start=self.plates[indx_plate].sigments_start_t
+                    d_t=self.plates[indx_plate].delta_t
+                    durat=d_t*len(self.plates[indx_plate].sigments_sign[indx_segment][indx_chan])
+                    time=np.linspace(t_start,t_start+durat,len(self.plates[indx_plate].sigments_sign[indx_segment][indx_chan]))    
+                    plt.plot(time, self.plates[indx_plate].sigments_sign[indx_segment][kp])
+                plt.show()    
+                """
+                
+    def Save_signal_as_scv_click(self):
+        if(self.plates==[]):
+            return
+        
+        p_name = self.ui.plot_plate_dropdown.currentText()
+        ch_name=self.ui.Channel_segment_plot.currentText()
+        signal_type=self.ui.type_of_signal_dropdown.currentText()
+        segment_name=self.ui.plot_segment_dropdown.currentText()   
+        indx_plate,indx_chan, indx_segment = shlp.FindPlateInArray(plates=self.plates.copy(),plate_name=p_name,chan_name=ch_name,segm_name=segment_name)
+        
+        path_dir = QFileDialog.getExistingDirectory()       
+        if(path_dir==""): return
+        else:
+            if(indx_chan==-1):#we save all channels
+                start_num=0
+                chans_num=len(self.plates[indx_plate].chans_names)
+            else:
+                start_num=indx_chan
+                chans_num=indx_chan+1
+                
+            for k in range(start_num,chans_num):
+                    chan_sub_f=path_dir+"\\"+self.plates[indx_plate].chans_names[k]                    
+                    if(os.path.exists(chan_sub_f)==False):
+                        try: os.mkdir(chan_sub_f)
+                        except:
+                            print("Failed to creat a directory. Signals are not saved...")
+                            return
+                    f_name=chan_sub_f+"\\"+p_name+"_"+segment_name+"_"+ch_name+"_"+signal_type+".csv"
+                    if os.path.exists(f_name)==True:
+                        counter=0
+                        while(True):
+                            counter+=1
+                            f_name=chan_sub_f+"\\"+str(counter)+"_"+p_name+"_"+segment_name+"_"+ch_name+"_"+signal_type+".csv"
+                            if (os.path.exists(f_name)==False):
+                                break
+                    arr=self.plates[indx_plate].sigments_sign[indx_segment][k]
+                    df = pd.DataFrame(arr)
+                    df.to_csv(f_name)
+            print("filed saved into folder...")
+           
+    #classification section - Tools->Page 1
+    def Classification_Dataset_Info_Click(self):
+
+        graph_settings = shlp.ReadGraphSettings(self)
+        self.proc_settings = shlp.ReadSettings(self)
+        print("")
+        print("Settings:")
+        print(self.proc_settings)
+        
+    def Classification_Plot_Segment(self):      
+        
+        if(self.plates==[]) or(len(self.plates)==0) or (self.plates is None):
+            print("Plates are not loaded")
+            return   
+
+        self.proc_graph_settings = shlp.ReadGraphSettings(self)
+        plot_type = self.proc_graph_settings.get("classification_show_labeled_data_type")
+            
+        p_name = self.ui.plot_plate_dropdown.currentText()
+        ch_name=self.ui.Channel_segment_plot.currentText()        
+        segment_name=self.ui.plot_segment_dropdown.currentText()    
+                
+        indx_plate,indx_chan, indx_segment = shlp.FindPlateInArray(plates=self.plates.copy(),plate_name=p_name,chan_name=ch_name,segm_name=segment_name)
+        if (self.classif_plot_fig_id==""):self.classif_plot_fig_id = str(uuid.uuid1())[:5]  
+        #%matplotlib qt
+        if(plot_type=="Segment"):
+            shlp.ShowSingleSegmentWithLabels(self.classif_plot_fig_id,self.plates[indx_plate],indx_segment=indx_segment,
+                                                                                              colors_code=self.colors_id,
+                                                                                              indx_chan=indx_chan,
+                                                                                              show_labels=True,
+                                                                                              points_num_limit_check=bool(self.proc_graph_settings.get("GUI_show_results_points_number_limit_checkbox")),
+                                                                                              points_num_limit=int(self.proc_graph_settings.get("GUI_show_results_points_number_limit_textbox")),
+                                                                                              )
+        if(plot_type=="All_segments"):
+            shlp.ShowAllSingleSegmentsWithLabels(self.classif_plot_fig_id, self.plates[indx_plate],
+                                                 colors_code=self.colors_id,
+                                                 indx_chan=indx_chan,
+                                                 aplpha=0.1,
+                                                 show_labels=True,
+                                                 points_num_limit_check=bool(self.proc_graph_settings.get("GUI_show_results_points_number_limit_checkbox")),
+                                                 points_num_limit=int(self.proc_graph_settings.get("GUI_show_results_points_number_limit_textbox")),
+                                                )
+            
+        """
+        if(plt.fignum_exists(self.classif_plot_fig_id)==False) or(self.classif_plot_fig_id==""):
+            self.classif_plot_fig_id=str(uuid.uuid1())[:5]  
+            %matplotlib qt
+            self.classif_fig=plt.figure(self.classif_plot_fig_id)    
+        shlp.ShowSignalInFigure(self.classif_fig,
+                                plates=self.plates,
+                                colors_code=self.colors_id,
+                                indx_plate=indx_plate,
+                                indx_segment=indx_segment,
+                                indx_chan=indx_chan)       
+        """
+    #assign label to the segment pattern
+    def Classification_Set_Category_Click(self):
+        
+        if(self.plates==[]) or(len(self.plates)==0) or (self.plates is None):
+            print("Plates are not loaded")
+            return
+        
+        p_name = self.ui.plot_plate_dropdown.currentText()
+        ch_name=self.ui.Channel_segment_plot.currentText()        
+        segment_name=self.ui.plot_segment_dropdown.currentText()    
+        indx_plate,indx_chan, indx_segment = shlp.FindPlateInArray(plates=self.plates.copy(),plate_name=p_name,chan_name=ch_name,segm_name=segment_name)
+        
+        try:
+            start_el = int(self.ui.classification_labeling_start_element_text.text())
+            end_el=int(self.ui.classification_labeling_end_element_text.text())
+            label=self.ui.classification_labeling_label_text.text()
+            if(label=="" or label==" "):
+                print("fill lable info and repeat...")
+                return
+            #self.plates[indx_plate].sigments_labels[indx_segment].append(list([start_el,end_el,label]))
+            self.plates[indx_plate].AssignLabelToSegmentPattern(segment_indx=indx_segment,label=label,start_el=start_el,end_el=end_el)
+        except:
+            print("check the values in the text boxes")
+            return
+        
+        print("")
+        print("new label assigned to:")
+        print("plate name - "+str(p_name))
+        print("segment name - "+str(segment_name))
+        print("patterns first samp.point - "+str(start_el))
+        print("patterns last samp.point - "+str(end_el))
+        print("total number of samp.points - "+str(end_el-start_el))
+        print("label - "+str(label))
+    
+        if plt.fignum_exists(self.classif_plot_fig_id)==True:
+            self.Classification_Plot_Segment()
+    
+    #assign label for entire segment
+    def Classification_Entire_Segm_To_Label_Click(self):
+        if(self.plates==[]) or(len(self.plates)==0) or (self.plates is None):
+            print("Plates are not loaded")
+            return
+        p_name = self.ui.plot_plate_dropdown.currentText()
+        ch_name=self.ui.Channel_segment_plot.currentText()        
+        segment_name=self.ui.plot_segment_dropdown.currentText()    
+        indx_plate,indx_chan, indx_segment = shlp.FindPlateInArray(plates=self.plates.copy(),plate_name=p_name,chan_name=ch_name,segm_name=segment_name)
+        
+        try:
+            label=(self.ui.classification_labeling_label_text.text())
+            if(label=="" or label==" "):
+                print("fill lable info and repeat...")
+                return
+            #self.plates[indx_plate].sigments_labels[indx_segment].append(list([start_el,end_el,label]))
+            self.plates[indx_plate].AssignLabelToEntireSegment(segment_indx=indx_segment,label=label)
+        except:
+            print("check the values in the text boxes")
+            return
+        
+        print("")
+        print("label assigned to:")
+        print("plate name - "+str(p_name))
+        print("segment name - "+str(segment_name))       
+        print("label - "+str(label))
+        
+        if plt.fignum_exists(self.classif_plot_fig_id)==True:
+            self.Classification_Plot_Segment()
+    
+    #assign all labels to to category
+    def Classification_All_Segm_To_Label_Click(self):
+        if(self.plates==[]) or(len(self.plates)==0) or (self.plates is None):
+            print("Plates are not loaded")
+            return        
+        p_name = self.ui.plot_plate_dropdown.currentText()
+        ch_name=self.ui.Channel_segment_plot.currentText()        
+        segment_name=self.ui.plot_segment_dropdown.currentText()    
+        indx_plate,indx_chan, indx_segment = shlp.FindPlateInArray(plates=self.plates.copy(),plate_name=p_name,chan_name=ch_name,segm_name=segment_name)
+        label_=(self.ui.classification_labeling_label_text.text())
+        self.plates[indx_plate].AssignLabelToAllSegments(label=label_)
+
+        print("")
+        print("label assigned to:")
+        print("plate name - "+str(p_name))
+        print("segment num. - "+str(len(self.plates[indx_plate].sigments_sign)))       
+        print("label - "+str(label_))
+
+        if plt.fignum_exists(self.classif_plot_fig_id)==True:
+            self.Classification_Plot_Segment()
+
+    #clear fo only this segment
+    def Classification_ClearLabelling_Click(self):
+        if(self.plates==[]) or(len(self.plates)==0) or (self.plates is None):
+            print("Plates are not loaded")
+            return
+        p_name = self.ui.plot_plate_dropdown.currentText()
+        ch_name=self.ui.Channel_segment_plot.currentText()        
+        segment_name=self.ui.plot_segment_dropdown.currentText()    
+        indx_plate,indx_chan, indx_segment = shlp.FindPlateInArray(plates=self.plates.copy(),plate_name=p_name,chan_name=ch_name,segm_name=segment_name)
+        self.plates[indx_plate].sigments_labels[indx_segment]=[]
+
+        print("")
+        print("Labelling for plate - "+str(p_name)+" , segment - "+str(segment_name) +" erased...")
+        
+        if plt.fignum_exists(self.classif_plot_fig_id)==True:
+            self.Classification_Plot_Segment()
+        
+
+    def Classification_ClearLabellingForAllSegments_Click(self):
+        if(self.plates==[]) or(len(self.plates)==0) or (self.plates is None):
+            print("Plates are not loaded")
+            return
+        p_name = self.ui.plot_plate_dropdown.currentText()
+        ch_name=self.ui.Channel_segment_plot.currentText()        
+        segment_name=self.ui.plot_segment_dropdown.currentText()   
+        indx_plate,indx_chan, indx_segment = shlp.FindPlateInArray(plates=self.plates.copy(),plate_name=p_name,chan_name=ch_name,segm_name=segment_name)
+        l_sl=len(self.plates[indx_plate].sigments_labels)
+        for jk in range(0,l_sl):
+            self.plates[indx_plate].sigments_labels[jk]=[]
+        if plt.fignum_exists(self.classif_plot_fig_id)==True:
+            self.Classification_Plot_Segment()
+        print("")
+        print("Labelling for plate - "+str(p_name)+" is erased...")
+                
+    def RunClassificationClick(self):
+        
+        if(self.plates==[]) or(len(self.plates)==0) or (self.plates is None):
+            print("Plates are not loaded")
+            return
+            
+        self.proc_settings = shlp.ReadSettings(self)
+        #read settings
+        snip_size = int(self.proc_settings.get("snippet_size")) #int(self.ui.classification_snippet_size_text.text())
+        test_size=int(self.ui.classification_test_text.text())/100.0
+        classif_name= self.ui.classificationclassifier_dropdown.currentText()
+        preproc= self.proc_settings.get("preprocessing")#self.ui.classification_preproc_dropdown.currentText()
+        
+        #start to create dataset from segment
+        p_name = self.ui.plot_plate_dropdown.currentText()
+        ch_name=self.ui.Channel_segment_plot.currentText()        
+        segment_name=self.ui.plot_segment_dropdown.currentText()    
+        #collect general information
+        indx_plate,indx_chan, indx_segment = shlp.FindPlateInArray(plates=self.plates.copy(),plate_name=p_name,chan_name=ch_name,segm_name=segment_name)        
+        channels_to_use=[indx_chan]
+        if(self.proc_settings.get("chans_to_use")=="From settings"):
+            pass
+        else:
+            chans_string=self.proc_settings.get("chans_list_user")
+            channels_to_use = shlp.ExtractChannelsFromString(chans_string,separator=",")
+            if(channels_to_use is None):
+                print("Exiting training. Check settings and repeat.")
+                return
+            else: pass
+                
+        print("")
+        print("*********************************************************************")
+        print("Training start")
+        print("User selected channels: "+str(channels_to_use))    
+                
+        #chans_to_use=window.ui.classification_channels_choice_drop_down.currentText()
+        #settings["chans_to_use"] = chans_to_use
+        #chans_list_user=window.ui.classification_user_channels_text_box.text()
+        #settings["chans_list_user"] = chans_list_user
+    
+        #makes snippets
+        #feat,labs = shlp.SplitIntoSnips(plates=self.plates,snip_size=snip_size,plate_name=p_name,chan_name=ch_name,segment_name=segment_name)
+        unique_labs_tags=[]
+        feat=[]
+        labs=[]
+        if(self.DataPreproc is None): self.DataPreproc=shlp.DataPreproc()   
+        plate_segm=self.proc_settings.get("plate_segm_process")        
+        if(plate_segm == "this_plate_this_segment"):
+            feat,labs= self.DataPreproc.SplitLabPlateSegmentIntoSnips(self.plates[indx_plate],
+                                                                      snip_size=snip_size,
+                                                                      segm_index=indx_segment,
+                                                                      channs_indx=channels_to_use,#indx_chan,
+                                                                      torch_tensor=False, 
+                                                                      preproc_type=preproc
+                                                                     )    
+            #print("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX")
+            #print(np.shape(np.asarray(feat)))
+            unique_labs_tags=self.plates[indx_plate].GetUniqueLabelsList()
+            #print(unique_labs_tags)
+        if(plate_segm == "this_plate_all_segments"):                        
+            feat,labs= self.DataPreproc.SplitAllLabPlateSegmentsIntoSnips(self.plates[indx_plate],
+                                                                          snip_size=snip_size,
+                                                                          channs_indx=channels_to_use,#indx_chan,
+                                                                          torch_tensor=False, 
+                                                                          preproc_type=preproc
+                                                                         )    
+            
+            feat,labs=self.DataPreproc.Helper_FlatListOfLabeledFeat(feat,labs)
+            unique_labs_tags=self.plates[indx_plate].GetUniqueLabelsList()
+            
+        if(plate_segm == "all_plates_all_segments"):
+            feat,labs= self.DataPreproc.SplitAllLabPlateOfAllSegmentsIntoSnips(self.plates,
+                                                                               channs_indx=channels_to_use,#indx_chan,
+                                                                               torch_tensor=False,
+                                                                               snip_size=snip_size
+                                                                              )
+            rrt=[]
+            for l in range(0,len(self.plates)):
+                jk=self.plates[l].GetUniqueLabelsList()
+                for k in range(0,len(jk)):
+                    rrt.append(jk[k])
+            unique_labs_tags=shlp.GetUniqueElements_List(list(rrt))#list(set(rrt))
+
+        #le = preprocessing.LabelEncoder()
+        #labs_num = le.fit_transform(labs)
+        new_lab=[]
+        tag_tmp=np.arange(0,len(unique_labs_tags))#linspace(0,len(unique_labs_tags),len(unique_labs_tags))
+        for xx in range(0,len(labs)):
+            indx=unique_labs_tags.index(labs[xx])
+            tag=int(tag_tmp[indx])
+            new_lab.append(tag)
+                    
+        global CLASSIF_FEAT
+        CLASSIF_FEAT = feat
+        global CLASSIF_LABS
+        CLASSIF_LABS = new_lab
+                        
+        #*****************output info**************************
+        try:
+            print("")
+            print("Start calssification...")
+            print("Settings...")
+            print("data source - "+str(plate_segm))
+            if(plate_segm == "this_plate_this_segment"):
+                print("plate name - "+str(p_name))
+                print("segment name - "+str(segment_name))
+            if(plate_segm == "this_plate_all_segments"):
+                print("plate name - "+str(p_name))
+                print("egm.num - "+str(len(self.plates[indx_plate].sigments_sign)))
+            print("chan. name - "+str(ch_name))
+            print("snip. length - "+str(snip_size))
+            print("test set (% from training) - "+str(test_size*100))
+            try:                 
+                print("unique lab. - "+str(unique_labs_tags))  
+                print("unique lab. encoding "+str(shlp.GetUniqueElements_List(new_lab)))
+            except: print("unique labels are undefined")   
+            print("feat.shape - " + str(np.shape(np.asarray(feat))))
+            #print("train shape - "+str(np.shape(np.asarray(X_train))))
+            #print("test shape - "+str(np.shape(np.asarray(X_test))))
+        except:
+            pass
+        #******************************************************
+        
+        #classification     
+        clf=None        
+        self.s_model=None
+                
+        if(self.proc_settings.get("algorithm")=="XGBoost"):    
+            unique_labs=shlp.GetUniqueElements_List(new_lab)
+            if(len(unique_labs)<=1):
+                print("")
+                if(self.proc_settings.get("plate_segm_process")=="this_plate_this_segment"):
+                    print("In this segment only one label is detected. Add another label to segment and inlcude other plates/segments.")                    
+                if(self.proc_settings.get("plate_segm_process")=="this_plate_all_segments"):
+                    print("In all plate segments only one label is detected. Add another label or inlcude other plates.")
+                else:
+                    print("In all plates only one label is detected.Add another label...")
+                return
+            X_train, X_test, y_train, y_test = train_test_split(feat, new_lab, test_size=test_size)
+            print("training with XGBoost...")               
+            clf,tests_l,orig_labs,intern_labs = shlp.XGBoostClassifRun(X_train=X_train, X_test=X_test, y_train=y_train, y_test=y_test)                           
+            cm = confusion_matrix(y_test,tests_l)#, xgb_labs_back)            
+            self.s_model=shlp.S_Classif()
+            self.s_model.AssignClassif(clf,unique_labs_tags,tag_tmp)  
+            print(str(type(self.s_model.classifier)))
+            #%matplotlib qt
+            disp = ConfusionMatrixDisplay(confusion_matrix=cm,display_labels=clf.classes_)
+            disp.plot(cmap=plt.cm.Blues)            
+            plt.show()               
+            
+        if(self.proc_settings.get("algorithm")=="IsolationForest"):
+            
+            #binary anomaly detector
+            clf = shlp.IsolTreesTraining(feat=feat,labels=new_lab)                        
+            self.s_model=shlp.S_Classif()
+            self.s_model.AssignClassif(clf,None,None)  
+
+        if(self.proc_settings.get("algorithm")=="DBSCAN"):
+            clf = shlp.DBSCANTraining(feat=feat,labels=new_lab)                        
+            self.s_model=shlp.S_Classif()
+            self.s_model.AssignClassif(clf,None,None)  
+
+        if(self.proc_settings.get("algorithm")=="OneClassSVM"):
+            clf = shlp.OneCLassSVMTraining(feat=feat,labels=new_lab)#OneClassSVM(nu=0.1, kernel="rbf",gamma=0.2).fit(feat)                      
+            self.s_model=shlp.S_Classif()
+            self.s_model.AssignClassif(clf,None,None)  
+
+        if(self.proc_settings.get("algorithm")=="Autoencoder_1"):
+            threshold=float(self.proc_settings.get("autoencoder_torch_thershold"))
+            lr=float(self.proc_settings.get("autoencoder_torch_learn_rate"))
+            epochs_num=int(self.proc_settings.get("autoencoder_torch_epochs_num"))
+            #train/test classifier
+            model=shlp.TrainTorchAutoencoder(feat=feat,labels=new_lab,num_epochs=epochs_num,lr=lr)            
+            self.s_model=shlp.S_Classif()
+            self.s_model.AssignClassif(model,None,None)  
+            self.s_model.tocrh_autoencoder_threshold_factor=threshold
+
+        if(self.proc_settings.get("algorithm")=="Autoencoder_2"):
+            clf,train_phi,train_mu,train_cov,args,loss=shlp.Train_Autoencoder_2(feat,new_lab,
+                                                                      num_of_epochs=int(self.proc_settings.get("autoencoder_torch_epochs_num")),
+                                                                      patience=10,
+                                                                      lr=float(self.proc_settings.get("autoencoder_torch_learn_rate")),#1e-6,
+                                                                      lr_milestones=[10],
+                                                                      batch_size=10,
+                                                                      latent_dim=50,
+                                                                      n_gmm=5,
+                                                                      lambda_energy=0.1,
+                                                                      lambda_cov=0.00005,                                                                             
+                                                                     )
+            self.s_model=shlp.S_Classif()
+            self.s_model.AssignClassif(clf,None,None)  
+            self.s_model.autoenc2_train_phi=train_phi
+            self.s_model.autoenc2_train_mu=train_mu
+            self.s_model.autoenc2_train_cov=train_cov
+            self.s_model.autoenc2_args=args
+            threshold=float(self.proc_settings.get("autoencoder_torch_thershold"))
+            self.s_model.tocrh_autoencoder_threshold_factor=threshold
+
+        if(self.proc_settings.get("algorithm")=="AE_CNN_Shallow"):
+            clf=shlp.TrainAE_1(feat,new_lab,
+                                    AE_type="CNN_shallow",
+                                    lr=float(self.proc_settings.get("autoencoder_torch_learn_rate")),#0.001,
+                                    num_epochs=int(self.proc_settings.get("autoencoder_torch_epochs_num")),
+                                    visualize=True,
+                              )            
+            self.s_model=shlp.S_Classif()
+            self.s_model.AssignClassif(clf,None,None)  
+            self.s_model.tocrh_autoencoder_threshold_factor=float(self.proc_settings.get("autoencoder_torch_thershold"))
+
+        if(self.proc_settings.get("algorithm")=="ResNet_Shallow"):
+            clf,_=shlp.Train_ResNetAE(feat,new_lab,
+                                     init_lr=float(self.proc_settings.get("autoencoder_torch_learn_rate")),#0.001,
+                                     batch_size=30,
+                                     weight_decay=float(self.proc_settings.get("Autoencoder_ResNet_weight_decay_input_text")),
+                                     num_epochs = int(self.proc_settings.get("autoencoder_torch_epochs_num")),
+                                     visualize=True 
+                                    )
+            self.s_model=shlp.S_Classif()
+            self.s_model.AssignClassif(clf,None,None)  
+            self.s_model.tocrh_autoencoder_threshold_factor=float(self.proc_settings.get("autoencoder_torch_thershold"))
+            
+        if(self.proc_settings.get("algorithm")=="NonStatKern_1"):
+            #literature links - non-stationary kernels
+            #https://www.sgp-tools.com/tutorials/non_stationary_kernels.html
+            #https://github.com/google/neural-tangents
+            pass
+
+        if(self.proc_settings.get("algorithm")=="GHKern"):
+            #https://github.com/paulinebourigault/GHKernelAnomalyDetect
+            pass        
+
+        if(self.s_model!=None):
+            self.s_model.train_feat=feat
+            self.s_model.train_labs=new_lab
+        global CLASSIFIER
+        CLASSIFIER=clf#self.classif_tmp
+        print("Training is complete. Classifier type: "+str(type(CLASSIFIER)))        
+            
+    def SaveLabelingAsCSV_Click(self):
+        
+        if(self.plates==[]) or(len(self.plates)==0) or (self.plates is None):
+            print("Plates are not loaded")
+            return        
+            
+        path_dir = QFileDialog.getExistingDirectory()          
+        #start to create dataset from segment
+        p_name = self.ui.plot_plate_dropdown.currentText()
+        ch_name=self.ui.Channel_segment_plot.currentText()        
+        segment_name=self.ui.plot_segment_dropdown.currentText()    
+        #collect general information
+        indx_plate,indx_chan, indx_segment = shlp.FindPlateInArray(plates=self.plates.copy(),plate_name=p_name,chan_name=ch_name,segm_name=segment_name)        
+        if(indx_chan==-1):#save all channels
+            start_=0
+            end_=len(self.plates[indx_plate].chans_names)
+        else:
+            start_=indx_chan
+            end_=indx_chan+1
+
+        for l in range(0,len(self.plates[indx_plate].sigments_labels[indx_segment])):
+            #save labels here
+            label=int(self.plates[indx_plate].sigments_labels[indx_segment][l][2])
+            labels_path=path_dir+"\\Label_"+str(label)
+            if(os.path.exists(labels_path)==False):
+                        try: os.mkdir(labels_path)
+                        except:
+                            print("Failed to creat a directory. Signals are not saved...")
+                            return
+            #save channels
+            for k in range(start_,end_):             
+                    chan_sub_f=labels_path+"\\"+self.plates[indx_plate].chans_names[k]                    
+                    if(os.path.exists(chan_sub_f)==False):
+                        try: os.mkdir(chan_sub_f)
+                        except:
+                            print("Failed to creat a directory. Signals are not saved...")
+                            return
+                    f_name=chan_sub_f+"\\"+p_name+"_"+segment_name+"_"+ch_name+"_"+"_label_"+str(label)+".csv"
+                    if os.path.exists(f_name)==True:
+                        counter=0
+                        while(True):
+                            counter+=1
+                            f_name=chan_sub_f+"\\"+str(counter)+"_"+p_name+"_"+segment_name+"_"+ch_name+"_"+signal_type+"_label_"+str(label)+".csv"
+                            if (os.path.exists(f_name)==False):
+                                break
+                    st1=int(self.plates[indx_plate].sigments_labels[indx_segment][l][0])            
+                    st2=int(self.plates[indx_plate].sigments_labels[indx_segment][l][1])            
+                    arr=self.plates[indx_plate].sigments_sign[indx_segment][k][st1:st2]
+                    df = pd.DataFrame(arr)
+                    df.to_csv(f_name)
+
+    def SetAsMainModelButton_Click(self):
+        if(self.s_model is None):
+            print("Prepare the model first and repeat....")
+            self.ui.Model_ready_label.setStyleSheet("background-color: red")
+        self.model=self.s_model
+        self.ui.Model_ready_label.setStyleSheet("background-color: green")        
+        #if(self.model is None): self.ui.Model_ready_label.setStyleSheet("background-color: red")
+        #else: self.ui.Model_ready_label.setStyleSheet("background-color: green")        
+        self.ui.train_dropdown.setCurrentText(self.ui.classificationclassifier_dropdown.currentText())  
+
+    def RunClassifForSegment_Click(self):
+        self.proc_settings = shlp.ReadSettings(self)
+        if(self.plates is None): return
+        if(len(self.plates)==0): return
+        if(self.s_model is None): 
+            print("prepare the classifier first and repeat...")
+            return
+        #check the plate
+        p_name = self.ui.plot_plate_dropdown.currentText()
+        ch_name=self.ui.Channel_segment_plot.currentText()        
+        segment_name=self.ui.plot_segment_dropdown.currentText()   
+        indx_plate,indx_chan, indx_segment = shlp.FindPlateInArray(plates=self.plates,plate_name=p_name,chan_name=ch_name,segm_name=segment_name)
+        snip_size=int(self.proc_settings.get("snippet_size"))
+        dp=shlp.DataPreproc()     
+
+        channels_to_use=[indx_chan]
+        if(self.proc_settings.get("chans_to_use")=="From settings"):
+            pass
+        else:
+            chans_string=self.proc_settings.get("chans_list_user")
+            channels_to_use = shlp.ExtractChannelsFromString(chans_string,separator=",")
+            if(channels_to_use is None):
+                print("Exiting training. Check settings and repeat.")
+                return
+            else:
+                pass
+        print("")
+        print("*********************************************************************")
+        print("Start test on segment.")
+        print("Selected channels: "+str(channels_to_use))              
+                    
+        #%matplotlib qt
+        #show figure with results
+        
+        if(self.proc_settings.get("plate_segm_process")=="this_plate_this_segment"):
+
+            fd=dp.SplitEntireSignalIntoSnippets(signal=self.plates[indx_plate].sigments_sign[indx_segment],
+                                            channs_indx=channels_to_use,
+                                            torch_tensor=False,
+                                            snip_size = snip_size,
+                                            preproc_type = self.proc_settings.get("preprocessing")
+                                           )        
+        
+            labels=self.s_model.np_predict(np.asarray(fd))
+            classif_type=self.s_model.getClassifType()                   
+            sgn=self.plates[indx_plate].sigments_sign[indx_segment][indx_chan]    
+
+            #show everything
+            fig, ax = plt.subplots(1, sharex=True, figsize=(6, 6))        
+            ax.plot(sgn)        
+            if(True):            
+                st_=0
+                en_=snip_size
+                colors_l=[]
+                unique_l=[]
+                line_v=[]
+                
+                for l in range(0,len(labels)):
+                    cur_color=self.colors_id[int(labels[l])]
+                    line_=ax.axvspan(st_, en_, alpha=0.1, color=cur_color)
+                    st_=en_
+                    en_=st_+snip_size   
+                    if(int(labels[l]) not in unique_l):
+                        unique_l.append(int(labels[l]))
+                        colors_l.append(cur_color)
+                        line_v.append(line_)    
+                legend_tags=[]
+                orig_tags=self.s_model.orig_labels
+                for l in range(0,len(unique_l)):
+                    if(orig_tags is not None):
+                        legend_tags.append(str(orig_tags[l]))  
+                    else:
+                        legend_tags.append(str(unique_l[l]))  
+                plt.legend(line_v,legend_tags)
+                plt.show()
+
+        #only for this pattern
+        if(self.proc_settings.get("plate_segm_process")=="this_plate_all_segments"):
+            
+            fig, ax = plt.subplots(1, sharex=True, figsize=(6, 6))        
+            segm_num=len(self.plates[indx_plate].sigments_sign)
+
+            borders=[]
+            borders.append(0)
+            ymin=[]
+            ymax=[]
+
+            unique_l=[]
+            colors_l=[]
+            
+            for n_segm in range(0,segm_num):
+
+                fd=dp.SplitEntireSignalIntoSnippets(signal=self.plates[indx_plate].sigments_sign[n_segm],
+                                            channs_indx=channels_to_use,
+                                            torch_tensor=False,
+                                            snip_size = snip_size,
+                                            preproc_type = self.proc_settings.get("preprocessing")
+                                           )        
+
+                labels=self.s_model.np_predict(np.asarray(fd))                                
+                classif_type=self.s_model.getClassifType()                        
+                sgn=self.plates[indx_plate].sigments_sign[n_segm][indx_chan]  
+                ymin.append(np.min(sgn))
+                ymax.append(np.max(sgn))
+                
+                start_=borders[n_segm]
+                l_shp=np.shape(np.asarray(sgn))#self.plates[indx_plate].sigments_sign[n_segm]))
+                if(len(l_shp)==2): l_=l_shp[1]
+                if(len(l_shp)==1): l_=l_shp[0]
+                end_=start_+l_
+                borders.append(start_+l_)
+                x_=np.arange(start_,end_)
+                #print("XXXXXXXXXXXXXXXXXX")
+                #print(l_shp)
+                #print(start_)
+                #print(end_)
+                #print(np.shape(sgn))
+                ax.plot(x_,sgn,color="blue")     
+                
+                if(True):                  
+                    st_=start_
+                    en_=st_+snip_size
+                    colors_l=[]
+                    unique_l=[]
+                    line_v=[]
+                    #fill the backgrounds
+                    for l in range(0,len(labels)):
+                        cur_color=self.colors_id[int(labels[l])]
+                        line_=ax.axvspan(st_, en_, alpha=0.1, color=cur_color)
+                        st_=en_
+                        en_=en_+snip_size   
+                        if(int(labels[l]) not in unique_l):
+                            unique_l.append(int(labels[l]))
+                            colors_l.append(cur_color)
+                            line_v.append(line_)    
+                    legend_tags=[]
+                    orig_tags=self.s_model.orig_labels
+                
+                for l in range(0,len(unique_l)):
+                    if(orig_tags is not None):
+                        legend_tags.append(str(orig_tags[l]))  
+                    else:
+                        legend_tags.append(str(unique_l[l]))  
+
+            for jj in range(0,len(borders)):
+                if(jj<len(borders) and jj<len(ymin) and jj<len(ymax)):
+                    ax.vlines(borders[jj], ymin[jj], ymax[jj], colors="red")
+            
+            plt.legend(line_v,legend_tags)
+            plt.show()
+
+    #save labeled data from file
+    def SaveLabelingToFile_Click(self):
+        #save all labels with plates into file
+        if(self.plates==[]) or(len(self.plates)==0) or (self.plates is None):
+            print("Plates are not loaded")
+            return
+        path_file, _ = QFileDialog.getSaveFileName(self, "Save Labeling", "", "Pickle Files (*.pkl);;All Files (*)")
+
+        df=pd.DataFrame(columns=['Plate_name','Segment_name','Labeled_data'], index=['p_n','s_n','l_d'])
+        for plate in self.plates:
+            p_name=plate.name
+            for s_indx in range(0,len(plate.sigments_sign)):
+                s_name=plate.segments_names[s_indx]
+                for label in plate.sigments_labels[s_indx]:
+                    l_data=label
+                    df_temp=pd.DataFrame({'Plate_name':[p_name],'Segment_name':[s_name],'Labeled_data':[l_data]})
+                    df=pd.concat([df,df_temp],ignore_index=True)                     
+        df.to_pickle(path_file)
+        print("")
+        print("Data successfully saved into file: "+str(path_file))
+
+    #load labeled data from file
+    def LoadLabelingFromFile_Click(self):
+
+        #load all labels from file
+        if(self.plates==[]) or(len(self.plates)==0) or (self.plates is None):
+            print("Plates are not loaded")
+            return
+
+        path_file, _ = QFileDialog.getOpenFileName(self, "Load Labeling", "", "Pickle Files (*.pkl);;All Files (*)")
+        try:
+            df=pd.read_pickle(path_file)
+        except:
+            print("Failed to load the file. Repeat...")
+            return
+        #assign labels to plates
+        for k in range(0,len(df)):
+            p_name=df['Plate_name'][k]
+            s_name=df['Segment_name'][k]
+            l_data=df['Labeled_data'][k]
+            #find plate and segment
+            indx_plate=-1
+            for m in range(0,len(self.plates)):
+                if(self.plates[m].name==p_name):
+                    indx_plate=m
+                    break
+            if(indx_plate==-1):
+                print("Plate is not found in exsitsing plates list. Plate name - " + str(p_name))
+                continue
+
+            indx_segment=-1
+            for n in range(0,len(self.plates[indx_plate].segments_names)):
+                if(self.plates[indx_plate].segments_names[n]==s_name):
+                    indx_segment=n
+                    break
+            if(indx_segment==-1):continue
+            #assign label
+            self.plates[indx_plate].sigments_labels[indx_segment].append(l_data)
+        print("")
+        print("Labels successfully loaded from file: "+str(path_file))
+                
+        
+    def Plate_info_click(self):
+        p_name = self.ui.plot_plate_dropdown.currentText()
+        indx_plate=-1
+        for k in range(0,len(self.plates)):
+            if(self.plates[k].name==p_name):
+                indx_plate=k
+                break
+        self.plates[indx_plate].plate_info()
+        
+    def set_buttons(self, enabled: bool):        
+        self.ui.load_data_button.setEnabled(enabled)
+        self.ui.load_model_button.setEnabled(enabled)
+        self.ui.train_button.setEnabled(enabled)
+        self.ui.predict_button.setEnabled(enabled)
+        #self.ui.plot_button.setEnabled(enabled)
+
+    def load_data(self):
+        PATH=self.ui.load_data_path.text()        
+        #update plates layout data        
+        plate_type=self.ui.load_data_plate_type_dropdown.currentText()
+        self.plate_segments_id=shlp.getSegmentNames(plate_type)          
+        #clean everything
+        self.plates=[]                        
+        self.plates=None #plate segments with signals     
+        self.ui.plot_plate_dropdown.clear()
+        self.ui.plot_segment_dropdown.clear()
+        self.ui.Channel_segment_plot.clear()    
+        
+        self.plates=shlp.OpenDataFromFolder(PATH=PATH,
+                                            SEGMENTATION_REF_CHAN_NAME="Trigger",
+                                            SEGMENTATION_THRESHOLD="automatic"    ,
+                                            SEGMENTATION_SEGMENTS_NAMES_LIST=self.plate_segments_id
+                                           )
+        
+        #fill the gui with plates collection
+        plates_names=[]
+        for k in self.plates:
+            plates_names.append(k.name)
+        
+        global PLATES
+        PLATES=self.plates
+        
+        self.ui.plot_plate_dropdown.clear()
+        self.ui.plot_plate_dropdown.addItems(plates_names)     
+        self.ui.plot_plate_dropdown.setCurrentIndex(0)
+        #set teh available segments
+        self.ui.plot_segment_dropdown.clear()
+        segm_available=list(self.plates[0].segments_names.copy())        
+        self.ui.plot_segment_dropdown.addItems(segm_available)
+        self.ui.plot_segment_dropdown.setCurrentIndex(0)
+        #channels for this plat        
+        chans_available=self.plates[0].chans_names.copy()
+        chans_available.insert(0, "all")
+        self.ui.Channel_segment_plot.clear()
+        self.ui.Channel_segment_plot.addItems(chans_available)
+        self.ui.Channel_segment_plot.setCurrentIndex(1)
+        #globals assign
+        print("Loaded plates num.: "+str(len(self.plates)))
+        global PLATES_ARRAY
+        PLATES_ARRAY=self.plates.copy()        
+        
+    def load_data_error(self, err_text):
+        # Option 1: append to text box        
+        # # Option 2: pop up a message box
+        # from PySide6.QtWidgets import QMessageBox
+        # QMessageBox.critical(self, "Error", err_text)
+        # ensure thread stops
+        if hasattr(self, "load_data_thread") and self.load_data_thread.isRunning():
+            self.load_data_thread.quit()
+        # re-enable buttons
+        self.set_buttons(enabled=True)
+
+    def load_data_finished(self, result):
+        # Store the DataLoaderBPPLines object
+        self.dl = result
+        filenames = [plate.identifier for plate in self.dl.list_bpp]
+        # Add available options for plotting to dropdown
+        self.ui.plot_plate_dropdown.clear()
+        self.ui.plot_plate_dropdown.addItems(filenames)
+        segments = ["ALL"]+[f"{seg[0]}_{seg[1]}" for seg in self.dl.segment_keys]
+        self.ui.plot_segment_dropdown.clear()
+        self.ui.plot_segment_dropdown.addItems(segments)
+
+    def extract_features_finished(self, result):
+        # Store the FeatureExtractorBPPLines object
+        self.fe = result        
+        self.set_buttons(enabled=True)
+        # # Reset worker and thread references after cleanup
+        # self.load_data_worker = None
+        # self.extract_features_worker = None
+        # self.load_data_thread = None
+
+    def train_model(self):
+        # Clear previous output        
+        self.set_buttons(enabled=False)
+        # Setup QThread + Worker
+        self.train_thread = QThread()        
+        self.train_worker.moveToThread(self.train_thread)
+        # Connect signals:
+        # When thread starts, run train_worker
+        self.train_thread.started.connect(self.train_worker.run)
+        # When the worker emits an error signal (using error.emit()), it triggers the self.train_error method
+        self.train_worker.error.connect(self.train_error)
+        # When the worker emits the message signal (using message.emit()), it triggers the self.train_finished method
+        self.train_worker.message.connect(self.train_finished)
+        # When the worker finishes, quit the thread
+        self.train_worker.finished.connect(self.train_thread.quit)
+        # When the thread completes (successfully or with error), it emits the finished signal
+        # The deleteLater() method is called, which schedules the thread object for deletion
+        # Memory is cleaned up automatically when Qt's event loop processes the deletion
+        self.train_thread.finished.connect(self.train_thread.deleteLater)        
+        # Start thread
+        self.train_thread.start()
+
+    def train_error(self, err_text):
+        # Option 1: append to text box
+        
+        # # Option 2: pop up a message box
+        # from PySide6.QtWidgets import QMessageBox
+        # QMessageBox.critical(self, "Error", err_text)
+        # ensure thread stops
+        if hasattr(self, "train_thread") and self.train_thread.isRunning():
+            self.train_thread.quit()
+        # re-enable button
+        self.set_buttons(enabled=True)
+
+    def train_finished(self, result):
+        # Store the ModelSelectorBPPLines object
+        self.ms = result
+        self.model = result.trained_model
+        self.threshold_params = result.best_threshold_params        
+        # Set dropdown options
+        #self.ui.load_model_dropdown.clear()
+        #model_names = [m.split(".")[0] for m in os.listdir("models") if m.endswith(".pkl")]
+        #self.ui.load_model_dropdown.addItems(model_names)
+        self.set_buttons(enabled=True)
+        # # Reset worker and thread references
+        # self.train_worker = None
+        # self.train_thread = None
+
+    def load_model(self):        
+        self.set_buttons(enabled=False)
+        try:
+            #model_name = self.ui.load_model_dropdown.currentText()
+            model_path = os.path.join("models", f"{model_name}.pkl")
+            loaded_model_data = joblib.load(model_path)
+            self.model = loaded_model_data['trained_model']
+            self.threshold_params = loaded_model_data['best_threshold_params']        
+        except Exception as e:
+            pass
+        finally:
+            self.set_buttons(enabled=True)
+
+    def predict(self):
+
+        # Clear previous output
+        self.ui.predict_output.clear()
+        self.set_buttons(enabled=False)
+
+        # Setup QThread + Worker
+        self.predict_thread = QThread()
+        self.predict_worker = Worker(PredictorScorerBPPLines, self.fe, self.model, self.threshold_params, output_widget=self.ui.predict_output)
+        self.predict_worker.moveToThread(self.predict_thread)
+
+        # Connect signals:
+        # When thread starts, run train_worker
+        self.predict_thread.started.connect(self.predict_worker.run)
+        # When the worker emits an error signal (using error.emit()), it triggers the self.train_error method
+        self.predict_worker.error.connect(self.predict_error)
+        # When the worker emits the message signal (using message.emit()), it triggers the self.train_finished method
+        self.predict_worker.message.connect(self.predict_finished)
+        # When the worker finishes, quit the thread
+        self.predict_worker.finished.connect(self.predict_thread.quit)
+        # When the thread completes (successfully or with error), it emits the finished signal
+        # The deleteLater() method is called, which schedules the thread object for deletion
+        # Memory is cleaned up automatically when Qt's event loop processes the deletion
+        self.predict_thread.finished.connect(self.predict_thread.deleteLater)        
+        # Start thread
+        self.predict_thread.start()
+
+    def predict_error(self, err_text):
+        # Option 1: append to text box
+        self.ui.predict_output.append(f"ERROR\n{err_text}")
+        # # Option 2: pop up a message box
+        # from PySide6.QtWidgets import QMessageBox
+        # QMessageBox.critical(self, "Error", err_text)
+
+        # ensure thread stops
+        if hasattr(self, "predict_thread") and self.predict_thread.isRunning():
+            self.predict_thread.quit()
+
+        # re-enable button
+        self.set_buttons(enabled=True)
+
+    def predict_finished(self, result):
+        # Store the PredictorScorerBPPLines object
+        self.ps = result
+        self.ui.predict_output.append("DONE")
+        self.set_buttons(enabled=True)
+
+    def plot_signal(self):
+
+        self.set_buttons(enabled=False)
+
+        try:
+            
+            # Create your plot here - replace this with your actual plotting function
+            plate_id = self.ui.plot_plate_dropdown.currentText()
+            segment = self.ui.plot_segment_dropdown.currentText()
+            plate = next((p for p in self.dl.list_bpp if p.identifier == plate_id), None)
+            if plate is None:
+                raise ValueError(f"Plate with identifier '{plate_id}' not found.")
+
+            fig, ax = self.prepare_plot(plate = plate, segment = segment)
+            
+            # Create a new window to display the plot
+            plot_dialog = QDialog(self)
+            plot_dialog.setWindowTitle("Empa GUI Plot")
+            # Get screen dimensions and fit plot to screen
+            screen = QApplication.primaryScreen().geometry()
+            plot_dialog.resize(int(screen.width()), int(screen.height()*0.9))
+            
+            layout = QVBoxLayout()
+            canvas = FigureCanvasQTAgg(fig)
+            layout.addWidget(canvas)
+            plot_dialog.setLayout(layout)
+            
+            plot_dialog.show()
+            
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Failed to create plot: {str(e)}")
+
+        finally:
+            self.set_buttons(enabled=True)
+
+    def prepare_plot(
+        self,
+        plate,
+        segment: str,
+        plot_every: int = 1,
+        include_trigger: bool = False,
+    ) -> None:
+        """
+        TBC
+        """
+        plot_kwargs = {
+            "x": "Time",
+            "xlabel": "Time [s]",
+            "ylabel": "Amplitude [V]",
+        }
+
+        colors = ["purple", "orange", "blue"]
+
+        # Get screen dimensions for maximum figure size
+        # screen = QApplication.primaryScreen().geometry()
+        # figsize = (screen.width()/100, screen.height()/100)  # Convert pixels to inches (approximate)
+
+        data = plate.dataframe[::plot_every] if segment == "ALL" else plate.segments[tuple(segment.split("_"))][::plot_every]
+
+        channels=(
+            plate.data_channels + [plate.trigger_channel]
+            if include_trigger
+            else plate.data_channels
+        )
+
+        fig, ax = plt.subplots(nrows = len(channels), sharex=True)#figsize=figsize)
+
+        for idx, channel in enumerate(channels):
+            ax[idx] = data.plot(
+                y=channel,
+                ax=ax[idx],
+                color = colors[idx % len(colors)],
+                **plot_kwargs,
+            )
+
+        fig.suptitle(f"Segment {segment} from plate {plate.identifier}" if segment != "ALL" else f"Complete signal from plate {plate.identifier}")
+
+        # Mark defective segments with a red vertical band
+        if self.ps is not None and hasattr(self.ps, 'pred_defect_seg'):  
+            if segment == "ALL":
+                pred_defect_seg_plate = [(seg[1],seg[2]) for seg in self.ps.pred_defect_seg if seg[0]==plate.identifier]
+                for seg in pred_defect_seg_plate:
+                    seg_start, seg_end = plate.segments[seg]["Time"].iloc[[0, -1]]
+                    for idx in range(len(channels)):
+                        ax[idx].axvspan(seg_start, seg_end, alpha=0.2, color='red')
+            else:
+                seg_key = tuple(segment.split("_"))
+                df_all = self.fe.df_all_locations
+                df_seg = df_all[(df_all['plate']==plate.identifier) & (df_all['segment_type']==seg_key[0]) & (df_all['segment_number']==seg_key[1])]
+                
+                for _, row in df_seg.iterrows():
+                    for idx in range(len(channels)):
+                        ax[idx].axvspan(row["start_time"], row["end_time"], alpha=row["pred_proba"], color='red')
+
+        return fig, ax
+
+    #""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+    #"""""""""""""""""""""""""""""""""Settings"""""""""""""""""""""""""""""""""""""""""""""""""""""
+    #autoencoder settings
+    def Autoencoder_set_threshold_click(self):        
+        if(self.s_model is None):
+            print("Classifier is not defined. Prepare the calssifier and repeat")
+            return
+        cls_type=type(self.s_model.classifier)
+        if(str(cls_type) != "<class 'SHelpers.Autoencoder'>"):
+            print("Current classifier is not the Autoencoder type. Make autoencoder model and repeat...")
+            return
+        self.proc_settings = shlp.ReadSettings(self)
+        self.s_model.tocrh_autoencoder_threshold_factor=float(self.proc_settings.get("autoencoder_torch_thershold"))     
+        #extract features
+        feat=  self.s_model.train_feat
+        thresh=self.s_model.tocrh_autoencoder_threshold_factor
+        bins=int(self.proc_settings.get("autoencoder_bin_num")) #Autoencoderbins_text_input
+        if (self.autoencoder_hist_form_id==""):self.autoencoder_hist_form_id = str(uuid.uuid1())[:5]  
+        #%matplotlib qt
+        fig=plt.figure(self.autoencoder_hist_form_id)
+        ax=fig.subplots()
+        labs_tests=shlp.PredictTorchAutoencoder(model=self.s_model.classifier, feat=feat,thresh_fact=thresh,show_hist=True,bins_num=bins,fig_ax=ax)
+
+    #spectrograms settings
+    def Tool_Test_Spectrograms_MEL_Botton_Click(self):
+        if(self.plates==None):
+            print("plates are not loaded...")
+            return
+        if(self.plates==[]):
+            print("plates are not loaded...")
+            return
+        self.proc_settings = shlp.ReadSettings(self)
+        p_name = self.ui.plot_plate_dropdown.currentText()
+        ch_name=self.ui.Channel_segment_plot.currentText()        
+        segment_name=self.ui.plot_segment_dropdown.currentText()   
+        indx_plate,indx_chan, indx_segment = shlp.FindPlateInArray(plates=self.plates.copy(),plate_name=p_name,chan_name=ch_name,segm_name=segment_name)
+        signals=[]
+        end_=indx_chan+1
+        start_=indx_chan
+        if(end_==-1): 
+            end_ = len(self.plates[indx_plate].segment_sign[indx_segment]) #we taek all signals
+            start=0
+        SAMPLE_RATE=int(self.plates[indx_plate].sr)        
+        for i in range(start_,end_):
+            # Define transform            
+            waveform=torch.tensor(self.plates[indx_plate].sigments_sign[indx_segment][i])
+            if(len(waveform.shape)==1):waveform = waveform[None, :]
+            spectrogrym_MEL_nfft=int(self.proc_settings.get("spectrogrym_MEL_nfft"))
+            spectrogram = T.Spectrogram(n_fft=spectrogrym_MEL_nfft)
+            # Perform transform
+            spec = spectrogram(waveform)
+            #%matplotlib qt
+            fig, axs = plt.subplots(2, 1)
+            shlp.plot_waveform(waveform, SAMPLE_RATE, title="Original waveform", ax=axs[0])
+            shlp.plot_spectrogram(spec[0], title="spectrogram", ax=axs[1])
+            fig.tight_layout()
+        
+        
+    def Tool_Show_Spectrograms_MEL_Botton_Click(self):
+        if(self.plates==None):
+            print("plates are not loaded...")
+            return
+        if(self.plates==[]):
+            print("plates are not loaded...")
+            return
+        self.proc_settings = shlp.ReadSettings(self)
+        p_name = self.ui.plot_plate_dropdown.currentText()
+        ch_name=self.ui.Channel_segment_plot.currentText()        
+        segment_name=self.ui.plot_segment_dropdown.currentText()   
+        indx_plate,indx_chan, indx_segment = shlp.FindPlateInArray(plates=self.plates.copy(),plate_name=p_name,chan_name=ch_name,segm_name=segment_name)
+        signals=[]
+        end_=indx_chan+1
+        start_=indx_chan
+        if(end_==-1): 
+            end_ = len(self.plates[indx_plate].segment_sign[indx_segment]) #we taek all signals
+            start=0
+        SAMPLE_RATE=int(self.plates[indx_plate].sr)        
+        snip_size=int(self.proc_settings.get("snippet_size"))
+        spectrogrym_MEL_nfft=int(self.proc_settings.get("spectrogrym_MEL_nfft"))
+        for i in range(start_,end_):
+            # Define transform            
+            waveform=torch.tensor(self.plates[indx_plate].sigments_sign[indx_segment][i])         
+            sls=None
+            try: sls=waveform.data[:snip_size]#snip_tensor = torch.take(waveform, torch.tensor([0:snip_size]))#
+            except:
+                print("waveform is too short to line it into snippets...")
+                return            
+            if(len(sls.shape)==1):sls=sls[None, :]   
+            if(len(waveform.shape)==1):waveform=waveform[None, :]              
+            spectrogram = T.Spectrogram(n_fft=spectrogrym_MEL_nfft)
+            # Perform transform
+            spec = spectrogram(sls)
+            ymin=torch.min(waveform)
+            ymax=torch.max(waveform)
+            #%matplotlib qt            
+            #matplotlib.pyplot.vlines(x, ymin, ymax,colors=red)
+            fig, axs = plt.subplots(2, 1)
+            shlp.plot_waveform(waveform, SAMPLE_RATE, title="Original waveform", ax=axs[0])
+            shlp.plot_spectrogram(spec[0], title="spectrogram", ax=axs[1])
+            axs[0].vlines(snip_size, ymin, ymax,colors="red")
+            fig.tight_layout()
+    #**********************************************************************************************
+    #**********************************************************************************************
+    #******************************FILES FOLDERS/DAQ TRACKING**************************************
+    #**********************************************************************************************
+    def Real_Time_Stop_Click(self):        
+        if(self.Real_time_FolderTrackerThread is None):
+            pass
+        else:
+            #self.ExitFilesInFolderFlag=True
+            #self.Real_time_FolderTrackerThread.join()
+            #while (self.Real_time_FolderTrackerThread.is_alive()):
+            #time.sleep(20)
+            #self.ui.Real_time_Frame_counter_label.setText("-")
+            self.ExitFilesInFolderFlag=True
+            #self.Real_time_FolderTrackerThread.kill()#for shlp.thread_with_trace            
+            #self.Real_time_FolderTrackerThread.join(timeout=0.5)
+            if not self.Real_time_FolderTrackerThread.is_alive():
+                print("Real time tracking is terminated...")            
+            self.ui.real_time_status_label.setText("Not active")
+            self.ExitFilesInFolderFlag=False
+            self.Real_time_FolderTrackerThread=None
+            
+        if(self.RT_SpectrumThread is None):
+            pass
+        else:
+            global EXIT_DAQ_FLAG
+            EXIT_DAQ_FLAG=True
+            self.RT_SpectrumThread.do_run = False
+            try:
+                while (self.Real_time_FolderTrackerThread.is_alive()):z=0 
+            except: pass
+            self.ui.real_time_status_label.setText("Not active")            
+            self.RT_SpectrumThread=None
+        
+    def Real_Time_Button_Click(self):        
+        if(self.s_model is None):
+            print("Load model first and repeat...")
+            return
+        
+        self.proc_settings = shlp.ReadSettings(self)        
+        rt_source=self.proc_settings.get("real_time_source")
+        channs_indx=[0]
+        snip_size=int(self.proc_settings.get("snippet_size"))
+        s_model=self.s_model 
+        colors=self.colors_id
+        rt_folder=self.proc_settings.get("real_time_folder_text")
+        preprocessing=self.proc_settings.get("preprocessing")
+        
+        if(rt_source != "Folder") and (rt_source != "RealTime"):
+            return                           
+        if(rt_source == "Folder"):
+            rt_path = self.proc_settings.get("real_time_folder_text")                
+            if not os.path.exists(rt_path):
+                try: os.makedirs(rt_path)
+                except: 
+                    print("")
+                    print("The real time folder cant be created. Check admin rights and repeat...")
+                    return
+
+            #%matplotlib qt
+            plt.ion()
+            fig, fig_ax = plt.subplots()
+                    
+            self.ui.Real_time_Frame_counter_label.setText(str(0))
+            self.rt_FrameCounter=0
+            self.ExitFilesInFolderFlag=False        
+            self.Real_time_FolderTrackerThread= threading.Thread(target=self.FilesFolderTracking1,
+                                                                 args=(rt_folder,channs_indx,snip_size,preprocessing,s_model,colors,fig,fig_ax)) 
+            self.Real_time_FolderTrackerThread.start()            
+            self.ui.real_time_status_label.setText("Active")
+
+        if(rt_source == "RealTime"):
+            #read settings         
+            try:
+                trig_level=float(self.proc_settings.get("trigger_level"))
+                sampling_rate=float(self.proc_settings.get("sampling_rate"))
+                pre_trigger_duration=float(self.proc_settings.get("pre_trigger_duration"))
+                post_trigger_duration=float(self.proc_settings.get("post_trigger_duration"))
+                ampl_per_channel=float(self.proc_settings.get("ampl_per_channel"))
+                trig_chan_num=int(self.proc_settings.get("trig_chan_num"))
+                show_info=bool(self.proc_settings.get("show_info"))
+                show_original_signals=bool(self.proc_settings.get("show_original_signals"))
+                show_proc_signals=bool(self.proc_settings.get("show_proc_signals"))
+                only_single_shot=bool(self.proc_settings.get("only_single_shot"))                
+            except:
+                print("non correct values in textboxes in real time settings. Correct and restart...")
+                return
+            
+            #set globals for exit loop in thread
+            global EXIT_DAQ_FLAG
+            EXIT_DAQ_FLAG=False
+                       
+            #%matplotlib qt            
+            if(show_proc_signals==True):
+                plt.ion()
+                if(self.RT_Figure_if_proc_results_id == ""):self.RT_Figure_if_proc_results_id="Spectrum_original_signals"+str(uuid.uuid1())[:5]             
+                fig_processed = plt.figure(self.RT_Figure_if_proc_results_id)
+                fig_ax_processed = fig_processed.add_subplot(111)
+                plt.show()
+                #fig_processed, fig_ax_processed = plt.subplots()
+                #fig_processed.canvas.set_window_title(self.RT_Figure_if_proc_results_id)
+            else:
+                fig_processed, fig_ax_processed=None,None
+            if(show_original_signals==True):
+                plt.ion()
+                if(self.RT_Figure_if_orig_sgn==""):self.RT_Figure_if_orig_sgn="Spectrum_original_signals"+str(uuid.uuid1())[:5]  
+                fig_orig_signals = plt.figure(self.RT_Figure_if_orig_sgn)
+                fig_ax_orig_signals = fig_orig_signals.add_subplot(111)
+                plt.show()
+                #fig_orig_signals.canvas.set_window_title(self.RT_Figure_if_orig_sgn)
+            else:
+                fig_orig_signals, fig_ax_orig_signals = None, None
+                
+            self.RT_SpectrumThread= threading.Thread(target=self.DAQCard,args=(trig_level,
+                                                                               sampling_rate,
+                                                                               ampl_per_channel,
+                                                                               [0,3,5],
+                                                                               trig_chan_num,
+                                                                               post_trigger_duration,
+                                                                               pre_trigger_duration,
+                                                                               snip_size,
+                                                                               preprocessing,
+                                                                               only_single_shot,
+                                                                               s_model,
+                                                                               colors,
+                                                                               show_original_signals,
+                                                                               fig_orig_signals,
+                                                                               fig_ax_orig_signals,
+                                                                               show_info,                                                                    
+                                                                               show_proc_signals,                                                                               
+                                                                               fig_processed,
+                                                                               fig_ax_processed)) 
+            self.RT_SpectrumThread.start()   
+
+    #****************************************************************************************************************************
+    #*******************************TRACKING FOLDER******************************************************************************
+        
+    def FilesFolderTracking1(self,rt_folder,chan_indx,snip_size,preprocessing,s_model,colorscheme,fig,fig_ax): 
+
+        import SHelpers as shlp
+        #import matplotlib
+        #matplotlib.use('agg')
+        #%matplotlib qt    
+        
+        Counter=0
+        txtfiles = []          
+        proc_data=shlp.DataPreproc()
+        Proceed_to_proc=False
+        plates=[]
+        data_proc=shlp.DataPreproc()
+        all_labels=[]
+        all_segm_sign=[]
+
+        start_t=0
+        end_t=0
+
+        viz_start_t=0
+        viz_end_t=0
+
+        t = threading.current_thread()
+        while(getattr(t, "do_run", True)):
+            #check for exit
+            if(self.ExitFilesInFolderFlag==True):
+                print("Exiting file tracker")
+                break
+
+            txtfiles=[]
+            for x in os.listdir(rt_folder):#for file in glob.glob("*.txt"):
+                #check for exit
+                if(self.ExitFilesInFolderFlag==True):
+                    print("Exiting file tracker")
+                    break                
+                #txtfiles.append(file)                
+                if x.endswith(".txt"):
+                    txtfiles.append(x)
+                    
+            if(len(txtfiles)==0):
+                continue
+
+            for l in range(0,len(txtfiles)):
+                #check for exit
+                if(self.ExitFilesInFolderFlag==True):
+                    print("Exiting file tracker")
+                    break     
+                txt_path=rt_folder+"\\"+txtfiles[l]                
+                #open plate - first check 
+                f_base=os.path.splitext(os.path.basename(txtfiles[l]))[0]                
+                f_bin=""
+                for x in os.listdir(rt_folder):
+                    if x.endswith(".bin"):
+                        x_base=os.path.splitext(os.path.basename(x))[0]          
+                        if(str(x_base) in str(f_base)):
+                            f_bin=x
+                if(f_bin==""):
+                    continue
+                bin_path=rt_folder+"\\"+f_bin     
+                #check if files are occupied or not                
+                try:
+                    os.rename(bin_path,bin_path)
+                    os.rename(txt_path,txt_path)
+                except:                     
+                    continue
+
+                #open/processing                
+                plates=[]
+                try: plates= shlp.OpenDataFromFolder(ONLY_SINGLE_FILE=True,SINGLE_FILE_PATH_BIN=bin_path,SINGLE_FILE_PATH_TXT=txt_path)
+                except Exception as ex: 
+                    print("")
+                    print("Impossible to open data. Exception raised: "+str(ex))
+                    
+                #preprocessing
+                if(len(plates)==0):Proceed_to_proc=False
+                elif(plates is None): Proceed_to_proc=False
+                elif(plates[0] is None): Proceed_to_proc=False
+                else: Proceed_to_proc=True
+                if(Proceed_to_proc==True):
+                    sgn_len = len(plates[0].sigments_sign)
+                    all_labels=[]
+                    all_segm_sign=[]
+                    for seg_i in range(0,sgn_len):
+                        #take segment
+                        segm_signal=plates[0].sigments_sign[seg_i]
+                        snippets=data_proc.SplitEntireSignalIntoSnippets(signal=segm_signal,
+                                                                         channs_indx=chan_indx,
+                                                                         torch_tensor=False,
+                                                                         snip_size = snip_size,
+                                                                         preproc_type = preprocessing
+                                                                         )
+                        start_t=time.time()
+                        labels=s_model.np_predict(np.asarray(snippets))
+                        end_t=time.time()
+                        all_labels.append(labels) 
+                        all_segm_sign.append(segm_signal)
+                    #show everything in the chart   
+                    try:
+                        #check for exit
+                        if(self.ExitFilesInFolderFlag==True):
+                            print("Exiting file tracker")
+                            break
+                        viz_start_t=time.time()
+                        shlp.ShowResultsInFigure_AllSegmentsInRow(all_segm_sign,all_labels,chan_indx,snip_size,colorscheme,fig,fig_ax,None)
+                        viz_end_t=time.time()
+                    except:
+                        print("Figure is anavailable.")
+                #end of processing
+
+                #clean files
+                try:  os.remove(txt_path)
+                except: pass
+                try:  os.remove(bin_path)                    
+                except: pass  #not_deleted_files.append(rt_folder+"\\"+txtfiles[l])
+                Counter+=1  
+                print("")
+                print("Measurements number - "+str(Counter))
+                print("Processing time - "+str(end_t-start_t))
+                print("Vizualization time - "+str(viz_end_t-viz_start_t))
+            #self.ui.Real_time_Frame_counter_label.setText(str(self.rt_FrameCounter))       
+            
+            #check for exit
+            if(self.ExitFilesInFolderFlag==True):
+                print("Exiting file tracker")
+                break
+
+    #*****************************************************************************************************
+    #*****************************************************************************************************
+    #*****************SPECTRUM DAQ************************************************************************
+
+    def DAQCard(self,
+                trigger_level,#=2200, # mV
+                sampling_rate,#=0.1, #MHz
+                amplitude,#=5000, # mV
+                channels_to_use,#[0,3,5],                
+                trigger_channel,#=0,
+                post_trig_duarat,#=1, # ms
+                pretrig_duaration,#=0.1,#ms
+                snip_size,#500
+                preprocessing,
+                only_single_shot,
+                s_model,       
+                colorscheme,#this is to show
+                show_origin_signals,#=False,
+                show_origin_signals_fig,
+                show_origin_signals_ax,#=None,
+                info_print,#=True,
+                #processing
+                show_proc_signals,                                              
+                fig_show_proc_signals,
+                fig_ax_proc_signals,
+            ):
+
+        import SHelpers as shlp
+        
+        # EXIT_FLAG=exit_flag#False
+        TRIGGER_LEVEL=trigger_level#2200 # mV
+        SAMPLING_RATE=sampling_rate#0.1 #MHz
+        AMPLITUDE=amplitude#5000 # mV
+        CHANNELS_TO_USE=channels_to_use#[0,3,5]
+        TRIGGER_CHANNEL=trigger_channel#0
+        POSTTRIG_DURATION=post_trig_duarat #1 # ms
+        PRETRIG_DURATION=pretrig_duaration#0.1#ms
+        SHOW_ORIGIN_SIGNALS=show_origin_signals#False
+        SHOW_ORIGIN_SIGNALS_FIG=show_origin_signals_fig
+        SHOW_ORIGIN_SIGNALS_AX=show_origin_signals_ax#None
+        DATA_PRINT=info_print#True
+        SHOW_PROC_RESULTS= show_proc_signals
+        SHOW_PROC_RESULTS_FIG=fig_show_proc_signals
+        SHOW_PROC_RESULTS_AX=fig_ax_proc_signals
+        ONLY_SINGLE_SHOT=only_single_shot
+        #https://spectruminstrumentation.github.io/spcm/spcm.html#Trigger
+        #def SPECTRUM_DAQ():
+
+        print("")
+        print("Spectrum card real time settings: ")
+        print("Trigger level(mV): " +str(TRIGGER_LEVEL))
+        print("Sampling rate(MHz): " +str(SAMPLING_RATE))
+        print("Amplitude/channel(mV): " +str(AMPLITUDE))
+        print("Channels to use: " +str(CHANNELS_TO_USE))
+        print("Trigger channel: " +str(TRIGGER_CHANNEL))
+        print("Trigger level(mV): " +str(TRIGGER_LEVEL))
+        print("Post trigger duration(ms): " +str(POSTTRIG_DURATION))
+        print("Pre trigger duration(ms): " +str(PRETRIG_DURATION))
+        print("SHow original signals: " +str(SHOW_ORIGIN_SIGNALS))
+        print("Signal info output: " +str(DATA_PRINT))
+        print("Show preprocessing results: " +str(SHOW_PROC_RESULTS))
+        print("")
+        print("LAUNCH REAL TIME...")
+        print("")
+        
+        signals_counter=0
+        signals=[]
+        for i in range(0,8):
+            signals.append([])        
+        plate=None
+        data_proc=shlp.DataPreproc()
+        all_labels=[]
+        all_segm_sign=[]
+        proc_time=[]
+        viz_time=[]
+        
+        card:spcm.Card
+        #prepare the figure
+        #with spcm.Card('/dev/spcm0') as card:                         # if you want to open a specific card
+        # with spcm.Card('TCPIP::192.168.1.10::inst0::INSTR') as card:  # if you want to open a remote card
+        # with spcm.Card(serial_number=12345) as card:                  # if you want to open a card by its serial number
+          
+        with spcm.Card(card_type=spcm.SPCM_TYPE_AI) as card:            # if you want to open the first card of a specific type
+            ##threading termination - https://stackoverflow.com/questions/18018033/how-to-stop-a-looping-thread-in-python
+            t = threading.current_thread()
+            while(getattr(t, "do_run", True)):   
+                if(EXIT_DAQ_FLAG==True):
+                    print("Data acquisition is terminating...")
+                    break
+                
+                # do a simple standard setup
+                card.card_mode(spcm.SPC_REC_STD_SINGLE)     # single trigger standard mode
+                card.timeout(5 * units.s)                     # timeout 5 s
+            
+                trigger = spcm.Trigger(card)
+                trigger.or_mask(spcm.SPC_TMASK_NONE)       # trigger set to none #software
+                trigger.and_mask(spcm.SPC_TMASK_NONE)      # no AND mask
+            
+                clock = spcm.Clock(card)
+                clock.mode(spcm.SPC_CM_INTPLL)            # clock mode internal PLL
+                clock.sample_rate(SAMPLING_RATE * units.MHz, return_unit=units.MHz)
+            
+                # setup the channels
+                #channel0
+                channel0, = spcm.Channels(card, card_enable=spcm.CHANNEL0) # enable channel 0
+                channel0.amp(AMPLITUDE * units.mV)
+                channel0.offset(0 * units.mV)
+                channel0.termination(0)
+                #channel1
+                channel1, = spcm.Channels(card, card_enable=spcm.CHANNEL1) # enable channel 1
+                channel1.amp(AMPLITUDE * units.mV)
+                channel1.offset(0 * units.mV)
+                channel1.termination(0)
+                #channel2
+                channel2, = spcm.Channels(card, card_enable=spcm.CHANNEL2) # enable channel 1
+                channel2.amp(AMPLITUDE * units.mV)
+                channel2.offset(0 * units.mV)
+                channel2.termination(0)
+                #channel3
+                channel3, = spcm.Channels(card, card_enable=spcm.CHANNEL3) # enable channel 1
+                channel3.amp(AMPLITUDE * units.mV)
+                channel3.offset(0 * units.mV)
+                channel3.termination(0)
+                #channel4
+                channel4, = spcm.Channels(card, card_enable=spcm.CHANNEL4) # enable channel 1
+                channel4.amp(AMPLITUDE * units.mV)
+                channel4.offset(0 * units.mV)
+                channel4.termination(0)
+                #channel5
+                channel5, = spcm.Channels(card, card_enable=spcm.CHANNEL5) # enable channel 1
+                channel5.amp(AMPLITUDE * units.mV)
+                channel5.offset(0 * units.mV)
+                channel5.termination(0)
+                #channel6
+                channel6, = spcm.Channels(card, card_enable=spcm.CHANNEL6) # enable channel 1
+                channel6.amp(AMPLITUDE * units.mV)
+                channel6.offset(0 * units.mV)
+                channel6.termination(0)
+                #channel7
+                channel7, = spcm.Channels(card, card_enable=spcm.CHANNEL7) # enable channel 1
+                channel7.amp(AMPLITUDE * units.mV)
+                channel7.offset(0 * units.mV)
+                channel7.termination(0)
+    
+                if(EXIT_DAQ_FLAG==True):
+                    print("Data acquisition is terminating...")
+                    break
+                
+                # Channel triggering
+                #https://github.com/SpectrumInstrumentation/spcm
+                #trigger = spcm.Trigger(card)
+                trigger.or_mask(spcm.SPC_TMASK_EXT0) # set the ext0 hardware input as trigger source
+                trigger.ext0_mode(spcm.SPC_TM_POS) # wait for a positive edge
+                trigger.ext0_level0(float(TRIGGER_LEVEL) * units.mV)
+                trigger.ext0_coupling(spcm.COUPLING_DC) # set DC coupling
+
+                """
+                if(TRIGGER_CHANNEL==0):                
+                    trigger.and_mask(spcm.SPC_TMASK_NONE)
+                    trigger.or_mask(spcm.SPC_TMASK_EXT0)
+                    trigger.ext0_mode(spcm.SPC_TM_POS)
+                    trigger.ext0_level0(float(TRIGGER_LEVEL) * units.mV)
+                    trigger.ext0_coupling(spcm.COUPLING_DC)
+                    trigger.termination(termination=0)                
+                    #print("Trigger channel 0")
+                if(TRIGGER_CHANNEL==1):                
+                    trigger.and_mask(spcm.SPC_TMASK_NONE)
+                    trigger.or_mask(spcm.SPC_TMASK_EXT1)
+                    trigger.ext1_mode(spcm.SPC_TM_POS)
+                    trigger.ext1_coupling(spcm.COUPLING_DC)
+                    trigger.termination(termination=0)
+                    trigger.ext1_level0(float(TRIGGER_LEVEL) * units.mV)
+                    print("Trigger channel 1")
+                if(TRIGGER_CHANNEL==2):                
+                    trigger.and_mask(spcm.SPC_TMASK_NONE)
+                    trigger.or_mask(spcm.SPC_TMASK_EXT2)
+                    trigger.ext2_mode(spcm.SPC_TM_POS)
+                    trigger.ext2_coupling(spcm.COUPLING_DC)
+                    trigger.termination(termination=0)
+                    trigger.ext2_level0(float(TRIGGER_LEVEL) * units.mV)
+                    
+                if(TRIGGER_CHANNEL==3):                
+                    trigger.and_mask(spcm.SPC_TMASK_NONE)
+                    trigger.or_mask(spcm.SPC_TMASK_EXT3)
+                    trigger.ext3_mode(spcm.SPC_TM_POS)
+                    trigger.ext3_coupling(spcm.COUPLING_DC)
+                    trigger.termination(termination=0)
+                    trigger.ext3_level0(float(TRIGGER_LEVEL) * units.mV)                
+                if(TRIGGER_CHANNEL==4):                
+                    trigger.and_mask(spcm.SPC_TMASK_NONE)
+                    trigger.or_mask(spcm.SPC_TMASK_EXT4)
+                    trigger.ext4_mode(spcm.SPC_TM_POS)
+                    trigger.ext4_coupling(spcm.COUPLING_DC)
+                    trigger.termination(termination=0)
+                    trigger.ext4_level0(float(TRIGGER_LEVEL) * units.mV)
+                    
+                if(TRIGGER_CHANNEL==5):                
+                    trigger.and_mask(spcm.SPC_TMASK_NONE)
+                    trigger.or_mask(spcm.SPC_TMASK_EXT5)
+                    trigger.ext5_mode(spcm.SPC_TM_POS)
+                    trigger.ext5_coupling(spcm.COUPLING_DC)
+                    trigger.termination(termination=0)
+                    trigger.ext5_level0(float(TRIGGER_LEVEL) * units.mV)
+                    
+                if(TRIGGER_CHANNEL==6):                
+                    trigger.and_mask(spcm.SPC_TMASK_NONE)
+                    trigger.or_mask(spcm.SPC_TMASK_EXT6)
+                    trigger.ext6_mode(spcm.SPC_TM_POS)
+                    trigger.ext6_coupling(spcm.COUPLING_DC)
+                    trigger.termination(termination=0)
+                    trigger.ext6_level0(float(TRIGGER_LEVEL) * units.mV)
+                    
+                if(TRIGGER_CHANNEL==7):                
+                    trigger.and_mask(spcm.SPC_TMASK_NONE)
+                    trigger.or_mask(spcm.SPC_TMASK_EXT7)
+                    trigger.ext7_mode(spcm.SPC_TM_POS)
+                    trigger.ext7_coupling(spcm.COUPLING_DC)
+                    trigger.termination(termination=0)
+                    trigger.ext7_level0(float(TRIGGER_LEVEL) * units.mV)
+                """
+                
+                # define the data buffer
+                data_transfer = spcm.DataTransfer(card)
+                data_transfer.duration((PRETRIG_DURATION+POSTTRIG_DURATION)*units.ms, post_trigger_duration=POSTTRIG_DURATION*units.ms)
+            
+                if(True):#while(True)
+    
+                    if(EXIT_DAQ_FLAG==True):
+                        print("Data acquisition is terminating...")
+                        break
+                    
+                    # start card and wait until recording is finished
+                    try:
+                        card.start(spcm.M2CMD_CARD_ENABLETRIGGER, spcm.M2CMD_CARD_WAITREADY)
+                    except:
+                        continue
+                    #print("Finished acquiring...")
+                    
+                    # Start DMA transfer and wait until the data is transferred
+                    data_transfer.start_buffer_transfer(spcm.M2CMD_DATA_STARTDMA, spcm.M2CMD_DATA_WAITDMA)                                                     
+                    
+                    signals[0]=channel0.convert_data(data_transfer.buffer[channel0, :], units.V)
+                    signals[1]=channel1.convert_data(data_transfer.buffer[channel1, :], units.V)
+                    signals[2]=channel2.convert_data(data_transfer.buffer[channel2, :], units.V)
+                    signals[3]=channel3.convert_data(data_transfer.buffer[channel3, :], units.V)
+                    signals[4]=channel4.convert_data(data_transfer.buffer[channel4, :], units.V)
+                    signals[5]=channel5.convert_data(data_transfer.buffer[channel5, :], units.V)
+                    signals[6]=channel6.convert_data(data_transfer.buffer[channel6, :], units.V)
+                    signals[7]=channel7.convert_data(data_transfer.buffer[channel7, :], units.V)
+
+                    #*********************************processing***************************                    
+                    plate=shlp.SPlate()
+                    plate.raw_signals=signals
+                    plate.time=np.arange(0,len(signals[0]))
+                    plate.get_segments(ref_chan_name=trigger_channel)
+                    sgn_len = len(plate.sigments_sign)
+                    all_labels=[]
+                    all_segm_sign=[]   
+                    prerpoc_time=[]
+                    proc_time=[]
+                    snip_number_processed=0
+                    for seg_i in range(0,sgn_len):
+                        #take segment
+                        segm_signal=plate.sigments_sign[seg_i]
+                        #print("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX")
+                        #print(len(segm_signal))
+                        if(len(plate.sigments_sign[seg_i])==0):
+                            continue
+                        preproc_t_strart=time.time()
+                        snippets=data_proc.SplitEntireSignalIntoSnippets(signal=segm_signal,
+                                                                         channs_indx=CHANNELS_TO_USE,
+                                                                         torch_tensor=False,
+                                                                         snip_size = snip_size,
+                                                                         preproc_type = preprocessing
+                                                                         )
+                        preproc_t_end=time.time()
+                        prerpoc_time.append(preproc_t_strart-preproc_t_end)
+                        
+                        start_proc=time.time()
+                        labels=s_model.np_predict(np.asarray(snippets))
+                        snip_number_processed+=len(labels)
+                        end_proc=time.time()                        
+                        proc_time.append(end_proc-start_proc)
+                        
+                        all_labels.append(labels) 
+                        all_segm_sign.append(segm_signal)
+                    #show everything in the chart   
+                    if(SHOW_PROC_RESULTS==True):
+                        try:                        
+                            viz_start_t=time.time()
+                            shlp.ShowResultsInFigure_AllSegmentsInRow(all_segm_sign,
+                                                                      all_labels,
+                                                                      CHANNELS_TO_USE,
+                                                                      snip_size,
+                                                                      colorscheme,
+                                                                      SHOW_PROC_RESULTS_FIG,
+                                                                      SHOW_PROC_RESULTS_AX,
+                                                                      None)
+                            viz_end_t=time.time()                        
+                        except:
+                            print("Figure is unavailable.")
+                            
+                    #**********************************************************************
+                    
+                    if(DATA_PRINT==True):                    
+                        now = datetime.datetime.now()
+                        signals_counter+=1
+                        trig_time_st=int((PRETRIG_DURATION/1000)*SAMPLING_RATE*1000000)
+                        proc_mean_t=-1                        
+                        try: 
+                            if(len(proc_time)!=0):proc_mean_t=sum(proc_time) / float(len(proc_time))
+                        except: pass
+                        print("")
+                        print("******************************************")
+                        print("Data received: "+str(now))
+                        print("Data length/chan.: "+str(len(signals[0])))
+                        print("Chans.num.: "+str(len(signals)))
+                        print("Frame num.:"+str(signals_counter))
+                        print("Trig. chan.: "+str(TRIGGER_CHANNEL))     
+                        print("Trig. chan. max/min: "+str(np.max(signals[TRIGGER_CHANNEL]))+"/"+str(np.min(signals[TRIGGER_CHANNEL])))     
+                        print("Trig.timestamp: "+str(trig_time_st/1000)+" ms")
+                        print("Trig. val.:"+str(signals[TRIGGER_CHANNEL][trig_time_st]))
+                        if(len(prerpoc_time)>0): print("Average preproc. time(s): "+str(float(sum(prerpoc_time) / float(len(prerpoc_time)))))
+                        if(float(proc_mean_t) >= 0): print("Average proc.time(s): "+str(proc_mean_t))
+                        print("Number of proc.snips.: "+str(snip_number_processed))
+                        try: print("Vizualization time: "+str(viz_end_t-viz_start_t))                            
+                        except: pass
+                        
+                        print("******************************************")
+                        print("")
+                    
+                    # Plot the acquired data
+                    if(SHOW_ORIGIN_SIGNALS==True) and (SHOW_ORIGIN_SIGNALS_FIG is not None) and (SHOW_ORIGIN_SIGNALS_AX is not None):            
+                        time_data_s = data_transfer.time_data()
+                        #fig, ax = plt.subplots()                                                
+                        #print(channel0)
+                        #print("\tMinimum: {:.3~P}".format(np.min(unit_data_V)))
+                        #print("\tMaximum: {:.3~P}".format(np.max(unit_data_V)))                    
+                        SHOW_ORIGIN_SIGNALS_AX.clear()
+                        for ws in range(0,len(CHANNELS_TO_USE)):
+                            chan_index=CHANNELS_TO_USE[ws]
+                            SHOW_ORIGIN_SIGNALS_AX.plot(time_data_s, signals[chan_index], label=("channel "+str(chan_index)))
+                        SHOW_ORIGIN_SIGNALS_AX.yaxis.set_units(units.mV)
+                        SHOW_ORIGIN_SIGNALS_AX.xaxis.set_units(units.us)
+                        SHOW_ORIGIN_SIGNALS_AX.axvline(0, color='k', linestyle='--', label='Trigger')
+                        SHOW_ORIGIN_SIGNALS_AX.legend()
+                        SHOW_ORIGIN_SIGNALS_FIG.canvas.draw()
+                        SHOW_ORIGIN_SIGNALS_FIG.canvas.flush_events()
+                    
+                    if(EXIT_DAQ_FLAG==True):
+                        print("Data acquisition is terminating...")
+                        break
+
+                    if(ONLY_SINGLE_SHOT==True):
+                        break
+                    
+        #reproting of the data aquisition exit
+        now = datetime.datetime.now()
+        print("")
+        print("******************************************")
+        print("Data acquisition is terminated on event")
+        print(str(now))
+        print("******************************************")
+        
+
+
+#*****************************************************************************************************
+#*****************************************************************************************************
+
+if __name__ == "__main__":                
+    app = QApplication(sys.argv)      
+    window = MainWindow()
+    window.show()    
+    sys.exit(app.exec())

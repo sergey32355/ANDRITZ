@@ -853,7 +853,7 @@
            <widget class="QPushButton" name="classification_set_category">
             <property name="geometry">
              <rect>
-              <x>330</x>
+              <x>250</x>
               <y>10</y>
               <width>71</width>
               <height>51</height>
@@ -866,7 +866,7 @@
            <widget class="QLabel" name="label_7">
             <property name="geometry">
              <rect>
-              <x>131</x>
+              <x>160</x>
               <y>40</y>
               <width>31</width>
               <height>16</height>
@@ -879,7 +879,7 @@
            <widget class="QLabel" name="label_8">
             <property name="geometry">
              <rect>
-              <x>126</x>
+              <x>150</x>
               <y>17</y>
               <width>31</width>
               <height>16</height>
@@ -892,7 +892,7 @@
            <widget class="QLabel" name="label_9">
             <property name="geometry">
              <rect>
-              <x>35</x>
+              <x>60</x>
               <y>40</y>
               <width>31</width>
               <height>16</height>
@@ -905,8 +905,8 @@
            <widget class="QLineEdit" name="classification_labeling_start_element_text">
             <property name="geometry">
              <rect>
-              <x>65</x>
-              <y>35</y>
+              <x>90</x>
+              <y>39</y>
               <width>61</width>
               <height>22</height>
              </rect>
@@ -915,7 +915,7 @@
            <widget class="QLineEdit" name="classification_labeling_end_element_text">
             <property name="geometry">
              <rect>
-              <x>160</x>
+              <x>180</x>
               <y>35</y>
               <width>71</width>
               <height>22</height>
@@ -925,7 +925,7 @@
            <widget class="QLineEdit" name="classification_labeling_label_text">
             <property name="geometry">
              <rect>
-              <x>160</x>
+              <x>180</x>
               <y>13</y>
               <width>71</width>
               <height>22</height>
@@ -935,7 +935,7 @@
            <widget class="QPushButton" name="classification_clear_labels_button">
             <property name="geometry">
              <rect>
-              <x>230</x>
+              <x>320</x>
               <y>10</y>
               <width>71</width>
               <height>31</height>
@@ -949,7 +949,7 @@
             <property name="geometry">
              <rect>
               <x>2</x>
-              <y>56</y>
+              <y>59</y>
               <width>111</width>
               <height>41</height>
              </rect>
@@ -962,7 +962,7 @@
             <property name="geometry">
              <rect>
               <x>110</x>
-              <y>57</y>
+              <y>59</y>
               <width>111</width>
               <height>41</height>
              </rect>
@@ -975,7 +975,7 @@
             <property name="geometry">
              <rect>
               <x>219</x>
-              <y>57</y>
+              <y>59</y>
               <width>131</width>
               <height>41</height>
              </rect>
@@ -987,7 +987,7 @@
            <widget class="QPushButton" name="classification_clear_all_segments_labels_button_2">
             <property name="geometry">
              <rect>
-              <x>230</x>
+              <x>320</x>
               <y>40</y>
               <width>71</width>
               <height>21</height>
@@ -1015,7 +1015,7 @@
              <rect>
               <x>44</x>
               <y>10</y>
-              <width>81</width>
+              <width>101</width>
               <height>31</height>
              </rect>
             </property>
@@ -1056,6 +1056,19 @@
            </property>
            <property name="text">
             <string>Save labelling to file</string>
+           </property>
+          </widget>
+          <widget class="QPushButton" name="Classification_load_from_file_labeling_button_2">
+           <property name="geometry">
+            <rect>
+             <x>130</x>
+             <y>0</y>
+             <width>131</width>
+             <height>31</height>
+            </rect>
+           </property>
+           <property name="text">
+            <string>Load labelling from file</string>
            </property>
           </widget>
          </widget>
@@ -1177,7 +1190,7 @@
        </rect>
       </property>
       <property name="currentIndex">
-       <number>2</number>
+       <number>1</number>
       </property>
       <widget class="QWidget" name="tab_11">
        <attribute name="title">
@@ -1443,7 +1456,7 @@
       </widget>
       <widget class="QWidget" name="tab_6">
        <attribute name="title">
-        <string>Visualization</string>
+        <string>GUI</string>
        </attribute>
        <widget class="QGroupBox" name="groupBox_10">
         <property name="geometry">
@@ -1451,11 +1464,11 @@
           <x>0</x>
           <y>0</y>
           <width>411</width>
-          <height>51</height>
+          <height>101</height>
          </rect>
         </property>
         <property name="title">
-         <string>Results color scheme</string>
+         <string>Processing results show</string>
         </property>
         <widget class="QLabel" name="Model_ready_label_2">
          <property name="geometry">
@@ -1476,7 +1489,7 @@
         <widget class="QComboBox" name="Color_list_drop_down_">
          <property name="geometry">
           <rect>
-           <x>10</x>
+           <x>46</x>
            <y>20</y>
            <width>121</width>
            <height>24</height>
@@ -1505,7 +1518,7 @@
         <widget class="QPushButton" name="COlors_list_show_button">
          <property name="geometry">
           <rect>
-           <x>252</x>
+           <x>258</x>
            <y>20</y>
            <width>75</width>
            <height>24</height>
@@ -1518,20 +1531,20 @@
         <widget class="QLabel" name="Segmentlabel14_2">
          <property name="geometry">
           <rect>
-           <x>140</x>
-           <y>24</y>
-           <width>51</width>
+           <x>168</x>
+           <y>23</y>
+           <width>41</width>
            <height>16</height>
           </rect>
          </property>
          <property name="text">
-          <string>Number:</string>
+          <string>Num.:</string>
          </property>
         </widget>
         <widget class="QLineEdit" name="Settings_Segmentation_colors_number_textbox">
          <property name="geometry">
           <rect>
-           <x>190</x>
+           <x>200</x>
            <y>20</y>
            <width>61</width>
            <height>22</height>
@@ -1544,7 +1557,7 @@
         <widget class="QPushButton" name="COlors_list_generate_button">
          <property name="geometry">
           <rect>
-           <x>326</x>
+           <x>329</x>
            <y>20</y>
            <width>81</width>
            <height>24</height>
@@ -1554,18 +1567,99 @@
           <string>Update</string>
          </property>
         </widget>
+        <widget class="QLabel" name="Segmentlabel14_3">
+         <property name="geometry">
+          <rect>
+           <x>6</x>
+           <y>23</y>
+           <width>41</width>
+           <height>16</height>
+          </rect>
+         </property>
+         <property name="text">
+          <string>Colors:</string>
+         </property>
+        </widget>
+        <widget class="QLabel" name="Segmentlabel14_4">
+         <property name="geometry">
+          <rect>
+           <x>0</x>
+           <y>50</y>
+           <width>71</width>
+           <height>16</height>
+          </rect>
+         </property>
+         <property name="text">
+          <string>Show results:</string>
+         </property>
+        </widget>
+        <widget class="QComboBox" name="Show_results_color_scheme_drop_down_1">
+         <property name="geometry">
+          <rect>
+           <x>73</x>
+           <y>46</y>
+           <width>161</width>
+           <height>24</height>
+          </rect>
+         </property>
+         <property name="currentText">
+          <string>All grades</string>
+         </property>
+         <property name="currentIndex">
+          <number>0</number>
+         </property>
+         <property name="placeholderText">
+          <string>Grades of red</string>
+         </property>
+         <item>
+          <property name="text">
+           <string>All grades</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>Only anomalies</string>
+          </property>
+         </item>
+        </widget>
+        <widget class="QCheckBox" name="GUI_show_results_points_number_limit_checkbox">
+         <property name="geometry">
+          <rect>
+           <x>5</x>
+           <y>73</y>
+           <width>181</width>
+           <height>20</height>
+          </rect>
+         </property>
+         <property name="text">
+          <string>Set points number limit to:</string>
+         </property>
+        </widget>
+        <widget class="QLineEdit" name="GUI_show_results_points_number_limit_textbox">
+         <property name="geometry">
+          <rect>
+           <x>170</x>
+           <y>72</y>
+           <width>61</width>
+           <height>22</height>
+          </rect>
+         </property>
+         <property name="text">
+          <string>3000</string>
+         </property>
+        </widget>
        </widget>
        <widget class="QGroupBox" name="groupBox_13">
         <property name="geometry">
          <rect>
           <x>0</x>
-          <y>70</y>
+          <y>97</y>
           <width>411</width>
           <height>101</height>
          </rect>
         </property>
         <property name="title">
-         <string>Interface</string>
+         <string>GUI save/load</string>
         </property>
         <widget class="QLabel" name="Model_ready_label_4">
          <property name="geometry">
