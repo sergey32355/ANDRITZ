@@ -1,3 +1,4 @@
+from turtle import width
 import numpy as np
 import pandas as pd
 import os
@@ -20,6 +21,7 @@ import threading
 import sys
 import trace
 import json
+import warnings
 
 #additional libs
 import librosa
@@ -45,6 +47,7 @@ from torchvision import datasets, transforms, utils
 from sklearn.manifold import TSNE
 from sklearn.metrics import roc_curve, auc
 from tqdm import tqdm
+from   PySide6.QtWidgets import QMainWindow
 
 
 SEGMENTS_MISSED_SEGMENT_NAME="noname_"
@@ -711,6 +714,37 @@ def SplitIntoSnips(plates=[],snip_size=50,plate_name="",chan_name="",segment_nam
                         feat.append(feat_tmp)
     return feat, labs
 
+
+#https://www.pythonguis.com/tutorials/pyside-plotting-matplotlib/
+class MplCanvas(FigureCanvasQTAgg):
+
+    def __init__(self, parent=None, width=5, height=4, dpi=100):
+        self.fig = plt.figure(figsize=(width, height), dpi=dpi)
+        self.axes = self.fig.add_subplot(111)
+        #ADD SUBPLOTS - DO IT HERE
+        #this solution have to be tested for stability in multithreading
+        # self.axes1 = self.fig.add_subplot(121) # add in the same row or use (211) to place them one under the other
+        super().__init__(self.fig)
+        
+#https://www.pythonguis.com/tutorials/creating-multiple-windows/
+class ChartWindow(QMainWindow):
+    """
+    This "window" is a QWidget. If it has no parent, it
+    will appear as a free-floating window as we want.
+    """
+    def __init__(self,chart_name="Window",width=5,height=4,dpi=100):
+        super().__init__()
+        #layout = QVBoxLayout()
+        #self.label = QLabel(window_name)
+        #layout.addWidget(self.label)
+        #self.setLayout(layout)
+        self.chart_name=chart_name
+        self.Canvas=MplCanvas(self, width=width, height=height, dpi=dpi)
+        self.Canvas.axes.set_title(self.chart_name)
+        #Canvas.axes.plot([0,1,2,3,4], [10,1,20,3,40])  
+        self.setCentralWidget(self.Canvas)
+        #self.show()
+
 #show all segments with labels assigned by user (for the given plate)
 def ShowAllSingleSegmentsWithLabels(fig_id, 
                                     plate,
@@ -722,9 +756,12 @@ def ShowAllSingleSegmentsWithLabels(fig_id,
                                     points_num_limit=3000,
                                     show_proc_labels=False, #this is for processed labels
                                     proc_labels_snip_size=100,
-                                    proc_labels_color_scheme="all",
+                                    proc_labels_color_scheme="only_anom",
+                                    proc_labels_show_segm_borders=True,
                                     proc_labels=[]
                                     ):
+    
+    warnings.filterwarnings( "ignore")
 
     chan_num=0    
     if isinstance(indx_chan, list)==True:    chan_num=indx_chan
@@ -738,7 +775,7 @@ def ShowAllSingleSegmentsWithLabels(fig_id,
 
     sectors=[]
     labels_tags=[]
-
+   
     border=[]
     border.append(0)
         
@@ -751,9 +788,14 @@ def ShowAllSingleSegmentsWithLabels(fig_id,
         ax_list = fig.get_axes()
         fig_ax=ax_list[0]
         fig_ax.clear()
+    if(isinstance(fig_id,ChartWindow)):        
+        fig= fig_id.Canvas.fig
+        fig_ax= fig_id.Canvas.axes
+        fig_ax.clear()
     #fig.clf()
     #fig_ax= fig.add_subplot(111)
-            
+    
+
     #make full signals first
     full_sign=[]
     sample_stamp=[]    
@@ -768,7 +810,7 @@ def ShowAllSingleSegmentsWithLabels(fig_id,
                 sfg1=np.concatenate((sfg,segment[chan_num[kks]]),axis=None)
                 full_sign[-1]=np.empty
                 full_sign[-1]=np.asarray(sfg1)            
-                sample_stamp[-1].append(len(sfg1)+sample_stamp[-1][len(sample_stamp[-1])-1])
+                sample_stamp[-1].append(len(sfg1)+sample_stamp[-1][len(sample_stamp[-1])-1])            
 
     #sparse signal if needed
     step_size=1    
@@ -810,6 +852,11 @@ def ShowAllSingleSegmentsWithLabels(fig_id,
                        sectors.append(sector_)
                            
     if(show_proc_labels==True) and (proc_labels is not None) and (len(proc_labels)!=0):
+                
+        
+        min_v=np.min(np.asarray(full_sign),axis=None)
+        max_v=np.max(np.asarray(full_sign),axis=None)
+
         show_scheme=""
         if(isinstance(proc_labels_color_scheme,int)):
             if(proc_labels_color_scheme==0):show_scheme="all_grades"
@@ -820,10 +867,11 @@ def ShowAllSingleSegmentsWithLabels(fig_id,
         cnt = 0        
         chan_n=chan_num[0]
         for p in range(0,len(proc_labels)):
-
-            if(p>0): cnt=cnt+len(plate.sigments_sign[p][chan_n])
-            cnt_in_segm_step = 0            
-
+            if(p>0): 
+                cnt=cnt+len(plate.sigments_sign[p][chan_n])
+                if (proc_labels_show_segm_borders==True): 
+                    fig_ax.vlines(cnt,ymin=min_v,ymax=max_v,colors="black",linestyles="solid")
+            
             for k in range(0,len(proc_labels[p])):
 
                 st_ = k * proc_labels_snip_size + cnt
@@ -891,8 +939,7 @@ def ShowAllSingleSegmentsWithLabels(fig_id,
     fig.legend(sectors,labels_tags)
     fig.canvas.draw_idle() #draw()
     fig.canvas.flush_events()
-    if(isinstance(fig_id,str)):fig.show()
-    else: pass
+    fig.show()    
     #plt.show()
     
     #print(border)

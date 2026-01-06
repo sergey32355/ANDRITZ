@@ -1693,12 +1693,17 @@ class MainWindow(QMainWindow):
         global EXIT_RT_FLAG
         EXIT_RT_FLAG=False        
         
-        if(bool(self.proc_settings.get("RealT_show_processed_signals_checkbox_3"))==True):            
-            plt.ion()
-            if(self.RT_Figure_if_proc_results_id == ""):self.RT_Figure_if_proc_results_id="Spectrum_original_signals"+str(uuid.uuid1())[:5]             
+        if(bool(self.proc_settings.get("RealT_show_processed_signals_checkbox_3"))==True):                        
+            if(self.RT_Figure_if_proc_results_id == ""):
+                self.RT_Figure_if_proc_results_id="Processed_results_"+str(uuid.uuid1())[:5]             
+            #self.RT_fig_proc_results=shlp.ChartWindow(chart_name=self.RT_Figure_if_proc_results_id)
+            #self.RT_fig_proc_results_ax=self.RT_fig_proc_results.Canvas.axes
+            #
+            plt.ion()         
             self.RT_fig_proc_results = plt.figure(self.RT_Figure_if_proc_results_id)
             self.RT_fig_proc_results_ax = self.RT_fig_proc_results.add_subplot(111)
-            #plt.show()
+            self.RT_fig_proc_results.show()
+            print("Prepaired processing results graph. Object type: "+str(type(shlp.ChartWindow)))   
         
 
         if(rt_source != "Folder") and (rt_source != "RealTime"):
@@ -1919,7 +1924,8 @@ class MainWindow(QMainWindow):
         if(show_results):                        
             try:         
                 display_time.append(time.time())
-                plot_signals = multiprocessing.Process(target=shlp.ShowAllSingleSegmentsWithLabels,args=(self.RT_fig_proc_results,plate),
+                #multiprocessing.Process
+                plot_signals = threading.Thread (target=shlp.ShowAllSingleSegmentsWithLabels,args=(self.RT_fig_proc_results,plate),
                                                                                                    kwargs={"colors_code" : self.colors_id,
                                                                                                            "indx_chan" : CHANNELS_TO_USE,
                                                                                                             "aplpha":0.1,
