@@ -832,7 +832,7 @@
           </rect>
          </property>
          <property name="currentIndex">
-          <number>1</number>
+          <number>0</number>
          </property>
          <widget class="QWidget" name="tab_12">
           <attribute name="title">
@@ -1190,7 +1190,7 @@
        </rect>
       </property>
       <property name="currentIndex">
-       <number>1</number>
+       <number>0</number>
       </property>
       <widget class="QWidget" name="tab_11">
        <attribute name="title">
@@ -1414,24 +1414,11 @@
          <bool>true</bool>
         </property>
        </widget>
-       <widget class="QCheckBox" name="RealT_show_original_signals_checkbox_2">
-        <property name="geometry">
-         <rect>
-          <x>0</x>
-          <y>140</y>
-          <width>141</width>
-          <height>20</height>
-         </rect>
-        </property>
-        <property name="text">
-         <string>Show original signals</string>
-        </property>
-       </widget>
        <widget class="QCheckBox" name="RealT_show_processed_signals_checkbox_3">
         <property name="geometry">
          <rect>
-          <x>1</x>
-          <y>170</y>
+          <x>0</x>
+          <y>130</y>
           <width>161</width>
           <height>20</height>
          </rect>
@@ -1444,7 +1431,7 @@
         <property name="geometry">
          <rect>
           <x>0</x>
-          <y>200</y>
+          <y>150</y>
           <width>161</width>
           <height>20</height>
          </rect>
@@ -1603,7 +1590,7 @@
           </rect>
          </property>
          <property name="currentText">
-          <string>All grades</string>
+          <string>all_grades</string>
          </property>
          <property name="currentIndex">
           <number>0</number>
@@ -1613,12 +1600,12 @@
          </property>
          <item>
           <property name="text">
-           <string>All grades</string>
+           <string>all_grades</string>
           </property>
          </item>
          <item>
           <property name="text">
-           <string>Only anomalies</string>
+           <string>only_anom</string>
           </property>
          </item>
         </widget>

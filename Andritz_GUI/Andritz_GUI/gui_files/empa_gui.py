@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 ################################################################################
-## Form generated from reading UI file 'empa_guiBfjSUq.ui'
+## Form generated from reading UI file 'empa_guilpWvrM.ui'
 ##
 ## Created by: Qt User Interface Compiler version 6.9.0
 ##
@@ -353,15 +353,12 @@ class Ui_EmpaGUI(object):
         self.RealT_show_info_checkbox.setObjectName(u"RealT_show_info_checkbox")
         self.RealT_show_info_checkbox.setGeometry(QRect(0, 110, 79, 20))
         self.RealT_show_info_checkbox.setChecked(True)
-        self.RealT_show_original_signals_checkbox_2 = QCheckBox(self.tab_11)
-        self.RealT_show_original_signals_checkbox_2.setObjectName(u"RealT_show_original_signals_checkbox_2")
-        self.RealT_show_original_signals_checkbox_2.setGeometry(QRect(0, 140, 141, 20))
         self.RealT_show_processed_signals_checkbox_3 = QCheckBox(self.tab_11)
         self.RealT_show_processed_signals_checkbox_3.setObjectName(u"RealT_show_processed_signals_checkbox_3")
-        self.RealT_show_processed_signals_checkbox_3.setGeometry(QRect(1, 170, 161, 20))
+        self.RealT_show_processed_signals_checkbox_3.setGeometry(QRect(0, 130, 161, 20))
         self.RealT_show_only_single_shot_checkbox_4 = QCheckBox(self.tab_11)
         self.RealT_show_only_single_shot_checkbox_4.setObjectName(u"RealT_show_only_single_shot_checkbox_4")
-        self.RealT_show_only_single_shot_checkbox_4.setGeometry(QRect(0, 200, 161, 20))
+        self.RealT_show_only_single_shot_checkbox_4.setGeometry(QRect(0, 150, 161, 20))
         self.Settings_Spectrograms_Define_Parameters_Tab.addTab(self.tab_11, "")
         self.tab_6 = QWidget()
         self.tab_6.setObjectName(u"tab_6")
@@ -564,7 +561,7 @@ class Ui_EmpaGUI(object):
         self.Settings_Spectrograms_Define_Parameters_Tab.setCurrentIndex(1)
         self.REAL_T_trigger_channel_drop_box.setCurrentIndex(7)
         self.Color_list_drop_down_.setCurrentIndex(0)
-        self.Show_results_color_scheme_drop_down_1.setCurrentIndex(0)
+        self.Show_results_color_scheme_drop_down_1.setCurrentIndex(-1)
         self.tabWidget_4.setCurrentIndex(2)
         self.classification_preproc_dropdown.setCurrentIndex(0)
         self.classification_channels_choice_drop_down.setCurrentIndex(0)
@@ -716,7 +713,6 @@ class Ui_EmpaGUI(object):
         self.REAL_T_Samp_rate_label_6.setText(QCoreApplication.translate("EmpaGUI", u"Post trig.durat(ms)", None))
         self.REAL_Post_trig_durat_textbox_4.setText(QCoreApplication.translate("EmpaGUI", u"100", None))
         self.RealT_show_info_checkbox.setText(QCoreApplication.translate("EmpaGUI", u"Show info", None))
-        self.RealT_show_original_signals_checkbox_2.setText(QCoreApplication.translate("EmpaGUI", u"Show original signals", None))
         self.RealT_show_processed_signals_checkbox_3.setText(QCoreApplication.translate("EmpaGUI", u"Show processed signals", None))
         self.RealT_show_only_single_shot_checkbox_4.setText(QCoreApplication.translate("EmpaGUI", u"Only single shot", None))
         self.Settings_Spectrograms_Define_Parameters_Tab.setTabText(self.Settings_Spectrograms_Define_Parameters_Tab.indexOf(self.tab_11), QCoreApplication.translate("EmpaGUI", u"Real time (Spectrum)", None))
@@ -733,10 +729,10 @@ class Ui_EmpaGUI(object):
         self.COlors_list_generate_button.setText(QCoreApplication.translate("EmpaGUI", u"Update", None))
         self.Segmentlabel14_3.setText(QCoreApplication.translate("EmpaGUI", u"Colors:", None))
         self.Segmentlabel14_4.setText(QCoreApplication.translate("EmpaGUI", u"Show results:", None))
-        self.Show_results_color_scheme_drop_down_1.setItemText(0, QCoreApplication.translate("EmpaGUI", u"All grades", None))
-        self.Show_results_color_scheme_drop_down_1.setItemText(1, QCoreApplication.translate("EmpaGUI", u"Only anomalies", None))
+        self.Show_results_color_scheme_drop_down_1.setItemText(0, QCoreApplication.translate("EmpaGUI", u"all_grades", None))
+        self.Show_results_color_scheme_drop_down_1.setItemText(1, QCoreApplication.translate("EmpaGUI", u"only_anom", None))
 
-        self.Show_results_color_scheme_drop_down_1.setCurrentText(QCoreApplication.translate("EmpaGUI", u"All grades", None))
+        self.Show_results_color_scheme_drop_down_1.setCurrentText("")
         self.Show_results_color_scheme_drop_down_1.setPlaceholderText(QCoreApplication.translate("EmpaGUI", u"Grades of red", None))
         self.GUI_show_results_points_number_limit_checkbox.setText(QCoreApplication.translate("EmpaGUI", u"Set points number limit to:", None))
         self.GUI_show_results_points_number_limit_textbox.setText(QCoreApplication.translate("EmpaGUI", u"3000", None))

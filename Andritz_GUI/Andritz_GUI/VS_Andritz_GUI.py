@@ -21,6 +21,7 @@ import threading
 import sys
 import trace
 import glob
+import multiprocessing
 from barbar import Bar
 
 from PySide6.QtWidgets import QApplication, QMainWindow, QTextEdit,QFileDialog
@@ -644,6 +645,11 @@ class MainWindow(QMainWindow):
         print("")
         print("Labelling for plate - "+str(p_name)+" is erased...")
                 
+
+    #************************************************************************************************************************************************************
+    #**************************************RUN CLASSIFICATION****************************************************************************************************
+    #************************************************************************************************************************************************************
+
     def RunClassificationClick(self):
         
         if(self.plates==[]) or(len(self.plates)==0) or (self.plates is None):
@@ -655,7 +661,7 @@ class MainWindow(QMainWindow):
         snip_size = int(self.proc_settings.get("snippet_size")) #int(self.ui.classification_snippet_size_text.text())
         test_size=int(self.ui.classification_test_text.text())/100.0
         classif_name= self.ui.classificationclassifier_dropdown.currentText()
-        preproc= self.proc_settings.get("preprocessing")#self.ui.classification_preproc_dropdown.currentText()
+        preproc= self.proc_settings.get("classification_preproc_dropdown")#self.ui.classification_preproc_dropdown.currentText()
         
         #start to create dataset from segment
         p_name = self.ui.plot_plate_dropdown.currentText()
@@ -664,6 +670,25 @@ class MainWindow(QMainWindow):
         #collect general information
         indx_plate,indx_chan, indx_segment = shlp.FindPlateInArray(plates=self.plates.copy(),plate_name=p_name,chan_name=ch_name,segm_name=segment_name)        
         channels_to_use=[indx_chan]
+
+        try:
+            if( int(self.proc_settings.get("classification_channels_choice_drop_down")) == 0):
+                chan_index= int(self.proc_settings.get("chan_from_settings"))-1
+                if(chan_index<0):
+                    CHANNELS_TO_USE=list([0,1,2,3,4,5,6,7]) #all channels are selected
+                else:
+                    CHANNELS_TO_USE=list([chan_index])
+            
+            else:
+                CHANNELS_TO_USE = [int(i) for i in self.proc_settings.get("classification_user_channels_text_box").split(",") if i.strip().isdigit()]
+        except Exception as ex:
+            print("Channels to use are defined incorrectly. Exception raised: "+str(ex))
+
+        if(len(CHANNELS_TO_USE)==0):
+            print("define channels to use and repeat...")
+            return
+        
+        """
         if(self.proc_settings.get("chans_to_use")=="From settings"):
             pass
         else:
@@ -673,11 +698,12 @@ class MainWindow(QMainWindow):
                 print("Exiting training. Check settings and repeat.")
                 return
             else: pass
+        """
                 
         print("")
         print("*********************************************************************")
         print("Training start")
-        print("User selected channels: "+str(channels_to_use))    
+        print("User selected channels: "+str(CHANNELS_TO_USE))    
                 
         #chans_to_use=window.ui.classification_channels_choice_drop_down.currentText()
         #settings["chans_to_use"] = chans_to_use
@@ -695,7 +721,7 @@ class MainWindow(QMainWindow):
             feat,labs= self.DataPreproc.SplitLabPlateSegmentIntoSnips(self.plates[indx_plate],
                                                                       snip_size=snip_size,
                                                                       segm_index=indx_segment,
-                                                                      channs_indx=channels_to_use,#indx_chan,
+                                                                      channs_indx=CHANNELS_TO_USE,#indx_chan,
                                                                       torch_tensor=False, 
                                                                       preproc_type=preproc
                                                                      )    
@@ -706,7 +732,7 @@ class MainWindow(QMainWindow):
         if(plate_segm == "this_plate_all_segments"):                        
             feat,labs= self.DataPreproc.SplitAllLabPlateSegmentsIntoSnips(self.plates[indx_plate],
                                                                           snip_size=snip_size,
-                                                                          channs_indx=channels_to_use,#indx_chan,
+                                                                          channs_indx=CHANNELS_TO_USE,#indx_chan,
                                                                           torch_tensor=False, 
                                                                           preproc_type=preproc
                                                                          )    
@@ -716,7 +742,7 @@ class MainWindow(QMainWindow):
             
         if(plate_segm == "all_plates_all_segments"):
             feat,labs= self.DataPreproc.SplitAllLabPlateOfAllSegmentsIntoSnips(self.plates,
-                                                                               channs_indx=channels_to_use,#indx_chan,
+                                                                               channs_indx=CHANNELS_TO_USE,#indx_chan,
                                                                                torch_tensor=False,
                                                                                snip_size=snip_size
                                                                               )
@@ -943,7 +969,12 @@ class MainWindow(QMainWindow):
         #else: self.ui.Model_ready_label.setStyleSheet("background-color: green")        
         self.ui.train_dropdown.setCurrentText(self.ui.classificationclassifier_dropdown.currentText())  
 
+    #****************************************************************************************************************
+    #****************************************************************************************************************
+    #*********************READ CLASSification************************************************************************
+
     def RunClassifForSegment_Click(self):
+
         self.proc_settings = shlp.ReadSettings(self)
         if(self.plates is None): return
         if(len(self.plates)==0): return
@@ -958,6 +989,7 @@ class MainWindow(QMainWindow):
         snip_size=int(self.proc_settings.get("snippet_size"))
         dp=shlp.DataPreproc()     
 
+        """
         channels_to_use=[indx_chan]
         if(self.proc_settings.get("chans_to_use")=="From settings"):
             pass
@@ -969,10 +1001,22 @@ class MainWindow(QMainWindow):
                 return
             else:
                 pass
+        """
+
+        if( int(self.proc_settings.get("classification_channels_choice_drop_down")) == 0):
+            chan_index= int(self.proc_settings.get("chan_from_settings"))-1
+            if(chan_index<0):
+                CHANNELS_TO_USE=list([0,1,2,3,4,5,6,7]) #all channels are selected
+            else:
+                CHANNELS_TO_USE=list([chan_index])
+            
+        else:
+            CHANNELS_TO_USE = [int(i) for i in self.proc_settings.get("classification_user_channels_text_box").split(",") if i.strip().isdigit()]
+
         print("")
         print("*********************************************************************")
         print("Start test on segment.")
-        print("Selected channels: "+str(channels_to_use))              
+        print("Selected channels: "+str(CHANNELS_TO_USE))              
                     
         #%matplotlib qt
         #show figure with results
@@ -980,17 +1024,38 @@ class MainWindow(QMainWindow):
         if(self.proc_settings.get("plate_segm_process")=="this_plate_this_segment"):
 
             fd=dp.SplitEntireSignalIntoSnippets(signal=self.plates[indx_plate].sigments_sign[indx_segment],
-                                            channs_indx=channels_to_use,
+                                            channs_indx=CHANNELS_TO_USE,
                                             torch_tensor=False,
                                             snip_size = snip_size,
-                                            preproc_type = self.proc_settings.get("preprocessing")
+                                            preproc_type = self.proc_settings.get("classification_preproc_dropdown")
                                            )        
         
             labels=self.s_model.np_predict(np.asarray(fd))
             classif_type=self.s_model.getClassifType()                   
-            sgn=self.plates[indx_plate].sigments_sign[indx_segment][indx_chan]    
+            sgn=self.plates[indx_plate].sigments_sign[indx_segment][indx_chan] 
+            
+            labels_in_segment=[]
+            for l in range(0,len(self.plates[indx_plate].sigments_sign)):
+                if(l==indx_segment): labels_in_segment.append(labels)
+                else: labels_in_segment.append([])
+
+            fig_id=str("Segment_test_"+str(uuid.uuid1())[:5])
+            shlp.ShowAllSingleSegmentsWithLabels(fig_id,self.plates[indx_plate],
+                                                 colors_code = self.colors_id,
+                                                 indx_chan = CHANNELS_TO_USE,
+                                                 aplpha = 0.1,
+                                                 show_labels = False,
+                                                 points_num_limit_check = bool(self.proc_settings.get("GUI_show_results_points_number_limit_checkbox")),
+                                                 points_num_limit = int(self.proc_settings.get("GUI_show_results_points_number_limit_textbox")),
+                                                 show_proc_labels = True, #this is for processed labels
+                                                 proc_labels_snip_size = snip_size,
+                                                 proc_labels_color_scheme = self.proc_settings.get("Show_results_color_scheme_drop_down_text"),
+                                                 proc_labels = labels_in_segment,          
+                                                 )
+
 
             #show everything
+            """
             fig, ax = plt.subplots(1, sharex=True, figsize=(6, 6))        
             ax.plot(sgn)        
             if(True):            
@@ -1018,6 +1083,8 @@ class MainWindow(QMainWindow):
                         legend_tags.append(str(unique_l[l]))  
                 plt.legend(line_v,legend_tags)
                 plt.show()
+            """
+
 
         #only for this pattern
         if(self.proc_settings.get("plate_segm_process")=="this_plate_all_segments"):
@@ -1033,16 +1100,35 @@ class MainWindow(QMainWindow):
             unique_l=[]
             colors_l=[]
             
+            labels_in_segment=[]
+
             for n_segm in range(0,segm_num):
 
                 fd=dp.SplitEntireSignalIntoSnippets(signal=self.plates[indx_plate].sigments_sign[n_segm],
-                                            channs_indx=channels_to_use,
+                                            channs_indx=CHANNELS_TO_USE,
                                             torch_tensor=False,
                                             snip_size = snip_size,
-                                            preproc_type = self.proc_settings.get("preprocessing")
+                                            preproc_type = self.proc_settings.get("classification_preproc_dropdown")
                                            )        
 
-                labels=self.s_model.np_predict(np.asarray(fd))                                
+                labels=self.s_model.np_predict(np.asarray(fd))     
+                labels_in_segment.append(labels)
+
+            fig_id=str("Segment_test_"+str(uuid.uuid1())[:5])
+            shlp.ShowAllSingleSegmentsWithLabels(fig_id,self.plates[indx_plate],
+                                                 colors_code = self.colors_id,
+                                                 indx_chan = CHANNELS_TO_USE,
+                                                 aplpha = 0.1,
+                                                 show_labels = False,
+                                                 points_num_limit_check = bool(self.proc_settings.get("GUI_show_results_points_number_limit_checkbox")),
+                                                 points_num_limit = int(self.proc_settings.get("GUI_show_results_points_number_limit_textbox")),
+                                                 show_proc_labels = True, #this is for processed labels
+                                                 proc_labels_snip_size = snip_size,
+                                                 proc_labels_color_scheme = self.proc_settings.get("Show_results_color_scheme_drop_down_text"),
+                                                 proc_labels = labels_in_segment,          
+                                                 )
+
+            """
                 classif_type=self.s_model.getClassifType()                        
                 sgn=self.plates[indx_plate].sigments_sign[n_segm][indx_chan]  
                 ymin.append(np.min(sgn))
@@ -1093,6 +1179,7 @@ class MainWindow(QMainWindow):
             
             plt.legend(line_v,legend_tags)
             plt.show()
+            """
 
     #save labeled data from file
     def SaveLabelingToFile_Click(self):
@@ -1557,74 +1644,88 @@ class MainWindow(QMainWindow):
     #**********************************************************************************************
     #******************************FILES FOLDERS/DAQ TRACKING**************************************
     #**********************************************************************************************
-    def Real_Time_Stop_Click(self):        
-        if(self.Real_time_FolderTrackerThread is None):
+    def Real_Time_Stop_Click(self):     
+        
+        global EXIT_RT_FLAG
+        EXIT_RT_FLAG=True
+
+        if(self.Real_Time_Thread is None):
             pass
-        else:
-            #self.ExitFilesInFolderFlag=True
-            #self.Real_time_FolderTrackerThread.join()
-            #while (self.Real_time_FolderTrackerThread.is_alive()):
-            #time.sleep(20)
-            #self.ui.Real_time_Frame_counter_label.setText("-")
-            self.ExitFilesInFolderFlag=True
-            #self.Real_time_FolderTrackerThread.kill()#for shlp.thread_with_trace            
-            #self.Real_time_FolderTrackerThread.join(timeout=0.5)
-            if not self.Real_time_FolderTrackerThread.is_alive():
-                print("Real time tracking is terminated...")            
-            self.ui.real_time_status_label.setText("Not active")
-            self.ExitFilesInFolderFlag=False
-            self.Real_time_FolderTrackerThread=None
-            
+        else:        
+            self.Real_Time_Thread.do_run = False
+            try: 
+                while(self.Real_Time_Thread.is_alive()):z=0 
+            except: pass
+            self.Real_Time_Thread=None
+            self.ui.real_time_status_label.setText("Not active")   
+            print("Real time is terminated...")
+                       
         if(self.RT_SpectrumThread is None):
             pass
         else:
-            global EXIT_DAQ_FLAG
-            EXIT_DAQ_FLAG=True
+            
             self.RT_SpectrumThread.do_run = False
             try:
                 while (self.Real_time_FolderTrackerThread.is_alive()):z=0 
             except: pass
             self.ui.real_time_status_label.setText("Not active")            
             self.RT_SpectrumThread=None
+            print("")
+            
         
-    def Real_Time_Button_Click(self):        
-        if(self.s_model is None):
-            print("Load model first and repeat...")
-            return
+    def Real_Time_Button_Click(self):    
         
-        self.proc_settings = shlp.ReadSettings(self)        
+        #if(self.s_model is None):
+        #    print("Load model first and repeat...")
+        #    return
+        
+        self.proc_settings = shlp.ReadSettings(self)         
+
+        
         rt_source=self.proc_settings.get("real_time_source")
         channs_indx=[0]
         snip_size=int(self.proc_settings.get("snippet_size"))
         s_model=self.s_model 
-        colors=self.colors_id
-        rt_folder=self.proc_settings.get("real_time_folder_text")
-        preprocessing=self.proc_settings.get("preprocessing")
+        colors=self.colors_id        
+        preprocessing=self.proc_settings.get("classification_preproc_dropdown")
         
+        self.rt_data_proc=shlp.DataPreproc()
+        global EXIT_RT_FLAG
+        EXIT_RT_FLAG=False        
+        
+        if(bool(self.proc_settings.get("RealT_show_processed_signals_checkbox_3"))==True):            
+            plt.ion()
+            if(self.RT_Figure_if_proc_results_id == ""):self.RT_Figure_if_proc_results_id="Spectrum_original_signals"+str(uuid.uuid1())[:5]             
+            self.RT_fig_proc_results = plt.figure(self.RT_Figure_if_proc_results_id)
+            self.RT_fig_proc_results_ax = self.RT_fig_proc_results.add_subplot(111)
+            #plt.show()
+        
+
         if(rt_source != "Folder") and (rt_source != "RealTime"):
-            return                           
+            return      
+                
         if(rt_source == "Folder"):
+                        
             rt_path = self.proc_settings.get("real_time_folder_text")                
             if not os.path.exists(rt_path):
                 try: os.makedirs(rt_path)
                 except: 
                     print("")
                     print("The real time folder cant be created. Check admin rights and repeat...")
-                    return
-
-            #%matplotlib qt
-            plt.ion()
-            fig, fig_ax = plt.subplots()
+                    return            
                     
-            self.ui.Real_time_Frame_counter_label.setText(str(0))
-            self.rt_FrameCounter=0
-            self.ExitFilesInFolderFlag=False        
-            self.Real_time_FolderTrackerThread= threading.Thread(target=self.FilesFolderTracking1,
-                                                                 args=(rt_folder,channs_indx,snip_size,preprocessing,s_model,colors,fig,fig_ax)) 
-            self.Real_time_FolderTrackerThread.start()            
-            self.ui.real_time_status_label.setText("Active")
+            self.ui.Real_time_Frame_counter_label.setText(str(0))  
+            self.rt_FrameCounter=0  
+            self.ExitFilesInFolderFlag=False  
+            
+            self.Real_Time_Thread = threading.Thread(target=self.FilesFolderTracking1_1,args=[rt_path])
+                                                                 #args=(rt_folder,channs_indx,snip_size,preprocessing,s_model,colors,fig,fig_ax))                                                                       
+            self.Real_Time_Thread.start()   
+            self.ui.real_time_status_label.setText("Active")    
 
         if(rt_source == "RealTime"):
+            pass
+            """
             #read settings         
             try:
                 trig_level=float(self.proc_settings.get("trigger_level"))
@@ -1656,6 +1757,7 @@ class MainWindow(QMainWindow):
                 #fig_processed.canvas.set_window_title(self.RT_Figure_if_proc_results_id)
             else:
                 fig_processed, fig_ax_processed=None,None
+
             if(show_original_signals==True):
                 plt.ion()
                 if(self.RT_Figure_if_orig_sgn==""):self.RT_Figure_if_orig_sgn="Spectrum_original_signals"+str(uuid.uuid1())[:5]  
@@ -1666,6 +1768,7 @@ class MainWindow(QMainWindow):
             else:
                 fig_orig_signals, fig_ax_orig_signals = None, None
                 
+            
             self.RT_SpectrumThread= threading.Thread(target=self.DAQCard,args=(trig_level,
                                                                                sampling_rate,
                                                                                ampl_per_channel,
@@ -1686,10 +1789,281 @@ class MainWindow(QMainWindow):
                                                                                fig_processed,
                                                                                fig_ax_processed)) 
             self.RT_SpectrumThread.start()   
+            """
 
     #****************************************************************************************************************************
     #*******************************TRACKING FOLDER******************************************************************************
+
+    def FilesFolderTracking1_1(self,rt_folder):     
+
+        import SHelpers as shlp
+
+        txtfiles = []    
+        global EXIT_RT_FLAG
         
+                
+        t = threading.current_thread()
+        while(getattr(t, "do_run", True)):
+            #check for exit
+            if(EXIT_RT_FLAG==True):
+                print("Data acquisition is terminating...")
+                break            
+            txtfiles=[]
+            for x in os.listdir(rt_folder):#for file in glob.glob("*.txt"):
+                #check for exit
+                if(EXIT_RT_FLAG==True):
+                    print("Data acquisition is terminating...")
+                    break                
+                #txtfiles.append(file)                
+                if x.endswith(".txt"):
+                    txtfiles.append(x)
+                    
+            if(len(txtfiles)==0):
+                continue
+
+            for l in range(0,len(txtfiles)):
+                #check for exit
+                if(EXIT_RT_FLAG==True):
+                    print("Data acquisition is terminating...")
+                    break     
+                txt_path=rt_folder+"\\"+txtfiles[l]                
+                #open plate - first check 
+                f_base=os.path.splitext(os.path.basename(txtfiles[l]))[0]                
+                f_bin=""
+                for x in os.listdir(rt_folder):
+                    if x.endswith(".bin"):
+                        x_base=os.path.splitext(os.path.basename(x))[0]          
+                        if(str(x_base) in str(f_base)):
+                            f_bin=x
+                if(f_bin==""):
+                    continue
+                bin_path=rt_folder+"\\"+f_bin     
+                #check if files are occupied or not                
+                try:
+                    os.rename(bin_path,bin_path)
+                    os.rename(txt_path,txt_path)
+                except:                     
+                    continue                                
+
+                print("")
+                print("********************************************************************")
+                print("***********************NEW MEASUREMENT******************************")                         
+                #open/processing                
+                plates=[]
+                try: 
+                    plates= shlp.OpenDataFromFolder(ONLY_SINGLE_FILE=True,SINGLE_FILE_PATH_BIN=bin_path,SINGLE_FILE_PATH_TXT=txt_path)
+                    self.Process_RT_Data(plates[0])
+                except Exception as ex:                     
+                    print("Impossible to open files. Exception raised: "+str(ex))                
+                try: os.remove(txt_path)                    
+                except: pass
+                try: os.remove(bin_path)           
+                except: pass
+                print("********************************************************************")
+                print("")
+                print("")
+
+                if(bool(self.proc_settings.get("only_single_shot")) ==True):
+                    return
+
+            txtfiles=[] #clean up
+            
+
+    def Process_RT_Data(self,plate):
+
+        import SHelpers as shlp
+        #*********************************processing***************************         
+        preprocessing = self.proc_settings.get("classification_preproc_dropdown")      
+        snip_size=int(self.proc_settings.get("MAIN_classification_snippet_size_text"))   
+                   
+        display_time=[]
+        proc_time_total=[]
+        snips_num=0        
+        labels_in_segment=[]
+
+        if( int(self.proc_settings.get("classification_channels_choice_drop_down")) == 0):
+            chan_index= int(self.proc_settings.get("chan_from_settings"))-1
+            if(chan_index<0):
+                CHANNELS_TO_USE=list([0,1,2,3,4,5,6,7]) #all channels are selected
+            else:
+                CHANNELS_TO_USE=list([chan_index])
+            
+        else:
+            CHANNELS_TO_USE = [int(i) for i in self.proc_settings.get("classification_user_channels_text_box").split(",") if i.strip().isdigit()]
+                     
+        sgn_len= len(plate.sigments_sign)
+        
+        proc_time_total.append(time.time())
+        #*********************************************************************************************
+        for seg_i in range(0,sgn_len):
+            #take segment
+            segm_signal=plate.sigments_sign[seg_i]            
+            if(len(segm_signal)==0):
+                continue
+            #cut snippets
+            snippets=self.rt_data_proc.SplitEntireSignalIntoSnippets(signal=segm_signal,channs_indx=CHANNELS_TO_USE,torch_tensor=False, snip_size = snip_size,preproc_type = preprocessing)
+            if(self.s_model is not None): 
+                if(len(snippets)!=0):
+                    proc_labels=self.s_model.np_predict(np.asarray(snippets))
+                    labels_in_segment.append(proc_labels)
+                else:
+                    labels_in_segment.append([])
+            else:
+                labels_in_segment.append([])
+
+            snips_num=snips_num+len(snippets)            
+        #**********************************************************************************************
+        proc_time_total.append(time.time())
+
+        show_results=bool(self.proc_settings.get("RealT_show_processed_signals_checkbox_3"))==True
+        if(show_results):                        
+            try:         
+                display_time.append(time.time())
+                plot_signals = multiprocessing.Process(target=shlp.ShowAllSingleSegmentsWithLabels,args=(self.RT_fig_proc_results,plate),
+                                                                                                   kwargs={"colors_code" : self.colors_id,
+                                                                                                           "indx_chan" : CHANNELS_TO_USE,
+                                                                                                            "aplpha":0.1,
+                                                                                                            "show_labels":False, #this is for ground truth labels
+                                                                                                            "points_num_limit_check":bool(self.proc_settings.get("GUI_show_results_points_number_limit_checkbox")),
+                                                                                                            "points_num_limit":int(self.proc_settings.get("GUI_show_results_points_number_limit_textbox")),
+                                                                                                            "show_proc_labels":True, #this is for processed labels
+                                                                                                            "proc_labels_snip_size":snip_size,
+                                                                                                            "proc_labels_color_scheme":self.proc_settings.get("Show_results_color_scheme_drop_down_1"),
+                                                                                                            "proc_labels":labels_in_segment,            
+                                                                                                         })
+                plot_signals.start()
+                display_time.append(time.time())
+            except Exception as Ex: print("Cant display processed data. Exception: "+str(Ex))
+
+        if(bool(self.proc_settings.get("show_info"))==True):
+            now = datetime.datetime.now()
+            try:
+                print("")
+                print("GENERAL INFO: ")            
+                print("Data received: "+str(now))
+                print("Data length/chan.: "+str(len(plate.raw_signals[0])))
+                print("Processed channels: "+str(CHANNELS_TO_USE))
+                print("Segments num.: "+str(sgn_len))
+                print("Snippets num.: "+str(snips_num))                
+                print("Total proc.time(s): "+str(proc_time_total[1]-proc_time_total[0]))
+                try: print("Proc.-snippet/s: "+str((proc_time_total[1]-proc_time_total[0])/snips_num))
+                except: pass
+                if(show_results):print("Display time(s): "+str(display_time[1]-display_time[0]))
+            except Exception as ex:
+                print("Cant display data.Exception: "+str(ex))
+
+            """
+                shlp.ShowAllSingleSegmentsWithLabels(self.RT_fig_proc_results, 
+                                                     plate,
+                                                     colors_code=self.colors_id,
+                                                     indx_chan=CHANNELS_TO_USE,
+                                                     aplpha=0.1,
+                                                     show_labels=False, #this is for ground truth labels
+                                                     points_num_limit_check=bool(self.proc_settings.get("GUI_show_results_points_number_limit_checkbox")),
+                                                     points_num_limit=int(self.proc_settings.get("GUI_show_results_points_number_limit_textbox")),
+                                                     show_proc_labels=False, #this is for processed labels
+                                                     proc_labels_snip_size=int(self.proc_settings.get("snippet_size")),
+                                                     proc_labels_color_scheme="all",
+                                                     proc_labels=None,
+                                                     )
+            """
+            
+
+            """
+            preproc_t_strart=time.time()
+            snippets=self.rt_data_proc.SplitEntireSignalIntoSnippets(signal=segm_signal,
+                                                                         channs_indx=CHANNELS_TO_USE,
+                                                                         torch_tensor=False,
+                                                                         snip_size = snip_size,
+                                                                         preproc_type = preprocessing
+                                                                         )
+            preproc_t_end=time.time()
+            prerpoc_time.append(preproc_t_strart-preproc_t_end)
+
+            
+                        
+                        start_proc=time.time()
+                        labels=s_model.np_predict(np.asarray(snippets))
+                        snip_number_processed+=len(labels)
+                        end_proc=time.time()                        
+                        proc_time.append(end_proc-start_proc)
+                        
+                        all_labels.append(labels) 
+                        all_segm_sign.append(segm_signal)
+                    #show everything in the chart   
+                    if(SHOW_PROC_RESULTS==True):
+                        try:                        
+                            viz_start_t=time.time()
+                            shlp.ShowResultsInFigure_AllSegmentsInRow(all_segm_sign,
+                                                                      all_labels,
+                                                                      CHANNELS_TO_USE,
+                                                                      snip_size,
+                                                                      colorscheme,
+                                                                      SHOW_PROC_RESULTS_FIG,
+                                                                      SHOW_PROC_RESULTS_AX,
+                                                                      None)
+                            viz_end_t=time.time()                        
+                        except:
+                            print("Figure is unavailable.")
+                            
+                    #**********************************************************************
+                    
+                    if(DATA_PRINT==True):                    
+                        now = datetime.datetime.now()
+                        signals_counter+=1
+                        trig_time_st=int((PRETRIG_DURATION/1000)*SAMPLING_RATE*1000000)
+                        proc_mean_t=-1                        
+                        try: 
+                            if(len(proc_time)!=0):proc_mean_t=sum(proc_time) / float(len(proc_time))
+                        except: pass
+                        print("")
+                        print("******************************************")
+                        print("Data received: "+str(now))
+                        print("Data length/chan.: "+str(len(signals[0])))
+                        print("Chans.num.: "+str(len(signals)))
+                        print("Frame num.:"+str(signals_counter))
+                        print("Trig. chan.: "+str(TRIGGER_CHANNEL))     
+                        print("Trig. chan. max/min: "+str(np.max(signals[TRIGGER_CHANNEL]))+"/"+str(np.min(signals[TRIGGER_CHANNEL])))     
+                        print("Trig.timestamp: "+str(trig_time_st/1000)+" ms")
+                        print("Trig. val.:"+str(signals[TRIGGER_CHANNEL][trig_time_st]))
+                        if(len(prerpoc_time)>0): print("Average preproc. time(s): "+str(float(sum(prerpoc_time) / float(len(prerpoc_time)))))
+                        if(float(proc_mean_t) >= 0): print("Average proc.time(s): "+str(proc_mean_t))
+                        print("Number of proc.snips.: "+str(snip_number_processed))
+                        try: print("Vizualization time: "+str(viz_end_t-viz_start_t))                            
+                        except: pass
+                        
+                        print("******************************************")
+                        print("")
+                    
+                    # Plot the acquired data
+                    if(SHOW_ORIGIN_SIGNALS==True) and (SHOW_ORIGIN_SIGNALS_FIG is not None) and (SHOW_ORIGIN_SIGNALS_AX is not None):            
+                        time_data_s = data_transfer.time_data()
+                        #fig, ax = plt.subplots()                                                
+                        #print(channel0)
+                        #print("\tMinimum: {:.3~P}".format(np.min(unit_data_V)))
+                        #print("\tMaximum: {:.3~P}".format(np.max(unit_data_V)))                    
+                        SHOW_ORIGIN_SIGNALS_AX.clear()
+                        for ws in range(0,len(CHANNELS_TO_USE)):
+                            chan_index=CHANNELS_TO_USE[ws]
+                            SHOW_ORIGIN_SIGNALS_AX.plot(time_data_s, signals[chan_index], label=("channel "+str(chan_index)))
+                        SHOW_ORIGIN_SIGNALS_AX.yaxis.set_units(units.mV)
+                        SHOW_ORIGIN_SIGNALS_AX.xaxis.set_units(units.us)
+                        SHOW_ORIGIN_SIGNALS_AX.axvline(0, color='k', linestyle='--', label='Trigger')
+                        SHOW_ORIGIN_SIGNALS_AX.legend()
+                        SHOW_ORIGIN_SIGNALS_FIG.canvas.draw()
+                        SHOW_ORIGIN_SIGNALS_FIG.canvas.flush_events()
+                    
+                    if(EXIT_DAQ_FLAG==True):
+                        print("Data acquisition is terminating...")
+                        break
+
+                    if(ONLY_SINGLE_SHOT==True):
+                        break
+
+            """#end of processing
+
+
+    #this is an old version
     def FilesFolderTracking1(self,rt_folder,chan_indx,snip_size,preprocessing,s_model,colorscheme,fig,fig_ax): 
 
         import SHelpers as shlp

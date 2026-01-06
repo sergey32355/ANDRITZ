@@ -531,15 +531,17 @@ def OpenDataFromFolder(PATH="",
         for k in arr:
             filename, file_extension = os.path.splitext(k)
             if(file_extension==".txt"):
-                arr_txt.append(k)
+                k_1=PATH+"\\"+k
+                arr_txt.append(k_1)
                 for l in arr:
                     filename_1, file_extension_1 = os.path.splitext(l)
                     if((l!=k) and (file_extension_1==".bin") and (filename_1 in filename)):
-                        arr_bin.append(l)
+                        l_1=PATH+"\\"+l
+                        arr_bin.append(l_1)
                         break
             if(file_extension==".csv"):
                 arr_csv.append(k)                
-    else:   
+    else:        
         arr_txt.append(SINGLE_FILE_PATH_TXT)
         arr_bin.append(SINGLE_FILE_PATH_BIN)
         arr_csv.append(SINGLE_FILE_PATH_CSV)
@@ -548,18 +550,20 @@ def OpenDataFromFolder(PATH="",
     #we open the classical binary format from SPECTRUM cards
     if(len(arr_txt)!=0 and len(arr_bin)!=0):
         for l in range(0,len(arr_txt)):
-            if(ONLY_SINGLE_FILE==False):
-                path_txt=PATH+"\\"+arr_txt[l]
-                path_bin=PATH+"\\"+arr_bin[l]    
-            else:
-                path_txt=arr_txt[l]
-                path_bin=arr_bin[l]
+            #if(ONLY_SINGLE_FILE==False):
+            #    path_txt=ONLY_SINGLE_FILE+"\\"+arr_txt[l]
+            #    path_bin=ONLY_SINGLE_FILE+"\\"+arr_bin[l]    
+            #else:
+            path_txt=arr_txt[l]
+            path_bin=arr_bin[l]
+            
             df,d_chan,samp_r= read_bin_data(path_txt,path_bin)
             cur_plate=SPlate(plate_name=arr_bin[l])
             cur_plate.sr=samp_r
             cur_plate.segments_names = SEGMENTATION_SEGMENTS_NAMES_LIST
             cur_plate.get_data_from_df(df)
             cur_plate.get_segments(ref_chan_name=SEGMENTATION_REF_CHAN_NAME,threshold=SEGMENTATION_THRESHOLD)
+
             if(cur_plate.segments_names == []):
                 for q in range(0,len(cur_plate.sigments_sign)):
                     cur_plate.segments_names.append(SEGMENTS_MISSED_SEGMENT_NAME+str(q))
@@ -573,11 +577,12 @@ def OpenDataFromFolder(PATH="",
                     del cur_plate.segments_names[-1]
                     
             plates.append(cur_plate)
-            print_progress_bar(l+1, len(arr_txt), "Opening files (SPECTRUM *.bin)")
+            print("")
+            print_progress_bar(l+1, len(arr_txt), "File opened (SPECTRUM *.bin)")    
 
     #csv format
     
-    if(len(arr_csv)!=0):        
+    if(len(arr_csv)!=0) and (len(arr_csv)==1 and arr_csv[0]!=""):        
         cnt=0
         files_cnt=0
         for l in arr_csv:
@@ -648,7 +653,8 @@ def OpenDataFromFolder(PATH="",
             
             #except: pass
             files_cnt+=1
-            print_progress_bar(files_cnt, len(arr_csv), "Opening files (*.csv)")
+            print("")  
+            print_progress_bar(files_cnt, len(arr_csv), "File opened (Precitec *.csv)")
     print("")            
     return plates
 
@@ -707,13 +713,19 @@ def SplitIntoSnips(plates=[],snip_size=50,plate_name="",chan_name="",segment_nam
 
 #show all segments with labels assigned by user (for the given plate)
 def ShowAllSingleSegmentsWithLabels(fig_id, 
-                                    plate,colors_code=None,
+                                    plate,
+                                    colors_code=None,
                                     indx_chan=0,
                                     aplpha=0.1,
-                                    show_labels=True,
+                                    show_labels=True, #this is for ground truth labels
                                     points_num_limit_check=False,
                                     points_num_limit=3000,
+                                    show_proc_labels=False, #this is for processed labels
+                                    proc_labels_snip_size=100,
+                                    proc_labels_color_scheme="all",
+                                    proc_labels=[]
                                     ):
+
     chan_num=0    
     if isinstance(indx_chan, list)==True:    chan_num=indx_chan
     if isinstance(indx_chan, np.ndarray)==True:chan_num=list(indx_chan)        
@@ -729,10 +741,19 @@ def ShowAllSingleSegmentsWithLabels(fig_id,
 
     border=[]
     border.append(0)
-    
-    fig=plt.figure(fig_id)
-    fig.clf()
-    
+        
+    if(isinstance(fig_id,str)): 
+        fig=plt.figure(fig_id)     
+        fig.clf()
+        fig_ax= fig.add_subplot(111)
+    if(isinstance(fig_id,plt.Figure)):         
+        fig= fig_id   
+        ax_list = fig.get_axes()
+        fig_ax=ax_list[0]
+        fig_ax.clear()
+    #fig.clf()
+    #fig_ax= fig.add_subplot(111)
+            
     #make full signals first
     full_sign=[]
     sample_stamp=[]    
@@ -749,7 +770,8 @@ def ShowAllSingleSegmentsWithLabels(fig_id,
                 full_sign[-1]=np.asarray(sfg1)            
                 sample_stamp[-1].append(len(sfg1)+sample_stamp[-1][len(sample_stamp[-1])-1])
 
-    step_size=1
+    #sparse signal if needed
+    step_size=1    
     if(points_num_limit_check==True):
         for m in range(0,len(full_sign)):
             shp_=np.shape(full_sign[m])
@@ -762,14 +784,14 @@ def ShowAllSingleSegmentsWithLabels(fig_id,
                 points_steps=[]
                 for kk in range(0,l_segm_,step_size):
                     reduced_signal.append(full_sign[m][kk])
-                    points_steps.append(kk)                
-                plt.plot(points_steps,reduced_signal)
-            else: 
-                plt.plot(full_sign[m])
-
-    else:
+                    points_steps.append(kk)                     
+                fig_ax.plot(points_steps,reduced_signal)
+            else:                 
+                fig_ax.plot(full_sign[m])
+    else:                
         for m in range(0,len(full_sign)):
-            plt.plot(full_sign[m])
+            fig_ax.plot(full_sign[m])
+
 
     if(show_labels==True):
         for kkj in range(0,len(chan_num)):
@@ -786,8 +808,36 @@ def ShowAllSingleSegmentsWithLabels(fig_id,
                     if(label not in labels_tags):
                        labels_tags.append(label)
                        sectors.append(sector_)
-            
-            """
+                           
+    if(show_proc_labels==True) and (proc_labels is not None) and (len(proc_labels)!=0):
+        show_scheme=""
+        if(isinstance(proc_labels_color_scheme,int)):
+            if(proc_labels_color_scheme==0):show_scheme="all_grades"
+            else: show_scheme="only_anom" 
+        else: show_scheme=proc_labels_color_scheme
+
+        #if(proc_labels_color_scheme=="all"):                   
+        cnt = 0        
+        chan_n=chan_num[0]
+        for p in range(0,len(proc_labels)):
+
+            if(p>0): cnt=cnt+len(plate.sigments_sign[p][chan_n])
+            cnt_in_segm_step = 0            
+
+            for k in range(0,len(proc_labels[p])):
+
+                st_ = k * proc_labels_snip_size + cnt
+                en_ = st_ + proc_labels_snip_size
+
+                cur_l = int(proc_labels[p][k])
+                cur_color=colors_code[cur_l % len(colors_code)]
+                if(show_scheme=="all_grades"):    
+                    fig_ax.axvspan(st_, en_, alpha=0.1, color=cur_color) 
+                if(show_scheme=="only_anom"):    
+                    if(cur_l!=0): fig_ax.axvspan(st_, en_, alpha=0.1, color=cur_color) 
+
+                st_= en_
+    """
             shp_=np.shape(plate.sigments_sign[indx_segment][chan_num[i]])
             l_segm_=-1
             if(len(shp_)==1): l_segm_=shp_[0]
@@ -839,9 +889,12 @@ def ShowAllSingleSegmentsWithLabels(fig_id,
     """
 
     fig.legend(sectors,labels_tags)
-    fig.canvas.draw()
+    fig.canvas.draw_idle() #draw()
     fig.canvas.flush_events()
-    fig.show() 
+    if(isinstance(fig_id,str)):fig.show()
+    else: pass
+    #plt.show()
+    
     #print(border)
 #use example
 #ShowAllSingleSegmentsWithLabels("ssdfsfsdf", PLATES_ARRAY[0],colors_code=cc_dd,indx_chan=0,aplpha=0.1)
@@ -1554,13 +1607,18 @@ def ReadSettings(window):
     snip_size=int(window.ui.classification_snippet_size_text.text())
     settings["snippet_size"] = snip_size    
     #preprocessing
-    preproc=window.ui.classification_preproc_dropdown.currentText()
-    settings["preprocessing"] = preproc    
+    classification_preproc_dropdown=window.ui.classification_preproc_dropdown.currentText()
+    settings["classification_preproc_dropdown"] = classification_preproc_dropdown    
     #channels
-    chans_to_use=window.ui.classification_channels_choice_drop_down.currentText()
-    settings["chans_to_use"] = chans_to_use
-    chans_list_user=window.ui.classification_user_channels_text_box.text()
-    settings["chans_list_user"] = chans_list_user
+    chans_to_use=window.ui.classification_channels_choice_drop_down.currentIndex()
+    settings["classification_channels_choice_drop_down"] = chans_to_use
+
+    classification_user_channels_text_box=window.ui.classification_user_channels_text_box.text()
+    settings["classification_user_channels_text_box"] = classification_user_channels_text_box
+
+    chan_from_settings=window.ui.Channel_segment_plot.currentIndex()
+    settings["chan_from_settings"] = chan_from_settings
+
     #algorithm
     algorithm=window.ui.classificationclassifier_dropdown.currentText()
     settings["algorithm"] = algorithm
@@ -1587,15 +1645,13 @@ def ReadSettings(window):
     trig_chan_num=window.ui.REAL_T_trigger_channel_drop_box.currentText()
     settings["trig_chan_num"] = trig_chan_num
     show_info=window.ui.RealT_show_info_checkbox.isChecked()
-    settings["show_info"] = show_info
-    show_original_signals=window.ui.RealT_show_original_signals_checkbox_2.isChecked()
-    settings["show_original_signals"] = show_original_signals
-    show_proc_signals=window.ui.RealT_show_processed_signals_checkbox_3.isChecked()
-    settings["show_proc_signals"] = show_proc_signals
+    settings["show_info"] = show_info    
+    RealT_show_processed_signals_checkbox_3=window.ui.RealT_show_processed_signals_checkbox_3.isChecked()
+    settings["RealT_show_processed_signals_checkbox_3"] = RealT_show_processed_signals_checkbox_3
     only_single_shot=window.ui.RealT_show_only_single_shot_checkbox_4.isChecked()
     settings["only_single_shot"] = only_single_shot
-    
-    
+
+       
     #SPECTROGRAMS SHOW
     spectrogrym_type = window.ui.classification_preproc_dropdown_4.currentText()
     settings["spectrogrym_type"] = spectrogrym_type
@@ -1616,6 +1672,40 @@ def ReadSettings(window):
     Autoencoder_ResNet_weight_decay_input_text=window.ui.Autoencoder_ResNet_weight_decay_input_text.text()
     settings["Autoencoder_ResNet_weight_decay_input_text"] = Autoencoder_ResNet_weight_decay_input_text
 
+    #first page - MAIN
+    MAIN_signals_folder=window.ui.load_data_path.text()
+    settings["MAIN_signals_folder"]=MAIN_signals_folder
+    MAIN_plate_layout_dropbox_selected_item=window.ui.load_data_plate_type_dropdown.currentIndex()
+    settings["MAIN_plate_layout_dropbox_selected_item"]=MAIN_plate_layout_dropbox_selected_item
+    MAIN_real_time_source_dropdown_2=window.ui.real_time_source_dropdown_2.currentIndex()
+    settings["MAIN_real_time_source_dropdown_2"] = MAIN_real_time_source_dropdown_2
+    MAIN_classification_snippet_size_text=str(window.ui.classification_snippet_size_text.text())
+    settings["MAIN_classification_snippet_size_text"]=MAIN_classification_snippet_size_text
+    MAIN_classification_preproc_dropdown=window.ui.classification_preproc_dropdown.currentIndex()
+    settings["MAIN_classification_preproc_dropdown"]=MAIN_classification_preproc_dropdown
+
+    #settings - Visualization page
+    SETTINGS_VIZUALIZATION_load_default_GUI=window.ui.GUI_load_default_on_start.isChecked()
+    settings["SETTINGS_VIZUALIZATION_load_default_GUI"]=SETTINGS_VIZUALIZATION_load_default_GUI
+
+    Color_list_drop_down_=window.ui.Color_list_drop_down_.currentIndex()
+    settings["Color_list_drop_down_"]=Color_list_drop_down_
+
+    Settings_Segmentation_colors_number_textbox=window.ui.Settings_Segmentation_colors_number_textbox.text()
+    settings["Settings_Segmentation_colors_number_textbox"]=Settings_Segmentation_colors_number_textbox
+
+    Show_results_color_scheme_drop_down_1=window.ui.Show_results_color_scheme_drop_down_1.currentIndex()
+    settings["Show_results_color_scheme_drop_down_1"]=Show_results_color_scheme_drop_down_1
+
+    Show_results_color_scheme_drop_down_text=window.ui.Show_results_color_scheme_drop_down_1.currentText()
+    settings["Show_results_color_scheme_drop_down_text"]=Show_results_color_scheme_drop_down_text
+
+    GUI_show_results_points_number_limit_textbox=window.ui.GUI_show_results_points_number_limit_textbox.text()
+    settings["GUI_show_results_points_number_limit_textbox"]=GUI_show_results_points_number_limit_textbox
+
+    GUI_show_results_points_number_limit_checkbox= bool(window.ui.GUI_show_results_points_number_limit_checkbox.isChecked())#if to check points limit limit
+    settings["GUI_show_results_points_number_limit_checkbox"] = GUI_show_results_points_number_limit_checkbox
+
     return settings
 
 #*********************************************************************************************************************
@@ -1635,13 +1725,18 @@ def LoadInterfaceFromFile(window,path):
     #my_set = set(open(path).read().split())
     my_set={}
     my_set = json.load( open( path ) )
+
+    #globals
+
     #first page - MAIN   
     window.ui.load_data_path.setText(str(my_set["MAIN_signals_folder"]))
     window.ui.load_data_plate_type_dropdown.setCurrentIndex(int(my_set["MAIN_plate_layout_dropbox_selected_item"]))
     window.ui.real_time_source_dropdown_2.setCurrentIndex(int(my_set["MAIN_real_time_source_dropdown_2"]))
     window.ui.classification_snippet_size_text.setText(str(my_set["MAIN_classification_snippet_size_text"]))
     window.ui.classification_preproc_dropdown.setCurrentIndex(int(my_set["MAIN_classification_preproc_dropdown"]))
-
+    window.ui.classification_user_channels_text_box.setText(str(my_set["classification_user_channels_text_box"]))
+    window.ui.classification_channels_choice_drop_down.setCurrentIndex(int(my_set["classification_channels_choice_drop_down"]))
+    
     #settings - Visualization page
     window.ui.GUI_load_default_on_start.setChecked(bool(my_set["SETTINGS_VIZUALIZATION_load_default_GUI"]))    
     window.ui.Color_list_drop_down_.setCurrentIndex(int(my_set["Color_list_drop_down_"])) 
@@ -1649,11 +1744,17 @@ def LoadInterfaceFromFile(window,path):
     window.ui.Show_results_color_scheme_drop_down_1.setCurrentIndex(int(my_set["Show_results_color_scheme_drop_down_1"])) 
     window.ui.GUI_show_results_points_number_limit_textbox.setText(str(my_set["GUI_show_results_points_number_limit_textbox"])) 
     window.ui.GUI_show_results_points_number_limit_checkbox.setChecked(bool(my_set["GUI_show_results_points_number_limit_checkbox"]))
+    window.ui.RealT_show_processed_signals_checkbox_3.setChecked(bool(my_set["RealT_show_processed_signals_checkbox_3"]))
+    
 
 #save interface
 def SaveInterfaceIntoFile(window,path):
-    gui={}
+    gui=ReadSettings(window)
+    #https://stackoverflow.com/questions/19201290/how-to-save-a-dictionary-to-a-file
+    json.dump( gui, open( path, 'w' ) )
 
+    """
+    gui={}
     #settings - Visualization page
     SETTINGS_VIZUALIZATION_load_default_GUI=window.ui.GUI_load_default_on_start.isChecked()
     gui["SETTINGS_VIZUALIZATION_load_default_GUI"]=SETTINGS_VIZUALIZATION_load_default_GUI
@@ -1684,12 +1785,10 @@ def SaveInterfaceIntoFile(window,path):
     gui["MAIN_classification_snippet_size_text"]=MAIN_classification_snippet_size_text
     MAIN_classification_preproc_dropdown=window.ui.classification_preproc_dropdown.currentIndex()
     gui["MAIN_classification_preproc_dropdown"]=MAIN_classification_preproc_dropdown
-
-    #https://stackoverflow.com/questions/19201290/how-to-save-a-dictionary-to-a-file
-    json.dump( gui, open( path, 'w' ) )
-    
+            
     #https://blog.finxter.com/5-best-ways-to-write-a-set-to-a-file-in-python/
-    """
+    
+    
     with open(path, 'w') as file:
             for gui_elements in gui:
                 file.write(f"{gui_elements}\n")
@@ -1697,6 +1796,7 @@ def SaveInterfaceIntoFile(window,path):
 
 #setings for display and graphics
 def ReadGraphSettings(window):
+
     settings={}
     #labeling data - show
     classif_show_type= window.ui.classification_plot_choice_dropdown_3.currentText()
@@ -1713,8 +1813,7 @@ def ReadGraphSettings(window):
 
     GUI_show_results_points_number_limit_textbox= window.ui.GUI_show_results_points_number_limit_textbox.text()#points limit
     settings["GUI_show_results_points_number_limit_textbox"] = GUI_show_results_points_number_limit_textbox
-
-    
+            
     return settings
 
 #color list
@@ -3068,7 +3167,7 @@ class S_Classif:
                     else: ind+=1
                 labs.append(int(ind))
 
-        if( str(cls_type) == 'SHelpers.CNNAutoencoder_Shallow_498sp_1') or ('SHelpers.Autoencoder_S1'): #class 'SHelpers.CNNAutoencoder_Shallow_498sp_1'
+        if( str(cls_type) == 'SHelpers.CNNAutoencoder_Shallow_498sp_1') or str(cls_type) ==('SHelpers.Autoencoder_S1'): #class 'SHelpers.CNNAutoencoder_Shallow_498sp_1'
 
             device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
             #x = torch.Tensor(feat).to(device) 
