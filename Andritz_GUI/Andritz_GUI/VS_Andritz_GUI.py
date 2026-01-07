@@ -1679,9 +1679,7 @@ class MainWindow(QMainWindow):
         #    print("Load model first and repeat...")
         #    return
         
-        self.proc_settings = shlp.ReadSettings(self)         
-
-        
+        self.proc_settings = shlp.ReadSettings(self)  
         rt_source=self.proc_settings.get("real_time_source")
         channs_indx=[0]
         snip_size=int(self.proc_settings.get("snippet_size"))
@@ -1693,6 +1691,7 @@ class MainWindow(QMainWindow):
         global EXIT_RT_FLAG
         EXIT_RT_FLAG=False        
         
+        #if to show the processed signals graph
         if(bool(self.proc_settings.get("RealT_show_processed_signals_checkbox_3"))==True):                        
             if(self.RT_Figure_if_proc_results_id == ""):
                 self.RT_Figure_if_proc_results_id="Processed_results_"+str(uuid.uuid1())[:5]             
@@ -1721,16 +1720,17 @@ class MainWindow(QMainWindow):
                     
             self.ui.Real_time_Frame_counter_label.setText(str(0))  
             self.rt_FrameCounter=0  
-            self.ExitFilesInFolderFlag=False  
+            #self.ExitFilesInFolderFlag=False  
             
             self.Real_Time_Thread = threading.Thread(target=self.FilesFolderTracking1_1,args=[rt_path])
                                                                  #args=(rt_folder,channs_indx,snip_size,preprocessing,s_model,colors,fig,fig_ax))                                                                       
-            self.Real_Time_Thread.start()   
-            self.ui.real_time_status_label.setText("Active")    
+            self.Real_Time_Thread.start()          
 
         if(rt_source == "RealTime"):
-            pass
-            """
+            self.Real_Time_Thread = threading.Thread(target=self.Spectrum_card_tracking)                                                                                                           
+            self.Real_Time_Thread.start()  
+
+        """
             #read settings         
             try:
                 trig_level=float(self.proc_settings.get("trigger_level"))
@@ -1795,6 +1795,151 @@ class MainWindow(QMainWindow):
                                                                                fig_ax_processed)) 
             self.RT_SpectrumThread.start()   
             """
+
+        self.ui.real_time_status_label.setText("Active")    
+        print("")
+        print("Real time started. Waiting for signals...")
+
+
+    #****************************************************************************************************************************
+    #*******************************TRACKING SPECTRUM CARD***********************************************************************
+    def Spectrum_card_tracking(self):
+
+        import SHelpers as shlp
+        global EXIT_RT_FLAG
+
+        #check for settings
+        AMPLITUDE=float(self.proc_settings.get("ampl_per_channel"))
+        SAMPLING_RATE=float(self.proc_settings.get("sampling_rate"))
+        TRIGGER_LEVEL=float(self.proc_settings.get("trigger_level"))
+        PRETRIG_DURATION=float(self.proc_settings.get("pre_trigger_duration"))
+        POSTTRIG_DURATION=float(self.proc_settings.get("post_trigger_duration"))
+        TRIG_CHAN_NUM=int(self.proc_settings.get("trig_chan_num"))
+
+        signals=[]
+        for i in range(0,8):
+            signals.append(np.array([]))
+
+        t = threading.current_thread()
+
+        card:spcm.Card
+        with spcm.Card(card_type=spcm.SPCM_TYPE_AI) as card:
+            # do a simple standard setup
+            card.card_mode(spcm.SPC_REC_STD_SINGLE)       # single trigger standard mode
+            card.timeout(5 * units.s)                     # timeout 5 s
+                    
+            clock = spcm.Clock(card)
+            clock.mode(spcm.SPC_CM_INTPLL)            # clock mode internal PLL
+            clock.sample_rate(SAMPLING_RATE * units.MHz, return_unit=units.MHz)
+
+            # setup the channels
+            #channel0
+            channel0, = spcm.Channels(card, card_enable=spcm.CHANNEL0) # enable channel 0
+            channel0.amp(AMPLITUDE * units.mV)
+            channel0.offset(0 * units.mV)
+            channel0.termination(0)
+            #channel1
+            channel1, = spcm.Channels(card, card_enable=spcm.CHANNEL1) # enable channel 1
+            channel1.amp(AMPLITUDE * units.mV)
+            channel1.offset(0 * units.mV)
+            channel1.termination(0)
+            #channel2
+            channel2, = spcm.Channels(card, card_enable=spcm.CHANNEL2) # enable channel 2
+            channel2.amp(AMPLITUDE * units.mV)
+            channel2.offset(0 * units.mV)
+            channel2.termination(0)
+            #channel3
+            channel3, = spcm.Channels(card, card_enable=spcm.CHANNEL3) # enable channel 3
+            channel3.amp(AMPLITUDE * units.mV)
+            channel3.offset(0 * units.mV)
+            channel3.termination(0)
+            #channel4
+            channel4, = spcm.Channels(card, card_enable=spcm.CHANNEL4) # enable channel 4
+            channel4.amp(AMPLITUDE * units.mV)
+            channel4.offset(0 * units.mV)
+            channel4.termination(0)
+            #channel5
+            channel5, = spcm.Channels(card, card_enable=spcm.CHANNEL5) # enable channel 4
+            channel5.amp(AMPLITUDE * units.mV)
+            channel5.offset(0 * units.mV)
+            channel5.termination(0)
+            #channel6
+            channel6, = spcm.Channels(card, card_enable=spcm.CHANNEL6) # enable channel 4
+            channel6.amp(AMPLITUDE * units.mV)
+            channel6.offset(0 * units.mV)
+            channel6.termination(0)
+            #channel7
+            channel7, = spcm.Channels(card, card_enable=spcm.CHANNEL7) # enable channel 4
+            channel7.amp(AMPLITUDE * units.mV)
+            channel7.offset(0 * units.mV)
+            channel7.termination(0)
+
+            trigger = spcm.Trigger(card)
+            #trigger.or_mask(spcm.SPC_TMASK_NONE)       # trigger set to none #software
+            #trigger.and_mask(spcm.SPC_TMASK_NONE)      # no AND mask
+            trigger.or_mask(spcm.SPC_TMASK_EXT0) # set the ext0 hardware input as trigger source
+            trigger.ext0_mode(spcm.SPC_TM_POS) # wait for a positive edge
+            trigger.ext0_level0(float(TRIGGER_LEVEL) * units.mV)
+            trigger.ext0_coupling(spcm.COUPLING_DC) # set DC coupling
+
+            data_transfer = spcm.DataTransfer(card)
+            data_transfer.duration((PRETRIG_DURATION+POSTTRIG_DURATION)*units.ms, post_trigger_duration=POSTTRIG_DURATION*units.ms)
+
+            frame_count=1
+
+            while(getattr(t, "do_run", True)):
+                card.start(spcm.M2CMD_CARD_ENABLETRIGGER, spcm.M2CMD_CARD_WAITREADY)               
+
+                data_transfer.start_buffer_transfer(spcm.M2CMD_DATA_STARTDMA, spcm.M2CMD_DATA_WAITDMA)                                                     
+                    
+                signals[0]=channel0.convert_data(data_transfer.buffer[channel0, :], units.V)
+                signals[1]=channel1.convert_data(data_transfer.buffer[channel1, :], units.V)
+                signals[2]=channel2.convert_data(data_transfer.buffer[channel2, :], units.V)
+                signals[3]=channel3.convert_data(data_transfer.buffer[channel3, :], units.V)
+                signals[4]=channel4.convert_data(data_transfer.buffer[channel4, :], units.V)
+                signals[5]=channel5.convert_data(data_transfer.buffer[channel5, :], units.V)
+                signals[6]=channel6.convert_data(data_transfer.buffer[channel6, :], units.V)
+                signals[7]=channel7.convert_data(data_transfer.buffer[channel7, :], units.V)
+
+                if(EXIT_RT_FLAG==True):
+                    print("Data acquisition is terminating...")
+                    break      
+
+                sign_empty=False
+                for sgn in signals:
+                    if(len(sgn)==0):sign_empty=True
+                        
+                if(sign_empty):continue
+                
+                print("")
+                print("********************************************************************")
+                print("***********************MEASUREMENT "+str(frame_count)+"********************")        
+                frame_count=frame_count+1
+
+                rt_plate=shlp.SPlate()
+                rt_plate.raw_signals=signals
+                rt_plate.time=np.arange(0,len(signals[0]))*(1.0/(SAMPLING_RATE*1e6))
+                rt_plate.get_segments(ref_chan_name=TRIG_CHAN_NUM)
+                try:
+                    self.Process_RT_Data(rt_plate)
+                except Exception as ex:
+                    print("Impossible to process data. Exception raised: "+str(ex))
+
+                print("********************************************************************")
+                print("")
+                print("")
+
+
+                if(bool(self.proc_settings.get("only_single_shot")) ==True):
+                    break
+
+                if(EXIT_RT_FLAG==True):
+                    print("Data acquisition is terminating...")
+                    break      
+
+            card.stop()
+            card.reset()
+            card.close()
 
     #****************************************************************************************************************************
     #*******************************TRACKING FOLDER******************************************************************************

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 ################################################################################
-## Form generated from reading UI file 'empa_guilpWvrM.ui'
+## Form generated from reading UI file 'empa_guiWcXhOg.ui'
 ##
 ## Created by: Qt User Interface Compiler version 6.9.0
 ##
@@ -548,20 +548,20 @@ class Ui_EmpaGUI(object):
 
         self.retranslateUi(EmpaGUI)
 
-        self.tabWidget.setCurrentIndex(2)
+        self.tabWidget.setCurrentIndex(0)
         self.load_data_plate_type_dropdown.setCurrentIndex(-1)
         self.real_time_source_dropdown_2.setCurrentIndex(1)
         self.tabWidget_2.setCurrentIndex(0)
         self.classification_preproc_dropdown_4.setCurrentIndex(0)
         self.classificationclassifier_dropdown.setCurrentIndex(0)
         self.classification_preproc_dropdown_2.setCurrentIndex(0)
-        self.tabWidget_3.setCurrentIndex(1)
+        self.tabWidget_3.setCurrentIndex(0)
         self.classification_plot_choice_dropdown_3.setCurrentIndex(0)
         self.Settings_openfile_segmentation_mode_text.setCurrentIndex(0)
-        self.Settings_Spectrograms_Define_Parameters_Tab.setCurrentIndex(1)
+        self.Settings_Spectrograms_Define_Parameters_Tab.setCurrentIndex(0)
         self.REAL_T_trigger_channel_drop_box.setCurrentIndex(7)
         self.Color_list_drop_down_.setCurrentIndex(0)
-        self.Show_results_color_scheme_drop_down_1.setCurrentIndex(-1)
+        self.Show_results_color_scheme_drop_down_1.setCurrentIndex(0)
         self.tabWidget_4.setCurrentIndex(2)
         self.classification_preproc_dropdown.setCurrentIndex(0)
         self.classification_channels_choice_drop_down.setCurrentIndex(0)
@@ -732,7 +732,7 @@ class Ui_EmpaGUI(object):
         self.Show_results_color_scheme_drop_down_1.setItemText(0, QCoreApplication.translate("EmpaGUI", u"all_grades", None))
         self.Show_results_color_scheme_drop_down_1.setItemText(1, QCoreApplication.translate("EmpaGUI", u"only_anom", None))
 
-        self.Show_results_color_scheme_drop_down_1.setCurrentText("")
+        self.Show_results_color_scheme_drop_down_1.setCurrentText(QCoreApplication.translate("EmpaGUI", u"all_grades", None))
         self.Show_results_color_scheme_drop_down_1.setPlaceholderText(QCoreApplication.translate("EmpaGUI", u"Grades of red", None))
         self.GUI_show_results_points_number_limit_checkbox.setText(QCoreApplication.translate("EmpaGUI", u"Set points number limit to:", None))
         self.GUI_show_results_points_number_limit_textbox.setText(QCoreApplication.translate("EmpaGUI", u"3000", None))

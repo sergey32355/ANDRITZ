@@ -757,7 +757,7 @@ def ShowAllSingleSegmentsWithLabels(fig_id,
                                     show_proc_labels=False, #this is for processed labels
                                     proc_labels_snip_size=100,
                                     proc_labels_color_scheme="only_anom",
-                                    proc_labels_show_segm_borders=True,
+                                    mark_segm_borders=True,
                                     proc_labels=[]
                                     ):
     
@@ -810,8 +810,8 @@ def ShowAllSingleSegmentsWithLabels(fig_id,
                 sfg1=np.concatenate((sfg,segment[chan_num[kks]]),axis=None)
                 full_sign[-1]=np.empty
                 full_sign[-1]=np.asarray(sfg1)            
-                sample_stamp[-1].append(len(sfg1)+sample_stamp[-1][len(sample_stamp[-1])-1])            
-
+                #sample_stamp[-1].append(len(sfg1)+sample_stamp[-1][len(sample_stamp[-1])-1])            
+            sample_stamp[-1].append(len(full_sign[-1]))
     #sparse signal if needed
     step_size=1    
     if(points_num_limit_check==True):
@@ -850,13 +850,15 @@ def ShowAllSingleSegmentsWithLabels(fig_id,
                     if(label not in labels_tags):
                        labels_tags.append(label)
                        sectors.append(sector_)
+
+    if(mark_segm_borders==True):
+        min_v=np.min(np.asarray(full_sign),axis=None)
+        max_v=np.max(np.asarray(full_sign),axis=None)
+        for b in range(0,len(sample_stamp[0])):
+            fig_ax.vlines(sample_stamp[0][b],ymin=min_v,ymax=max_v,colors="black",linestyles="solid")
                            
     if(show_proc_labels==True) and (proc_labels is not None) and (len(proc_labels)!=0):
                 
-        
-        min_v=np.min(np.asarray(full_sign),axis=None)
-        max_v=np.max(np.asarray(full_sign),axis=None)
-
         show_scheme=""
         if(isinstance(proc_labels_color_scheme,int)):
             if(proc_labels_color_scheme==0):show_scheme="all_grades"
@@ -869,8 +871,8 @@ def ShowAllSingleSegmentsWithLabels(fig_id,
         for p in range(0,len(proc_labels)):
             if(p>0): 
                 cnt=cnt+len(plate.sigments_sign[p][chan_n])
-                if (proc_labels_show_segm_borders==True): 
-                    fig_ax.vlines(cnt,ymin=min_v,ymax=max_v,colors="black",linestyles="solid")
+                #if (proc_labels_show_segm_borders==True): 
+                #    fig_ax.vlines(cnt,ymin=min_v,ymax=max_v,colors="black",linestyles="solid")
             
             for k in range(0,len(proc_labels[p])):
 
