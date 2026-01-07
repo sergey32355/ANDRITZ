@@ -1800,9 +1800,9 @@ class MainWindow(QMainWindow):
         print("")
         print("Real time started. Waiting for signals...")
 
-
     #****************************************************************************************************************************
     #*******************************TRACKING SPECTRUM CARD***********************************************************************
+
     def Spectrum_card_tracking(self):
 
         import SHelpers as shlp
@@ -1815,6 +1815,7 @@ class MainWindow(QMainWindow):
         PRETRIG_DURATION=float(self.proc_settings.get("pre_trigger_duration"))
         POSTTRIG_DURATION=float(self.proc_settings.get("post_trigger_duration"))
         TRIG_CHAN_NUM=int(self.proc_settings.get("trig_chan_num"))
+        CHAN_NAMES=["chan_0","chan_1","chan_2","chan_3","chan_4","chan_5","chan_6","chan_7"]
 
         signals=[]
         for i in range(0,8):
@@ -1893,13 +1894,21 @@ class MainWindow(QMainWindow):
                 data_transfer.start_buffer_transfer(spcm.M2CMD_DATA_STARTDMA, spcm.M2CMD_DATA_WAITDMA)                                                     
                     
                 signals[0]=channel0.convert_data(data_transfer.buffer[channel0, :], units.V)
+                signals[0]=np.asarray(signals[0])
                 signals[1]=channel1.convert_data(data_transfer.buffer[channel1, :], units.V)
+                signals[1]=np.asarray(signals[1])
                 signals[2]=channel2.convert_data(data_transfer.buffer[channel2, :], units.V)
+                signals[2]=np.asarray(signals[2])
                 signals[3]=channel3.convert_data(data_transfer.buffer[channel3, :], units.V)
+                signals[3]=np.asarray(signals[3])
                 signals[4]=channel4.convert_data(data_transfer.buffer[channel4, :], units.V)
+                signals[4]=np.asarray(signals[4])
                 signals[5]=channel5.convert_data(data_transfer.buffer[channel5, :], units.V)
+                signals[5]=np.asarray(signals[5])
                 signals[6]=channel6.convert_data(data_transfer.buffer[channel6, :], units.V)
+                signals[6]=np.asarray(signals[6])
                 signals[7]=channel7.convert_data(data_transfer.buffer[channel7, :], units.V)
+                signals[7]=np.asarray(signals[7])
 
                 if(EXIT_RT_FLAG==True):
                     print("Data acquisition is terminating...")
@@ -1915,13 +1924,16 @@ class MainWindow(QMainWindow):
                 print("********************************************************************")
                 print("***********************MEASUREMENT "+str(frame_count)+"********************")        
                 frame_count=frame_count+1
-
-                rt_plate=shlp.SPlate()
-                rt_plate.raw_signals=signals
-                rt_plate.time=np.arange(0,len(signals[0]))*(1.0/(SAMPLING_RATE*1e6))
-                rt_plate.get_segments(ref_chan_name=TRIG_CHAN_NUM)
+                                
                 try:
-                    self.Process_RT_Data(rt_plate)
+                    rt_plate=shlp.SPlate()
+                    rt_plate.raw_signals=signals
+                    rt_plate.chans_names=CHAN_NAMES
+                    rt_plate.time=np.arange(0,len(signals[0]))*(1.0/(SAMPLING_RATE*1e6))
+                    rt_plate.get_segments(ref_chan_name=TRIG_CHAN_NUM,threshold="automatic")#TRIGGER_LEVEL)
+                    if(rt_plate.sigments_sign==[]): 
+                        print("No segments were detected...")                        
+                    else: self.Process_RT_Data(rt_plate)
                 except Exception as ex:
                     print("Impossible to process data. Exception raised: "+str(ex))
 
@@ -2051,17 +2063,22 @@ class MainWindow(QMainWindow):
             if(len(segm_signal)==0):
                 continue
             #cut snippets
+            snips_len=0
             snippets=self.rt_data_proc.SplitEntireSignalIntoSnippets(signal=segm_signal,channs_indx=CHANNELS_TO_USE,torch_tensor=False, snip_size = snip_size,preproc_type = preprocessing)
-            if(self.s_model is not None): 
-                if(len(snippets)!=0):
-                    proc_labels=self.s_model.np_predict(np.asarray(snippets))
-                    labels_in_segment.append(proc_labels)
+            if snippets is None:                
+                labels_in_segment.append([])
+            else:
+                if(self.s_model is not None): 
+                    if(len(snippets)!=0):
+                        proc_labels=self.s_model.np_predict(np.asarray(snippets))
+                        labels_in_segment.append(proc_labels)
+                    else:
+                        labels_in_segment.append([])
                 else:
                     labels_in_segment.append([])
-            else:
-                labels_in_segment.append([])
+                snips_len=len(snippets)
 
-            snips_num=snips_num+len(snippets)            
+            snips_num=snips_num+snips_len         
         #**********************************************************************************************
         proc_time_total.append(time.time())
 
@@ -2095,7 +2112,8 @@ class MainWindow(QMainWindow):
                 print("Data length/chan.: "+str(len(plate.raw_signals[0])))
                 print("Processed channels: "+str(CHANNELS_TO_USE))
                 print("Segments num.: "+str(sgn_len))
-                print("Snippets num.: "+str(snips_num))                
+                print("Snippets num.: "+str(snips_num))       
+                if(snips_num==0): print("ATTENTION: segments are to short to create snippets, analysis in bot possible...")
                 print("Total proc.time(s): "+str(proc_time_total[1]-proc_time_total[0]))
                 try: print("Proc.-snippet/s: "+str((proc_time_total[1]-proc_time_total[0])/snips_num))
                 except: pass

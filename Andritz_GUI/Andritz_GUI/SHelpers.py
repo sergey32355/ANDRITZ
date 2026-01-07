@@ -346,6 +346,7 @@ class SPlate:
         print("Segments names: "+ str(self.segments_names))              
 
     def get_segments_PRECITEC_TORCH(self):
+
         device= torch.device('cuda' if torch.cuda.is_available() else 'cpu')        
         indx = self.chans_names.index("Area")               
         
@@ -417,32 +418,48 @@ class SPlate:
             indx_trig = self.chans_names.index(ref_chan_name) 
         if(isinstance(ref_chan_name,int)):
             indx_trig=ref_chan_name
-        ref_sign=self.raw_signals[indx_trig]
+        ref_sign=np.asarray(self.raw_signals[indx_trig])
         self.sigments_sign=[]        
         ref_threshold=-1
         if isinstance(threshold,str):
+            """
             unique = set()            
             for x in ref_sign:
                 unique.add(x)
             un=list(unique)
             ref_threshold=min(un)+(max(un)-min(un))/2            
+            """
+            max_v=np.max(ref_sign)
+            min_v=np.min(ref_sign)
+            ref_threshold=min_v+(max_v-min_v)/2
         else:
             ref_threshold=threshold
 
         raising_edge=[]
         falling_edge=[]
+        """
         for x in range(0,len(ref_sign)):
             if(x!=0):
                 if(ref_sign[x-1]<=ref_threshold) and (ref_sign[x]>ref_threshold):
                     raising_edge.append(x)
                 if(ref_sign[x-1]>ref_threshold) and (ref_sign[x]<=ref_threshold):
                     falling_edge.append(x)
+        """
+        #this is made for Spectrum card, for sinusoid signal
+        for x in range(0,len(ref_sign)):
+            if(x!=0):
+                if(ref_sign[x-1]<=ref_threshold) and (ref_sign[x]>ref_threshold):
+                    raising_edge.append(x)
+                if(ref_sign[x-1]>ref_threshold) and (ref_sign[x]<=ref_threshold):
+                    if(len(raising_edge)>len(falling_edge)): falling_edge.append(x)
 
-        segm_extr=[]                                
-        for l in range(0,len(raising_edge)):
+        segm_extr=[]            
+        l_raise=len(raising_edge)
+        l_fall=len(falling_edge)
+        for l in range(0,l_raise):
             segm_extr.append([])
             for k in range(0,len(self.chans_names)):
-                if(l<len(falling_edge)):
+                if(l<l_fall):
                     segment=self.raw_signals[k][raising_edge[l]:falling_edge[l]]
                 else:
                     segment=self.raw_signals[k][raising_edge[l]:-1]                
@@ -1410,6 +1427,10 @@ class DataPreproc:
             num_snipps=np.round(sign_shape[1]/snip_size)
         if(len(sign_shape)<=1):
             num_snipps=np.round(sign_shape[0]/snip_size)
+
+        if(num_snipps==0):
+            if(torch_tensor):  return None
+            else: return None
             
         for k in range(0,sign_shape[0]):            
             self.proceed = False

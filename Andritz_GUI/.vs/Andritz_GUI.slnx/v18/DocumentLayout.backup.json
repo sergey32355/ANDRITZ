@@ -3,12 +3,12 @@
   "WorkspaceRootPath": "C:\\Users\\shse\\Documents\\PYTHON_PROJECTS\\Andritz_AG\\GIT\\ANDRITZ\\Andritz_GUI\\",
   "Documents": [
     {
-      "AbsoluteMoniker": "D:0:0:{18679ED4-E169-4D4C-8FC1-1C44C95D9E6B}|Andritz_GUI\\Andritz_GUI.pyproj|C:\\Users\\shse\\Documents\\PYTHON_PROJECTS\\Andritz_AG\\GIT\\ANDRITZ\\Andritz_GUI\\Andritz_GUI\\SHelpers.py||{8B382828-6202-11D1-8870-0000F87579D2}",
-      "RelativeMoniker": "D:0:0:{18679ED4-E169-4D4C-8FC1-1C44C95D9E6B}|Andritz_GUI\\Andritz_GUI.pyproj|solutionrelative:Andritz_GUI\\SHelpers.py||{8B382828-6202-11D1-8870-0000F87579D2}"
-    },
-    {
       "AbsoluteMoniker": "D:0:0:{18679ED4-E169-4D4C-8FC1-1C44C95D9E6B}|Andritz_GUI\\Andritz_GUI.pyproj|C:\\Users\\shse\\Documents\\PYTHON_PROJECTS\\Andritz_AG\\GIT\\ANDRITZ\\Andritz_GUI\\Andritz_GUI\\VS_Andritz_GUI.py||{8B382828-6202-11D1-8870-0000F87579D2}",
       "RelativeMoniker": "D:0:0:{18679ED4-E169-4D4C-8FC1-1C44C95D9E6B}|Andritz_GUI\\Andritz_GUI.pyproj|solutionrelative:Andritz_GUI\\VS_Andritz_GUI.py||{8B382828-6202-11D1-8870-0000F87579D2}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{18679ED4-E169-4D4C-8FC1-1C44C95D9E6B}|Andritz_GUI\\Andritz_GUI.pyproj|C:\\Users\\shse\\Documents\\PYTHON_PROJECTS\\Andritz_AG\\GIT\\ANDRITZ\\Andritz_GUI\\Andritz_GUI\\SHelpers.py||{8B382828-6202-11D1-8870-0000F87579D2}",
+      "RelativeMoniker": "D:0:0:{18679ED4-E169-4D4C-8FC1-1C44C95D9E6B}|Andritz_GUI\\Andritz_GUI.pyproj|solutionrelative:Andritz_GUI\\SHelpers.py||{8B382828-6202-11D1-8870-0000F87579D2}"
     }
   ],
   "DocumentGroupContainers": [
@@ -18,30 +18,29 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 0,
+          "SelectedChildIndex": 1,
           "Children": [
             {
               "$type": "Document",
-              "DocumentIndex": 0,
+              "DocumentIndex": 1,
               "Title": "SHelpers.py",
               "DocumentMoniker": "C:\\Users\\shse\\Documents\\PYTHON_PROJECTS\\Andritz_AG\\GIT\\ANDRITZ\\Andritz_GUI\\Andritz_GUI\\SHelpers.py",
               "RelativeDocumentMoniker": "Andritz_GUI\\SHelpers.py",
               "ToolTip": "C:\\Users\\shse\\Documents\\PYTHON_PROJECTS\\Andritz_AG\\GIT\\ANDRITZ\\Andritz_GUI\\Andritz_GUI\\SHelpers.py",
               "RelativeToolTip": "Andritz_GUI\\SHelpers.py",
-              "ViewState": "AgIAAEUBAAAAAAAAAAAgwFEBAAARAAAAAAAAAA==",
+              "ViewState": "AgIAAIEFAAAAAAAAAAAwwJsFAAAgAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.002457|",
-              "WhenOpened": "2025-12-30T13:52:39.496Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-12-30T13:52:39.496Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 1,
+              "DocumentIndex": 0,
               "Title": "VS_Andritz_GUI.py",
               "DocumentMoniker": "C:\\Users\\shse\\Documents\\PYTHON_PROJECTS\\Andritz_AG\\GIT\\ANDRITZ\\Andritz_GUI\\Andritz_GUI\\VS_Andritz_GUI.py",
               "RelativeDocumentMoniker": "Andritz_GUI\\VS_Andritz_GUI.py",
               "ToolTip": "C:\\Users\\shse\\Documents\\PYTHON_PROJECTS\\Andritz_AG\\GIT\\ANDRITZ\\Andritz_GUI\\Andritz_GUI\\VS_Andritz_GUI.py",
               "RelativeToolTip": "Andritz_GUI\\VS_Andritz_GUI.py",
-              "ViewState": "AgIAAGIHAAAAAAAAAAAgwIEHAAAlAAAAAAAAAA==",
+              "ViewState": "AgIAAAwHAAAAAAAAAAAgwCIHAAANAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.002457|",
               "WhenOpened": "2025-12-30T13:29:59.416Z",
               "EditorCaption": ""
