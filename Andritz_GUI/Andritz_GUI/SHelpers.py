@@ -48,6 +48,7 @@ from sklearn.manifold import TSNE
 from sklearn.metrics import roc_curve, auc
 from tqdm import tqdm
 from   PySide6.QtWidgets import QMainWindow
+import PySide6
 
 
 SEGMENTS_MISSED_SEGMENT_NAME="noname_"
@@ -1816,7 +1817,23 @@ def LoadInterfaceFromFile(window,path):
     window.ui.GUI_show_results_points_number_limit_textbox.setText(str(my_set["GUI_show_results_points_number_limit_textbox"])) 
     window.ui.GUI_show_results_points_number_limit_checkbox.setChecked(bool(my_set["GUI_show_results_points_number_limit_checkbox"]))
     window.ui.RealT_show_processed_signals_checkbox_3.setChecked(bool(my_set["RealT_show_processed_signals_checkbox_3"]))
-    
+
+    #real time spectrum
+    try:
+        window.ui.REAL_T_TRigger_Level_textbox.setText(str(my_set["trigger_level"])) 
+        window.ui.REAL_T_smp_rate_textbox_2.setText(str(my_set["sampling_rate"])) 
+        window.ui.REAL_T_PRE_TRigger_durat_textbox_3.setText(str(my_set["pre_trigger_duration"])) 
+        window.ui.REAL_Post_trig_durat_textbox_4.setText(str(my_set["post_trigger_duration"])) 
+        window.ui.REAL_T_amp_chan_textbox_3.setText(str(my_set["ampl_per_channel"])) 
+
+        index = window.ui.REAL_T_trigger_channel_drop_box.findText(str(my_set["trig_chan_num"]), PySide6.QtCore.Qt.MatchFixedString)
+        window.ui.REAL_T_trigger_channel_drop_box.setCurrentIndex(index) 
+        
+        window.ui.RealT_show_info_checkbox.setChecked(bool(my_set["show_info"])) 
+        window.ui.RealT_show_processed_signals_checkbox_3.setChecked(bool(my_set["RealT_show_processed_signals_checkbox_3"])) 
+        window.ui.RealT_show_only_single_shot_checkbox_4.setChecked(bool(my_set["only_single_shot"]))         
+    except Exception as exs:
+        print("Error loading real time settings. Exception: "+str(exs))
 
 #save interface
 def SaveInterfaceIntoFile(window,path):

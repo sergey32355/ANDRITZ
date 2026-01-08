@@ -23,6 +23,7 @@ import trace
 import glob
 import multiprocessing
 from barbar import Bar
+import warnings
 
 from PySide6.QtWidgets import QApplication, QMainWindow, QTextEdit,QFileDialog
 from PySide6.QtCore import QThread, Signal, QObject
@@ -1827,98 +1828,98 @@ class MainWindow(QMainWindow):
 
         card:spcm.Card
         with spcm.Card(card_type=spcm.SPCM_TYPE_AI) as card:
+            
+            #https://github.com/SpectrumInstrumentation/spcm/blob/master/src/examples/01_acquisition/01_acq_single.py
+            #https://github.com/SpectrumInstrumentation/spcm/blob/master/src/examples/01_acquisition/02_acq_single_2ch.py
+
             # do a simple standard setup
             card.card_mode(spcm.SPC_REC_STD_SINGLE)       # single trigger standard mode
             card.timeout(5 * units.s)                     # timeout 5 s
                     
+            trigger = spcm.Trigger(card)
+            trigger.or_mask(spcm.SPC_TMASK_NONE)       # trigger set to none #software
+            trigger.and_mask(spcm.SPC_TMASK_NONE)      # no AND mask
+
             clock = spcm.Clock(card)
             clock.mode(spcm.SPC_CM_INTPLL)            # clock mode internal PLL
             clock.sample_rate(SAMPLING_RATE * units.MHz, return_unit=units.MHz)
 
-            # setup the channels
-            #channel0
-            channel0, = spcm.Channels(card, card_enable=spcm.CHANNEL0) # enable channel 0
-            channel0.amp(AMPLITUDE * units.mV)
-            channel0.offset(0 * units.mV)
-            channel0.termination(0)
-            #channel1
-            channel1, = spcm.Channels(card, card_enable=spcm.CHANNEL1) # enable channel 1
-            channel1.amp(AMPLITUDE * units.mV)
-            channel1.offset(0 * units.mV)
-            channel1.termination(0)
-            #channel2
-            channel2, = spcm.Channels(card, card_enable=spcm.CHANNEL2) # enable channel 2
-            channel2.amp(AMPLITUDE * units.mV)
-            channel2.offset(0 * units.mV)
-            channel2.termination(0)
-            #channel3
-            channel3, = spcm.Channels(card, card_enable=spcm.CHANNEL3) # enable channel 3
-            channel3.amp(AMPLITUDE * units.mV)
-            channel3.offset(0 * units.mV)
-            channel3.termination(0)
-            #channel4
-            channel4, = spcm.Channels(card, card_enable=spcm.CHANNEL4) # enable channel 4
-            channel4.amp(AMPLITUDE * units.mV)
-            channel4.offset(0 * units.mV)
-            channel4.termination(0)
-            #channel5
-            channel5, = spcm.Channels(card, card_enable=spcm.CHANNEL5) # enable channel 4
-            channel5.amp(AMPLITUDE * units.mV)
-            channel5.offset(0 * units.mV)
-            channel5.termination(0)
-            #channel6
-            channel6, = spcm.Channels(card, card_enable=spcm.CHANNEL6) # enable channel 4
-            channel6.amp(AMPLITUDE * units.mV)
-            channel6.offset(0 * units.mV)
-            channel6.termination(0)
-            #channel7
-            channel7, = spcm.Channels(card, card_enable=spcm.CHANNEL7) # enable channel 4
-            channel7.amp(AMPLITUDE * units.mV)
-            channel7.offset(0 * units.mV)
-            channel7.termination(0)
+            channels = spcm.Channels(card, card_enable=spcm.CHANNEL0 | spcm.CHANNEL1 | spcm.CHANNEL2 | spcm.CHANNEL3 | spcm.CHANNEL4 | spcm.CHANNEL5 | spcm.CHANNEL6 | spcm.CHANNEL7) # enable channel 0 and 1
+            channels.amp(AMPLITUDE * units.mV) # for all channels            
+            channels.offset(0 * units.mV) # set for both channels
+            channels.termination(1) # set for both channels
 
-            trigger = spcm.Trigger(card)
-            #trigger.or_mask(spcm.SPC_TMASK_NONE)       # trigger set to none #software
-            #trigger.and_mask(spcm.SPC_TMASK_NONE)      # no AND mask
-            trigger.or_mask(spcm.SPC_TMASK_EXT0) # set the ext0 hardware input as trigger source
-            trigger.ext0_mode(spcm.SPC_TM_POS) # wait for a positive edge
-            trigger.ext0_level0(float(TRIGGER_LEVEL) * units.mV)
-            trigger.ext0_coupling(spcm.COUPLING_DC) # set DC coupling
-
+            # Channel triggering
+            trigger.ch_or_mask0(channels[TRIG_CHAN_NUM].ch_mask())
+            trigger.ch_mode(channels[TRIG_CHAN_NUM], spcm.SPC_TM_POS)
+            trigger.ch_level0(channels[TRIG_CHAN_NUM], int(TRIGGER_LEVEL) * units.mV, return_unit=units.mV) # trigger level - float(TRIGGER_LEVEL)
+                        
             data_transfer = spcm.DataTransfer(card)
             data_transfer.duration((PRETRIG_DURATION+POSTTRIG_DURATION)*units.ms, post_trigger_duration=POSTTRIG_DURATION*units.ms)
+
+            print("")
+            print("DAQ card info:")            
+            print("Card type: "+str(card.card_type))
+            print("Card family:"+str(card.family()))
+            print("Chans.num.: "+str(card.num_channels()))
+            print("Trig.active chan.:"+str(card.active_channels()))
+            print("Trigger lev.: "+str(int(TRIGGER_LEVEL)))
+            print("Samp.rate(MHz): "+str(SAMPLING_RATE))
+            print("Pretrigger(ms): "+str(PRETRIG_DURATION))
+            print("Pretrigger(samp.points): "+str(PRETRIG_DURATION*SAMPLING_RATE*1e3))
+            print("Posttrigger(ms): "+str(POSTTRIG_DURATION))
+            print("Pretrigger(samp.points): "+str(POSTTRIG_DURATION*SAMPLING_RATE*1e3))            
+            print("")
 
             frame_count=1
 
             while(getattr(t, "do_run", True)):
-                card.start(spcm.M2CMD_CARD_ENABLETRIGGER, spcm.M2CMD_CARD_WAITREADY)               
 
-                data_transfer.start_buffer_transfer(spcm.M2CMD_DATA_STARTDMA, spcm.M2CMD_DATA_WAITDMA)                                                     
-                    
-                signals[0]=channel0.convert_data(data_transfer.buffer[channel0, :], units.V)
-                signals[0]=np.asarray(signals[0])
-                signals[1]=channel1.convert_data(data_transfer.buffer[channel1, :], units.V)
-                signals[1]=np.asarray(signals[1])
-                signals[2]=channel2.convert_data(data_transfer.buffer[channel2, :], units.V)
-                signals[2]=np.asarray(signals[2])
-                signals[3]=channel3.convert_data(data_transfer.buffer[channel3, :], units.V)
-                signals[3]=np.asarray(signals[3])
-                signals[4]=channel4.convert_data(data_transfer.buffer[channel4, :], units.V)
-                signals[4]=np.asarray(signals[4])
-                signals[5]=channel5.convert_data(data_transfer.buffer[channel5, :], units.V)
-                signals[5]=np.asarray(signals[5])
-                signals[6]=channel6.convert_data(data_transfer.buffer[channel6, :], units.V)
-                signals[6]=np.asarray(signals[6])
-                signals[7]=channel7.convert_data(data_transfer.buffer[channel7, :], units.V)
-                signals[7]=np.asarray(signals[7])
+                try:
+                    card.start(spcm.M2CMD_CARD_ENABLETRIGGER, spcm.M2CMD_CARD_WAITREADY)              
+                except:
+                    continue
 
                 if(EXIT_RT_FLAG==True):
                     print("Data acquisition is terminating...")
                     break      
 
+                data_transfer.start_buffer_transfer(spcm.M2CMD_DATA_STARTDMA, spcm.M2CMD_DATA_WAITDMA)                                                     
+                    
                 sign_empty=False
-                for sgn in signals:
-                    if(len(sgn)==0):sign_empty=True
+
+                with warnings.catch_warnings():
+                    warnings.filterwarnings("ignore")#, category=DeprecationWarning)
+                    signals[0]=channels[0].convert_data(data_transfer.buffer[channels[0], :], units.V)                
+                    signals[1]=channels[1].convert_data(data_transfer.buffer[channels[1], :], units.V)                
+                    signals[2]=channels[2].convert_data(data_transfer.buffer[channels[2], :], units.V)                
+                    signals[3]=channels[3].convert_data(data_transfer.buffer[channels[3], :], units.V)                
+                    signals[4]=channels[4].convert_data(data_transfer.buffer[channels[4], :], units.V)                
+                    signals[5]=channels[5].convert_data(data_transfer.buffer[channels[5], :], units.V)                
+                    signals[6]=channels[6].convert_data(data_transfer.buffer[channels[6], :], units.V)                
+                    signals[7]=channels[7].convert_data(data_transfer.buffer[channels[7], :], units.V)
+                    
+                    signals[0]=np.asarray(signals[0])
+                    if(len(signals[0])==0): sign_empty=True
+                    signals[1]=np.asarray(signals[1])
+                    if(len(signals[1])==0): sign_empty=True
+                    signals[2]=np.asarray(signals[2])
+                    if(len(signals[2])==0): sign_empty=True
+                    signals[3]=np.asarray(signals[3])
+                    if(len(signals[3])==0): sign_empty=True
+                    signals[4]=np.asarray(signals[4])
+                    if(len(signals[4])==0): sign_empty=True
+                    signals[5]=np.asarray(signals[5])
+                    if(len(signals[5])==0): sign_empty=True
+                    signals[6]=np.asarray(signals[6])
+                    if(len(signals[6])==0): sign_empty=True
+                    signals[7]=np.asarray(signals[7])
+                    if(len(signals[7])==0): sign_empty=True
+                
+                if(EXIT_RT_FLAG==True):
+                    print("Data acquisition is terminating...")
+                    break               
+                
                         
                 if(sign_empty):continue
                 
@@ -2085,11 +2086,14 @@ class MainWindow(QMainWindow):
         proc_time_total.append(time.time())
 
         show_results=bool(self.proc_settings.get("RealT_show_processed_signals_checkbox_3"))==True
+        skipped_results = False
         if(show_results):                        
             try:        
                 display_time.append(time.time())
                 #multiprocessing.Process
                 if(self.show_proc_results_thread.is_alive()==False):
+                    self.show_proc_results_thread = threading.Thread (target=self.ShowProcessedResults,args=(plate,labels_in_segment))
+                    """
                     self.show_proc_results_thread = threading.Thread (target=shlp.ShowAllSingleSegmentsWithLabels,args=(self.RT_fig_proc_results,plate),
                                                                                                    kwargs={"colors_code" : self.colors_id,
                                                                                                            "indx_chan" : CHANNELS_TO_USE,
@@ -2102,7 +2106,9 @@ class MainWindow(QMainWindow):
                                                                                                             "proc_labels_color_scheme":self.proc_settings.get("Show_results_color_scheme_drop_down_1"),
                                                                                                             "proc_labels":labels_in_segment,            
                                                                                                          })
+                    """
                     self.show_proc_results_thread.start()
+                else: skipped_results=True
                 display_time.append(time.time())
             except Exception as Ex: print("Cant display processed data. Exception: "+str(Ex))
 
@@ -2120,7 +2126,9 @@ class MainWindow(QMainWindow):
                 print("Total proc.time(s): "+str(proc_time_total[1]-proc_time_total[0]))
                 try: print("Proc.-snippet/s: "+str((proc_time_total[1]-proc_time_total[0])/snips_num))
                 except: pass
-                if(show_results):print("Display time(s): "+str(display_time[1]-display_time[0]))
+                if(show_results):                    
+                    if(skipped_results==False): print("Display time of results (s): "+str(display_time[1]-display_time[0]))
+                    else: print("Results are not shown")
             except Exception as ex:
                 print("Cant display data.Exception: "+str(ex))
 
@@ -2233,6 +2241,33 @@ class MainWindow(QMainWindow):
                         break
 
             """#end of processing
+
+    def ShowProcessedResults(self,plate,labels_in_segment):
+
+        snip_size=int(self.proc_settings.get("MAIN_classification_snippet_size_text"))   
+
+        if( int(self.proc_settings.get("classification_channels_choice_drop_down")) == 0):
+            chan_index= int(self.proc_settings.get("chan_from_settings"))-1
+            if(chan_index<0):
+                CHANNELS_TO_USE=list([0,1,2,3,4,5,6,7]) #all channels are selected
+            else:
+                CHANNELS_TO_USE=list([chan_index])            
+        else:
+            CHANNELS_TO_USE = [int(i) for i in self.proc_settings.get("classification_user_channels_text_box").split(",") if i.strip().isdigit()]
+        
+        shlp.ShowAllSingleSegmentsWithLabels(self.RT_fig_proc_results,
+                                             plate,
+                                             colors_code = self.colors_id,
+                                             indx_chan = CHANNELS_TO_USE,aplpha=0.1,
+                                             show_labels=False,
+                                             points_num_limit_check=bool(self.proc_settings.get("GUI_show_results_points_number_limit_checkbox")),
+                                             points_num_limit=int(self.proc_settings.get("GUI_show_results_points_number_limit_textbox")),
+                                             show_proc_labels=True, #this is for processed labels
+                                             proc_labels_snip_size=snip_size,
+                                             proc_labels_color_scheme=self.proc_settings.get("Show_results_color_scheme_drop_down_1"),
+                                             proc_labels=labels_in_segment,
+                                            )
+        time.sleep(0.2)
 
 
     #this is an old version
