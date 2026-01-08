@@ -2087,6 +2087,7 @@ class MainWindow(QMainWindow):
             try:         
                 display_time.append(time.time())
                 #multiprocessing.Process
+                #if(self.show_proc_results_thread):
                 plot_signals = threading.Thread (target=shlp.ShowAllSingleSegmentsWithLabels,args=(self.RT_fig_proc_results,plate),
                                                                                                    kwargs={"colors_code" : self.colors_id,
                                                                                                            "indx_chan" : CHANNELS_TO_USE,
