@@ -1655,7 +1655,8 @@ class MainWindow(QMainWindow):
         else:        
             self.Real_Time_Thread.do_run = False
             try: 
-                while(self.Real_Time_Thread.is_alive()):z=0 
+                if(self.Real_Time_Thread.is_alive()):
+                    time.sleep(0.05)
             except: pass
             self.Real_Time_Thread=None
             self.ui.real_time_status_label.setText("Not active")   
@@ -1710,6 +1711,7 @@ class MainWindow(QMainWindow):
             return      
 
         self.show_proc_results_thread=threading.Thread()
+        self.show_proc_result_in_progress=False
                 
         if(rt_source == "Folder"):
                         
@@ -1820,6 +1822,9 @@ class MainWindow(QMainWindow):
         TRIG_CHAN_NUM=int(self.proc_settings.get("trig_chan_num"))
         CHAN_NAMES=["chan_0","chan_1","chan_2","chan_3","chan_4","chan_5","chan_6","chan_7"]
 
+        delay_between_meas_flag=bool(self.proc_settings.get("RT_impose_delay_between_measurements_checkbox_3"))
+        delay_between_meas_value=int(self.proc_settings.get("RT_impose_delay_between_measurements_textbox_5"))        
+
         signals=[]
         for i in range(0,8):
             signals.append(np.array([]))
@@ -1889,6 +1894,7 @@ class MainWindow(QMainWindow):
                 sign_empty=False
 
                 with warnings.catch_warnings():
+
                     warnings.filterwarnings("ignore")#, category=DeprecationWarning)
                     signals[0]=channels[0].convert_data(data_transfer.buffer[channels[0], :], units.V)                
                     signals[1]=channels[1].convert_data(data_transfer.buffer[channels[1], :], units.V)                
@@ -1952,9 +1958,12 @@ class MainWindow(QMainWindow):
                     print("Data acquisition is terminating...")
                     break      
 
+                if(delay_between_meas_flag): time.sleep( delay_between_meas_value / 1000.0 ) #ms to s                
+
             card.stop()
             card.reset()
             card.close()
+            self.Real_Time_Stop_Click()
 
     #****************************************************************************************************************************
     #*******************************TRACKING FOLDER******************************************************************************
@@ -2029,10 +2038,10 @@ class MainWindow(QMainWindow):
                 print("")
 
                 if(bool(self.proc_settings.get("only_single_shot")) ==True):
-                    return
+                    break
 
             txtfiles=[] #clean up
-            
+            self.Real_Time_Stop_Click()
 
     def Process_RT_Data(self,plate):
 
@@ -2091,7 +2100,8 @@ class MainWindow(QMainWindow):
             try:        
                 display_time.append(time.time())
                 #multiprocessing.Process
-                if(self.show_proc_results_thread.is_alive()==False):
+                if(self.show_proc_result_in_progress==False):#self.show_proc_results_thread.is_alive()==False):
+                    self.show_proc_result_in_progress==True
                     self.show_proc_results_thread = threading.Thread (target=self.ShowProcessedResults,args=(plate,labels_in_segment))
                     """
                     self.show_proc_results_thread = threading.Thread (target=shlp.ShowAllSingleSegmentsWithLabels,args=(self.RT_fig_proc_results,plate),
@@ -2124,8 +2134,9 @@ class MainWindow(QMainWindow):
                 print("Snippets num.: "+str(snips_num))       
                 if(snips_num==0): print("ATTENTION: segments are to short to create snippets, analysis in bot possible...")
                 print("Total proc.time(s): "+str(proc_time_total[1]-proc_time_total[0]))
-                try: print("Proc.-snippet/s: "+str((proc_time_total[1]-proc_time_total[0])/snips_num))
-                except: pass
+                if(snips_num!=0): 
+                    try: print("Proc.-snippet/s: "+str((proc_time_total[1]-proc_time_total[0])/snips_num))
+                    except: pass
                 if(show_results):                    
                     if(skipped_results==False): print("Display time of results (s): "+str(display_time[1]-display_time[0]))
                     else: print("Results are not shown")
@@ -2245,7 +2256,9 @@ class MainWindow(QMainWindow):
     def ShowProcessedResults(self,plate,labels_in_segment):
 
         snip_size=int(self.proc_settings.get("MAIN_classification_snippet_size_text"))   
-
+        impose_addit_delay_showing_results=bool(self.proc_settings.get("GUI_impose_delay_checkbox_2"))
+        addit_delay_value=int(self.proc_settings.get("GUI_impose_measurements_delay_value_textbox_2"))
+        
         if( int(self.proc_settings.get("classification_channels_choice_drop_down")) == 0):
             chan_index= int(self.proc_settings.get("chan_from_settings"))-1
             if(chan_index<0):
@@ -2266,8 +2279,12 @@ class MainWindow(QMainWindow):
                                              proc_labels_snip_size=snip_size,
                                              proc_labels_color_scheme=self.proc_settings.get("Show_results_color_scheme_drop_down_1"),
                                              proc_labels=labels_in_segment,
+                                             mark_segm_borders=bool(self.proc_settings.get("GUI_mark_segments_checkbox")),
+                                             show_wait_time=impose_addit_delay_showing_results,
+                                             show_wait_time_value=addit_delay_value/1000,#delay of plotting in ms
                                             )
-        time.sleep(0.2)
+        self.show_proc_result_in_progress==False
+        #time.sleep(0.2)
 
 
     #this is an old version

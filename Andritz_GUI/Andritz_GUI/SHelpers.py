@@ -776,7 +776,9 @@ def ShowAllSingleSegmentsWithLabels(fig_id,
                                     proc_labels_snip_size=100,
                                     proc_labels_color_scheme="only_anom",
                                     mark_segm_borders=True,
-                                    proc_labels=[]
+                                    proc_labels=[],
+                                    show_wait_time=False,
+                                    show_wait_time_value=0.05,
                                     ):
     
     warnings.filterwarnings( "ignore")
@@ -803,9 +805,11 @@ def ShowAllSingleSegmentsWithLabels(fig_id,
         fig_ax= fig.add_subplot(111)
     if(isinstance(fig_id,plt.Figure)):         
         fig= fig_id   
-        ax_list = fig.get_axes()
-        fig_ax=ax_list[0]
-        fig_ax.clear()
+        fig.clf()
+        fig_ax= fig.add_subplot(111)
+        #ax_list = fig.get_axes()
+        #fig_ax=ax_list[0]
+        #fig_ax.clear()
     if(isinstance(fig_id,ChartWindow)):        
         fig= fig_id.Canvas.fig
         fig_ax= fig_id.Canvas.axes
@@ -957,9 +961,11 @@ def ShowAllSingleSegmentsWithLabels(fig_id,
     """
 
     fig.legend(sectors,labels_tags)
-    fig.canvas.draw_idle() #draw()
+    fig.canvas.draw_idle() #draw_idle() #draw()    
     fig.show()
     fig.canvas.flush_events()
+    if(show_wait_time):
+        time.sleep(show_wait_time_value)
     #fig.update()
     #plt.show()
     
@@ -1723,6 +1729,12 @@ def ReadSettings(window):
     only_single_shot=window.ui.RealT_show_only_single_shot_checkbox_4.isChecked()
     settings["only_single_shot"] = only_single_shot
 
+    RT_impose_delay_between_measurements_checkbox_3= bool(window.ui.RT_impose_delay_between_measurements_checkbox_3.isChecked())
+    settings["RT_impose_delay_between_measurements_checkbox_3"] = RT_impose_delay_between_measurements_checkbox_3
+    
+    RT_impose_delay_between_measurements_textbox_5= str(window.ui.RT_impose_delay_between_measurements_textbox_5.text())
+    settings["RT_impose_delay_between_measurements_textbox_5"] = RT_impose_delay_between_measurements_textbox_5
+
        
     #SPECTROGRAMS SHOW
     spectrogrym_type = window.ui.classification_preproc_dropdown_4.currentText()
@@ -1778,6 +1790,15 @@ def ReadSettings(window):
     GUI_show_results_points_number_limit_checkbox= bool(window.ui.GUI_show_results_points_number_limit_checkbox.isChecked())#if to check points limit limit
     settings["GUI_show_results_points_number_limit_checkbox"] = GUI_show_results_points_number_limit_checkbox
 
+    GUI_mark_segments_checkbox= bool(window.ui.GUI_mark_segments_checkbox.isChecked())
+    settings["GUI_mark_segments_checkbox"] = GUI_mark_segments_checkbox
+
+    GUI_impose_delay_checkbox_2= bool(window.ui.GUI_impose_delay_checkbox_2.isChecked())
+    settings["GUI_impose_delay_checkbox_2"] = GUI_impose_delay_checkbox_2
+    
+    GUI_impose_measurements_delay_value_textbox_2= str(window.ui.GUI_impose_measurements_delay_value_textbox_2.text())
+    settings["GUI_impose_measurements_delay_value_textbox_2"] = GUI_impose_measurements_delay_value_textbox_2
+
     return settings
 
 #*********************************************************************************************************************
@@ -1831,7 +1852,13 @@ def LoadInterfaceFromFile(window,path):
         
         window.ui.RealT_show_info_checkbox.setChecked(bool(my_set["show_info"])) 
         window.ui.RealT_show_processed_signals_checkbox_3.setChecked(bool(my_set["RealT_show_processed_signals_checkbox_3"])) 
-        window.ui.RealT_show_only_single_shot_checkbox_4.setChecked(bool(my_set["only_single_shot"]))         
+        window.ui.RealT_show_only_single_shot_checkbox_4.setChecked(bool(my_set["only_single_shot"]))  
+        window.ui.GUI_mark_segments_checkbox.setChecked(bool(my_set["GUI_mark_segments_checkbox"]))
+        window.ui.GUI_impose_delay_checkbox_2.setChecked(bool(my_set["GUI_impose_delay_checkbox_2"]))
+        window.ui.GUI_impose_measurements_delay_value_textbox_2.setText(str(my_set["GUI_impose_measurements_delay_value_textbox_2"]))
+        window.ui.RT_impose_delay_between_measurements_checkbox_3.setChecked(bool(my_set["RT_impose_delay_between_measurements_checkbox_3"]))
+        window.ui.RT_impose_delay_between_measurements_textbox_5.setText(str(my_set["RT_impose_delay_between_measurements_textbox_5"]))
+        
     except Exception as exs:
         print("Error loading real time settings. Exception: "+str(exs))
 

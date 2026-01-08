@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 
 ################################################################################
-## Form generated from reading UI file 'empa_guiWcXhOg.ui'
+## Form generated from reading UI file 'empa_guilnFKDk.ui'
 ##
-## Created by: Qt User Interface Compiler version 6.9.0
+## Created by: Qt User Interface Compiler version 6.9.1
 ##
 ## WARNING! All changes made in this file will be lost when recompiling UI file!
 ################################################################################
@@ -359,12 +359,18 @@ class Ui_EmpaGUI(object):
         self.RealT_show_only_single_shot_checkbox_4 = QCheckBox(self.tab_11)
         self.RealT_show_only_single_shot_checkbox_4.setObjectName(u"RealT_show_only_single_shot_checkbox_4")
         self.RealT_show_only_single_shot_checkbox_4.setGeometry(QRect(0, 150, 161, 20))
+        self.RT_impose_delay_between_measurements_checkbox_3 = QCheckBox(self.tab_11)
+        self.RT_impose_delay_between_measurements_checkbox_3.setObjectName(u"RT_impose_delay_between_measurements_checkbox_3")
+        self.RT_impose_delay_between_measurements_checkbox_3.setGeometry(QRect(0, 170, 301, 20))
+        self.RT_impose_delay_between_measurements_textbox_5 = QLineEdit(self.tab_11)
+        self.RT_impose_delay_between_measurements_textbox_5.setObjectName(u"RT_impose_delay_between_measurements_textbox_5")
+        self.RT_impose_delay_between_measurements_textbox_5.setGeometry(QRect(300, 170, 71, 22))
         self.Settings_Spectrograms_Define_Parameters_Tab.addTab(self.tab_11, "")
         self.tab_6 = QWidget()
         self.tab_6.setObjectName(u"tab_6")
         self.groupBox_10 = QGroupBox(self.tab_6)
         self.groupBox_10.setObjectName(u"groupBox_10")
-        self.groupBox_10.setGeometry(QRect(0, 0, 411, 101))
+        self.groupBox_10.setGeometry(QRect(0, 0, 411, 131))
         self.Model_ready_label_2 = QLabel(self.groupBox_10)
         self.Model_ready_label_2.setObjectName(u"Model_ready_label_2")
         self.Model_ready_label_2.setGeometry(QRect(55, 27, 16, 16))
@@ -396,16 +402,25 @@ class Ui_EmpaGUI(object):
         self.Show_results_color_scheme_drop_down_1.addItem("")
         self.Show_results_color_scheme_drop_down_1.addItem("")
         self.Show_results_color_scheme_drop_down_1.setObjectName(u"Show_results_color_scheme_drop_down_1")
-        self.Show_results_color_scheme_drop_down_1.setGeometry(QRect(73, 46, 161, 24))
+        self.Show_results_color_scheme_drop_down_1.setGeometry(QRect(73, 46, 101, 24))
         self.GUI_show_results_points_number_limit_checkbox = QCheckBox(self.groupBox_10)
         self.GUI_show_results_points_number_limit_checkbox.setObjectName(u"GUI_show_results_points_number_limit_checkbox")
         self.GUI_show_results_points_number_limit_checkbox.setGeometry(QRect(5, 73, 181, 20))
         self.GUI_show_results_points_number_limit_textbox = QLineEdit(self.groupBox_10)
         self.GUI_show_results_points_number_limit_textbox.setObjectName(u"GUI_show_results_points_number_limit_textbox")
         self.GUI_show_results_points_number_limit_textbox.setGeometry(QRect(170, 72, 61, 22))
+        self.GUI_mark_segments_checkbox = QCheckBox(self.groupBox_10)
+        self.GUI_mark_segments_checkbox.setObjectName(u"GUI_mark_segments_checkbox")
+        self.GUI_mark_segments_checkbox.setGeometry(QRect(180, 50, 121, 20))
+        self.GUI_impose_delay_checkbox_2 = QCheckBox(self.groupBox_10)
+        self.GUI_impose_delay_checkbox_2.setObjectName(u"GUI_impose_delay_checkbox_2")
+        self.GUI_impose_delay_checkbox_2.setGeometry(QRect(6, 100, 171, 20))
+        self.GUI_impose_measurements_delay_value_textbox_2 = QLineEdit(self.groupBox_10)
+        self.GUI_impose_measurements_delay_value_textbox_2.setObjectName(u"GUI_impose_measurements_delay_value_textbox_2")
+        self.GUI_impose_measurements_delay_value_textbox_2.setGeometry(QRect(170, 100, 61, 22))
         self.groupBox_13 = QGroupBox(self.tab_6)
         self.groupBox_13.setObjectName(u"groupBox_13")
-        self.groupBox_13.setGeometry(QRect(0, 97, 411, 101))
+        self.groupBox_13.setGeometry(QRect(0, 130, 411, 101))
         self.Model_ready_label_4 = QLabel(self.groupBox_13)
         self.Model_ready_label_4.setObjectName(u"Model_ready_label_4")
         self.Model_ready_label_4.setGeometry(QRect(55, 27, 16, 16))
@@ -548,7 +563,7 @@ class Ui_EmpaGUI(object):
 
         self.retranslateUi(EmpaGUI)
 
-        self.tabWidget.setCurrentIndex(0)
+        self.tabWidget.setCurrentIndex(2)
         self.load_data_plate_type_dropdown.setCurrentIndex(-1)
         self.real_time_source_dropdown_2.setCurrentIndex(1)
         self.tabWidget_2.setCurrentIndex(0)
@@ -715,6 +730,8 @@ class Ui_EmpaGUI(object):
         self.RealT_show_info_checkbox.setText(QCoreApplication.translate("EmpaGUI", u"Show info", None))
         self.RealT_show_processed_signals_checkbox_3.setText(QCoreApplication.translate("EmpaGUI", u"Show processed signals", None))
         self.RealT_show_only_single_shot_checkbox_4.setText(QCoreApplication.translate("EmpaGUI", u"Only single shot", None))
+        self.RT_impose_delay_between_measurements_checkbox_3.setText(QCoreApplication.translate("EmpaGUI", u"Impose display delay between measurements (ms):", None))
+        self.RT_impose_delay_between_measurements_textbox_5.setText(QCoreApplication.translate("EmpaGUI", u"100", None))
         self.Settings_Spectrograms_Define_Parameters_Tab.setTabText(self.Settings_Spectrograms_Define_Parameters_Tab.indexOf(self.tab_11), QCoreApplication.translate("EmpaGUI", u"Real time (Spectrum)", None))
         self.groupBox_10.setTitle(QCoreApplication.translate("EmpaGUI", u"Processing results show", None))
         self.Model_ready_label_2.setText("")
@@ -736,6 +753,9 @@ class Ui_EmpaGUI(object):
         self.Show_results_color_scheme_drop_down_1.setPlaceholderText(QCoreApplication.translate("EmpaGUI", u"Grades of red", None))
         self.GUI_show_results_points_number_limit_checkbox.setText(QCoreApplication.translate("EmpaGUI", u"Set points number limit to:", None))
         self.GUI_show_results_points_number_limit_textbox.setText(QCoreApplication.translate("EmpaGUI", u"3000", None))
+        self.GUI_mark_segments_checkbox.setText(QCoreApplication.translate("EmpaGUI", u"Mark segments", None))
+        self.GUI_impose_delay_checkbox_2.setText(QCoreApplication.translate("EmpaGUI", u"Impose display delay (ms):", None))
+        self.GUI_impose_measurements_delay_value_textbox_2.setText(QCoreApplication.translate("EmpaGUI", u"200", None))
         self.groupBox_13.setTitle(QCoreApplication.translate("EmpaGUI", u"GUI save/load", None))
         self.Model_ready_label_4.setText("")
         self.save_interface_button.setText(QCoreApplication.translate("EmpaGUI", u"Save interface", None))
