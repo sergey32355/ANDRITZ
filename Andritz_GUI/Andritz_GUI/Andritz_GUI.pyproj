@@ -26,6 +26,10 @@
     <Compile Include="VS_Andritz_GUI.py" />
   </ItemGroup>
   <ItemGroup>
+<<<<<<< Updated upstream
+=======
+    <InterpreterReference Include="CondaEnv|CondaEnv|env" />
+>>>>>>> Stashed changes
     <InterpreterReference Include="Global|PythonCore|3.12" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets" />
