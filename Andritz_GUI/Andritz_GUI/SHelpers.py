@@ -957,8 +957,9 @@ def ShowAllSingleSegmentsWithLabels(fig_id,
 
     fig.legend(sectors,labels_tags)
     fig.canvas.draw_idle() #draw()
+    fig.show()
     fig.canvas.flush_events()
-    fig.show()    
+    #fig.update()
     #plt.show()
     
     #print(border)

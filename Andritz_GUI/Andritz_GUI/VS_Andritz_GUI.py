@@ -1707,6 +1707,8 @@ class MainWindow(QMainWindow):
 
         if(rt_source != "Folder") and (rt_source != "RealTime"):
             return      
+
+        self.show_proc_results_thread=threading.Thread()
                 
         if(rt_source == "Folder"):
                         
@@ -2084,11 +2086,11 @@ class MainWindow(QMainWindow):
 
         show_results=bool(self.proc_settings.get("RealT_show_processed_signals_checkbox_3"))==True
         if(show_results):                        
-            try:         
+            try:        
                 display_time.append(time.time())
                 #multiprocessing.Process
-                #if(self.show_proc_results_thread):
-                plot_signals = threading.Thread (target=shlp.ShowAllSingleSegmentsWithLabels,args=(self.RT_fig_proc_results,plate),
+                if(self.show_proc_results_thread.is_alive()==False):
+                    self.show_proc_results_thread = threading.Thread (target=shlp.ShowAllSingleSegmentsWithLabels,args=(self.RT_fig_proc_results,plate),
                                                                                                    kwargs={"colors_code" : self.colors_id,
                                                                                                            "indx_chan" : CHANNELS_TO_USE,
                                                                                                             "aplpha":0.1,
@@ -2100,7 +2102,7 @@ class MainWindow(QMainWindow):
                                                                                                             "proc_labels_color_scheme":self.proc_settings.get("Show_results_color_scheme_drop_down_1"),
                                                                                                             "proc_labels":labels_in_segment,            
                                                                                                          })
-                plot_signals.start()
+                    self.show_proc_results_thread.start()
                 display_time.append(time.time())
             except Exception as Ex: print("Cant display processed data. Exception: "+str(Ex))
 
