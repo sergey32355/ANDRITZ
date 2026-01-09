@@ -1799,6 +1799,10 @@ def ReadSettings(window):
     GUI_impose_measurements_delay_value_textbox_2= str(window.ui.GUI_impose_measurements_delay_value_textbox_2.text())
     settings["GUI_impose_measurements_delay_value_textbox_2"] = GUI_impose_measurements_delay_value_textbox_2
 
+    #files folder
+    RealT_filse_folders_delete_files_checkbox= bool(window.ui.RealT_filse_folders_delete_files_checkbox.isChecked())
+    settings["RealT_filse_folders_delete_files_checkbox"] = RealT_filse_folders_delete_files_checkbox
+
     return settings
 
 #*********************************************************************************************************************
@@ -1839,7 +1843,7 @@ def LoadInterfaceFromFile(window,path):
     window.ui.GUI_show_results_points_number_limit_checkbox.setChecked(bool(my_set["GUI_show_results_points_number_limit_checkbox"]))
     window.ui.RealT_show_processed_signals_checkbox_3.setChecked(bool(my_set["RealT_show_processed_signals_checkbox_3"]))
 
-    #real time spectrum
+    #real time spectrum/files folders
     try:
         window.ui.REAL_T_TRigger_Level_textbox.setText(str(my_set["trigger_level"])) 
         window.ui.REAL_T_smp_rate_textbox_2.setText(str(my_set["sampling_rate"])) 
@@ -1859,6 +1863,9 @@ def LoadInterfaceFromFile(window,path):
         window.ui.RT_impose_delay_between_measurements_checkbox_3.setChecked(bool(my_set["RT_impose_delay_between_measurements_checkbox_3"]))
         window.ui.RT_impose_delay_between_measurements_textbox_5.setText(str(my_set["RT_impose_delay_between_measurements_textbox_5"]))
         
+        #files folder
+        window.ui.RealT_filse_folders_delete_files_checkbox.setChecked(bool(my_set["RealT_filse_folders_delete_files_checkbox"]))
+
     except Exception as exs:
         print("Error loading real time settings. Exception: "+str(exs))
 

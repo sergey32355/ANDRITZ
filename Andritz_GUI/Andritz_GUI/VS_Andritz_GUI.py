@@ -1974,8 +1974,7 @@ class MainWindow(QMainWindow):
 
         txtfiles = []    
         global EXIT_RT_FLAG
-        
-                
+                        
         t = threading.current_thread()
         while(getattr(t, "do_run", True)):
             #check for exit
@@ -2028,14 +2027,17 @@ class MainWindow(QMainWindow):
                     plates= shlp.OpenDataFromFolder(ONLY_SINGLE_FILE=True,SINGLE_FILE_PATH_BIN=bin_path,SINGLE_FILE_PATH_TXT=txt_path)
                     self.Process_RT_Data(plates[0])
                 except Exception as ex:                     
-                    print("Impossible to open files. Exception raised: "+str(ex))                
-                try: os.remove(txt_path)                    
-                except: pass
-                try: os.remove(bin_path)           
-                except: pass
+                    print("Impossible to open files. Exception raised: "+str(ex))                     
                 print("********************************************************************")
                 print("")
                 print("")
+
+                #delete files after processing if needed
+                if(bool(self.proc_settings.get("RealT_filse_folders_delete_files_checkbox"))):
+                    try: os.remove(txt_path)                    
+                    except: pass
+                    try: os.remove(bin_path)           
+                    except: pass
 
                 if(bool(self.proc_settings.get("only_single_shot")) ==True):
                     break
