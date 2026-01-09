@@ -22,6 +22,7 @@ import sys
 import trace
 import json
 import warnings
+import pyqtgraph as pg
 
 #additional libs
 import librosa
@@ -762,6 +763,7 @@ class ChartWindow(QMainWindow):
         #Canvas.axes.plot([0,1,2,3,4], [10,1,20,3,40])  
         self.setCentralWidget(self.Canvas)
         #self.show()
+    
 
 #show all segments with labels assigned by user (for the given plate)
 def ShowAllSingleSegmentsWithLabels(fig_id, 
@@ -779,6 +781,8 @@ def ShowAllSingleSegmentsWithLabels(fig_id,
                                     proc_labels=[],
                                     show_wait_time=False,
                                     show_wait_time_value=0.05,
+                                    add_title_text=False,
+                                    title_text="",
                                     ):
     
     warnings.filterwarnings( "ignore")
@@ -798,26 +802,35 @@ def ShowAllSingleSegmentsWithLabels(fig_id,
    
     border=[]
     border.append(0)
+
+    draw_window_type=""
         
-    if(isinstance(fig_id,str)): 
+    if(isinstance(fig_id,str)):         
         fig=plt.figure(fig_id)     
         fig.clf()
         fig_ax= fig.add_subplot(111)
+        draw_window_type="plt_figure"
     if(isinstance(fig_id,plt.Figure)):         
         fig= fig_id   
         fig.clf()
         fig_ax= fig.add_subplot(111)
+        draw_window_type="plt_figure"
         #ax_list = fig.get_axes()
         #fig_ax=ax_list[0]
         #fig_ax.clear()
     if(isinstance(fig_id,ChartWindow)):        
-        fig= fig_id.Canvas.fig
+        fig=fig_id
         fig_ax= fig_id.Canvas.axes
         fig_ax.clear()
-    #fig.clf()
-    #fig_ax= fig.add_subplot(111)
+        draw_window_type="qt_window"
+    if(isinstance(fig_id,pg.widgets.PlotWidget.PlotWidget)):
+        #https://pyqtgraph.readthedocs.io/en/latest/getting_started/plotting.html
+        fig=fig_id
+        fig_ax=fig_id
+        fig_ax.clear()
+        draw_window_type="pg_plot"
+          
     
-
     #make full signals first
     full_sign=[]
     sample_stamp=[]    
@@ -873,11 +886,18 @@ def ShowAllSingleSegmentsWithLabels(fig_id,
                        labels_tags.append(label)
                        sectors.append(sector_)
 
-    if(mark_segm_borders==True):
-        min_v=np.min(np.asarray(full_sign),axis=None)
-        max_v=np.max(np.asarray(full_sign),axis=None)
+    min_v=np.min(np.asarray(full_sign),axis=None)
+    max_v=np.max(np.asarray(full_sign),axis=None)
+
+    if(mark_segm_borders==True):        
         for b in range(0,len(sample_stamp[0])):
-            fig_ax.vlines(sample_stamp[0][b],ymin=min_v,ymax=max_v,colors="black",linestyles="solid")
+            if(draw_window_type=="pg_plot"):
+                #fig_ax.plot(pg.InfiniteLine(sample_stamp[0][b]))
+                cur_pos=sample_stamp[0][b]
+                #line_=pg.InfiniteLine(pos=cur_pos,angle=90,bounds=[min_v,max_v])
+                fig_ax.addItem(pg.InfiniteLine(pos=cur_pos,angle=90))#,bounds=[min_v,max_v]))
+            else:
+                fig_ax.vlines(sample_stamp[0][b],ymin=min_v,ymax=max_v,colors="black",linestyles="solid")
                            
     if(show_proc_labels==True) and (proc_labels is not None) and (len(proc_labels)!=0):
                 
@@ -896,6 +916,7 @@ def ShowAllSingleSegmentsWithLabels(fig_id,
                 #if (proc_labels_show_segm_borders==True): 
                 #    fig_ax.vlines(cnt,ymin=min_v,ymax=max_v,colors="black",linestyles="solid")
             
+            
             for k in range(0,len(proc_labels[p])):
 
                 st_ = k * proc_labels_snip_size + cnt
@@ -904,10 +925,24 @@ def ShowAllSingleSegmentsWithLabels(fig_id,
                 cur_l = int(proc_labels[p][k])
                 cur_color=colors_code[cur_l % len(colors_code)]
                 if(show_scheme=="all_grades"):    
-                    fig_ax.axvspan(st_, en_, alpha=0.1, color=cur_color) 
+                    if(draw_window_type!="pg_plot"): fig_ax.axvspan(st_, en_, alpha=0.1, color=cur_color) 
+                    else:#this is pyqtplot                        
+                        #https://pyqtgraph.readthedocs.io/en/latest/api_reference/graphicsItems/fillbetweenitem.html
+                        p1=pg.InfiniteLine(pos=st_,angle=90)
+                        p2=pg.InfiniteLine(pos=en_,angle=90)
+                        fig_ax.addItem(p1)
+                        fig_ax.addItem(p2)
+                        pg.fill_between(p1, p2, brush=pg.mkBrush(cur_color)) #cur_color[0]*255,cur_color[1]*255,cur_color[2]*255,25))
                 if(show_scheme=="only_anom"):    
-                    if(cur_l!=0): fig_ax.axvspan(st_, en_, alpha=0.1, color=cur_color) 
-
+                    if(draw_window_type!="pg_plot"):
+                        if(cur_l!=0): fig_ax.axvspan(st_, en_, alpha=0.1, color=cur_color) 
+                    else:#this is pyqtplot                        
+                        if(cur_l!=0):
+                            p1=pg.InfiniteLine(pos=st_,angle=90)
+                            p2=pg.InfiniteLine(pos=en_,angle=90)
+                            fig_ax.addItem(p1)
+                            fig_ax.addItem(p2)
+                            pg.fill_between(p1, p2, brush=pg.mkBrush(cur_color))
                 st_= en_
     """
             shp_=np.shape(plate.sigments_sign[indx_segment][chan_num[i]])
@@ -959,11 +994,24 @@ def ShowAllSingleSegmentsWithLabels(fig_id,
                         sectors.append(sector_)                
         plt.vlines(border[kks], y_min,y_max,colors="red", linestyles='solid')
     """
-
-    fig.legend(sectors,labels_tags)
-    fig.canvas.draw_idle() #draw_idle() #draw()    
-    fig.show()
-    fig.canvas.flush_events()
+    if(draw_window_type=="plt_figure"):
+        if(add_title_text): fig_ax.set_title(title_text)
+        fig.legend(sectors,labels_tags)
+        fig.canvas.draw_idle() #draw_idle() #draw()    
+        fig.show()
+        fig.canvas.flush_events()        
+    elif(draw_window_type=="qt_window"):
+        if(add_title_text): fig.Canvas.axes.set_title(title_text)
+        fig.Canvas.axes.legend(sectors,labels_tags)
+        fig.Canvas.fig.canvas.draw_idle()#draw()
+        fig.Canvas.fig.canvas.flush_events()
+    elif(draw_window_type=="pg_plot"):        
+        if(add_title_text): #fig.setWindowTitle(title_text)                 
+            #label=pg.LabelItem(title_text)
+            #fig_ax.addItem(label)
+            text = pg.TextItem(title_text)
+            fig_ax.addItem(text)
+            text.setPos(0,0)
     if(show_wait_time):
         time.sleep(show_wait_time_value)
     #fig.update()
@@ -972,6 +1020,32 @@ def ShowAllSingleSegmentsWithLabels(fig_id,
     #print(border)
 #use example
 #ShowAllSingleSegmentsWithLabels("ssdfsfsdf", PLATES_ARRAY[0],colors_code=cc_dd,indx_chan=0,aplpha=0.1)
+
+"""
+#pyqtgraph plot - fill between two areas
+class FillBetweenItem(pg.Qt.QtGui.QGraphicsPathItem):
+    
+    ##https://groups.google.com/g/pyqtgraph/c/T7qe_odEvO8
+    #GraphicsItem filling the space between two PlotDataItems.
+    
+    def __init__(self, p1, p2, brush=None):
+        pg.QtGui.QGraphicsPathItem.__init__(self)
+        self.p1 = p1
+        self.p2 = p2
+        p1.sigPlotChanged.connect(self.updatePath)
+        p2.sigPlotChanged.connect(self.updatePath)
+        if brush is not None:
+            self.setBrush(pg.mkBrush(brush))
+        self.setZValue(min(p1.zValue(), p2.zValue())-1)
+        self.updatePath()
+
+    def updatePath(self):
+        p1 = self.p1.curve.path
+        p2 = self.p2.curve.path
+        path = pg.QtGui.QPainterPath()
+        path.addPolygon(p1.toSubpathPolygons()[0] + p2.toReversed().toSubpathPolygons()[0])
+        self.setPath(path)
+"""
 
 #show signals and labelling in the figure
 def ShowSingleSegmentWithLabels(fig_id, plate,
@@ -1802,6 +1876,14 @@ def ReadSettings(window):
     #files folder
     RealT_filse_folders_delete_files_checkbox= bool(window.ui.RealT_filse_folders_delete_files_checkbox.isChecked())
     settings["RealT_filse_folders_delete_files_checkbox"] = RealT_filse_folders_delete_files_checkbox
+    
+    #GUI settings
+    GUI_settitle_figure_checkbox_2= bool(window.ui.GUI_settitle_figure_checkbox_2.isChecked())
+    settings["GUI_settitle_figure_checkbox_2"] = GUI_settitle_figure_checkbox_2
+
+    GUI_fiure_coment_text_2= str(window.ui.GUI_fiure_coment_text_2.text())
+    settings["GUI_fiure_coment_text_2"] = GUI_fiure_coment_text_2
+     
 
     return settings
 
@@ -1861,10 +1943,12 @@ def LoadInterfaceFromFile(window,path):
         window.ui.GUI_impose_delay_checkbox_2.setChecked(bool(my_set["GUI_impose_delay_checkbox_2"]))
         window.ui.GUI_impose_measurements_delay_value_textbox_2.setText(str(my_set["GUI_impose_measurements_delay_value_textbox_2"]))
         window.ui.RT_impose_delay_between_measurements_checkbox_3.setChecked(bool(my_set["RT_impose_delay_between_measurements_checkbox_3"]))
-        window.ui.RT_impose_delay_between_measurements_textbox_5.setText(str(my_set["RT_impose_delay_between_measurements_textbox_5"]))
-        
+        window.ui.RT_impose_delay_between_measurements_textbox_5.setText(str(my_set["RT_impose_delay_between_measurements_textbox_5"]))           
         #files folder
         window.ui.RealT_filse_folders_delete_files_checkbox.setChecked(bool(my_set["RealT_filse_folders_delete_files_checkbox"]))
+        #GUI
+        window.ui.GUI_fiure_coment_text_2.setText(str(my_set["GUI_fiure_coment_text_2"]))
+        window.ui.GUI_settitle_figure_checkbox_2.setChecked(bool(my_set["GUI_settitle_figure_checkbox_2"]))     
 
     except Exception as exs:
         print("Error loading real time settings. Exception: "+str(exs))
@@ -3235,6 +3319,7 @@ class S_Classif:
         cls_type=type(self.classifier)        
         shp=np.shape(feat)
         labs=np.empty
+        type_clf=str(cls_type)
         if(str(cls_type) == "<class 'xgboost.sklearn.XGBClassifier'>"):
             labs=self.classifier.predict(feat)      
         if(str(cls_type) == "<class 'sklearn.ensemble._iforest.IsolationForest'>"):            
@@ -3289,7 +3374,7 @@ class S_Classif:
                     else: ind+=1
                 labs.append(int(ind))
 
-        if( str(cls_type) == 'SHelpers.CNNAutoencoder_Shallow_498sp_1') or str(cls_type) ==('SHelpers.Autoencoder_S1'): #class 'SHelpers.CNNAutoencoder_Shallow_498sp_1'
+        if( str(cls_type) == 'SHelpers.CNNAutoencoder_Shallow_498sp_1') or str(cls_type) ==("<class 'SHelpers.Autoencoder_S1'>"): #class 'SHelpers.CNNAutoencoder_Shallow_498sp_1'
 
             device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
             #x = torch.Tensor(feat).to(device) 

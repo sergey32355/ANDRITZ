@@ -11,7 +11,7 @@
     <OutputPath>.</OutputPath>
     <Name>Andritz_GUI</Name>
     <RootNamespace>Andritz_GUI</RootNamespace>
-    <InterpreterId>Global|PythonCore|3.12</InterpreterId>
+    <InterpreterId>CondaEnv|CondaEnv|MyEnv_1</InterpreterId>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
     <DebugSymbols>true</DebugSymbols>
@@ -26,10 +26,7 @@
     <Compile Include="VS_Andritz_GUI.py" />
   </ItemGroup>
   <ItemGroup>
-<<<<<<< Updated upstream
-=======
-    <InterpreterReference Include="CondaEnv|CondaEnv|env" />
->>>>>>> Stashed changes
+    <InterpreterReference Include="CondaEnv|CondaEnv|MyEnv_1" />
     <InterpreterReference Include="Global|PythonCore|3.12" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets" />

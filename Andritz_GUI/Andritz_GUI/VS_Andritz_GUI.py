@@ -24,7 +24,10 @@ import glob
 import multiprocessing
 from barbar import Bar
 import warnings
+import pyqtgraph as pg
+#import pylab as pl
 
+import PySide6
 from PySide6.QtWidgets import QApplication, QMainWindow, QTextEdit,QFileDialog
 from PySide6.QtCore import QThread, Signal, QObject
 from gui_files.empa_gui import Ui_EmpaGUI
@@ -404,6 +407,7 @@ class MainWindow(QMainWindow):
                                                      show_labels=False,
                                                      points_num_limit_check=bool(graph_settings.get("GUI_show_results_points_number_limit_checkbox")),
                                                      points_num_limit=int(graph_settings.get("GUI_show_results_points_number_limit_textbox")),
+                                                     mark_segm_borders=bool(self.proc_settings.get("GUI_mark_segments_checkbox")),
                                                     )
                 
                 """
@@ -510,6 +514,7 @@ class MainWindow(QMainWindow):
                                                  show_labels=True,
                                                  points_num_limit_check=bool(self.proc_graph_settings.get("GUI_show_results_points_number_limit_checkbox")),
                                                  points_num_limit=int(self.proc_graph_settings.get("GUI_show_results_points_number_limit_textbox")),
+                                                 mark_segm_borders=bool(self.proc_settings.get("GUI_mark_segments_checkbox")),
                                                 )
             
         """
@@ -1051,7 +1056,8 @@ class MainWindow(QMainWindow):
                                                  show_proc_labels = True, #this is for processed labels
                                                  proc_labels_snip_size = snip_size,
                                                  proc_labels_color_scheme = self.proc_settings.get("Show_results_color_scheme_drop_down_text"),
-                                                 proc_labels = labels_in_segment,          
+                                                 proc_labels = labels_in_segment,   
+                                                 mark_segm_borders=bool(self.proc_settings.get("GUI_mark_segments_checkbox")),
                                                  )
 
 
@@ -1126,7 +1132,8 @@ class MainWindow(QMainWindow):
                                                  show_proc_labels = True, #this is for processed labels
                                                  proc_labels_snip_size = snip_size,
                                                  proc_labels_color_scheme = self.proc_settings.get("Show_results_color_scheme_drop_down_text"),
-                                                 proc_labels = labels_in_segment,          
+                                                 proc_labels = labels_in_segment,         
+                                                 mark_segm_borders=bool(self.proc_settings.get("GUI_mark_segments_checkbox")),
                                                  )
 
             """
@@ -1684,8 +1691,7 @@ class MainWindow(QMainWindow):
         self.proc_settings = shlp.ReadSettings(self)  
         rt_source=self.proc_settings.get("real_time_source")
         channs_indx=[0]
-        snip_size=int(self.proc_settings.get("snippet_size"))
-        s_model=self.s_model 
+        snip_size=int(self.proc_settings.get("snippet_size"))        
         colors=self.colors_id        
         preprocessing=self.proc_settings.get("classification_preproc_dropdown")
         
@@ -1696,22 +1702,36 @@ class MainWindow(QMainWindow):
         #if to show the processed signals graph
         if(bool(self.proc_settings.get("RealT_show_processed_signals_checkbox_3"))==True):                        
             if(self.RT_Figure_if_proc_results_id == ""):
-                self.RT_Figure_if_proc_results_id="Processed_results_"+str(uuid.uuid1())[:5]             
+                self.RT_Figure_if_proc_results_id="Processed_results_"+str(uuid.uuid1())[:5]        
+            #THIS IS QTFRAME for plotting
             #self.RT_fig_proc_results=shlp.ChartWindow(chart_name=self.RT_Figure_if_proc_results_id)
+            #self.RT_fig_proc_results.show()
             #self.RT_fig_proc_results_ax=self.RT_fig_proc_results.Canvas.axes
-            #
+            # this is matlotlib standard stuff           
+            """          
             plt.ion()         
             self.RT_fig_proc_results = plt.figure(self.RT_Figure_if_proc_results_id)
             self.RT_fig_proc_results_ax = self.RT_fig_proc_results.add_subplot(111)
             self.RT_fig_proc_results.show()
-            print("Prepaired processing results graph. Object type: "+str(type(shlp.ChartWindow)))   
-        
+            """
+            #print("Prepaired processing results graph. Object type: "+str(type(shlp.ChartWindow)))   
+            
+            #this is pyqt graüphics
+            #https://pyqtgraph.readthedocs.io/en/latest/getting_started/installation.html
+            self.RT_fig_proc_results = pg.plot(title="self.RT_Figure_if_proc_results_id") #pg.GraphicsLayoutWidget()  # Automatically generates grids with multiple items            
+
+            #this is pylab
+            """
+            self.RT_fig_proc_results = pl.figure(self.RT_Figure_if_proc_results_id)
+            self.RT_fig_proc_results.show()
+            """
 
         if(rt_source != "Folder") and (rt_source != "RealTime"):
             return      
 
         self.show_proc_results_thread=threading.Thread()
         self.show_proc_result_in_progress=False
+        self.RT_Frame_Counter=0
                 
         if(rt_source == "Folder"):
                         
@@ -1723,8 +1743,7 @@ class MainWindow(QMainWindow):
                     print("The real time folder cant be created. Check admin rights and repeat...")
                     return            
                     
-            self.ui.Real_time_Frame_counter_label.setText(str(0))  
-            self.rt_FrameCounter=0  
+            self.ui.Real_time_Frame_counter_label.setText(str(0))              
             #self.ExitFilesInFolderFlag=False  
             
             self.Real_Time_Thread = threading.Thread(target=self.FilesFolderTracking1_1,args=[rt_path])
@@ -1828,7 +1847,7 @@ class MainWindow(QMainWindow):
         signals=[]
         for i in range(0,8):
             signals.append(np.array([]))
-
+                    
         t = threading.current_thread()
 
         card:spcm.Card
@@ -1876,7 +1895,7 @@ class MainWindow(QMainWindow):
             print("Pretrigger(samp.points): "+str(POSTTRIG_DURATION*SAMPLING_RATE*1e3))            
             print("")
 
-            frame_count=1
+            self.RT_Frame_Counter=1
 
             while(getattr(t, "do_run", True)):
 
@@ -1931,8 +1950,8 @@ class MainWindow(QMainWindow):
                 
                 print("")
                 print("********************************************************************")
-                print("***********************MEASUREMENT "+str(frame_count)+"********************")        
-                frame_count=frame_count+1
+                print("***********************MEASUREMENT "+str(self.RT_Frame_Counter)+"********************")        
+                self.RT_Frame_Counter=self.RT_Frame_Counter+1
                                 
                 try:
                     rt_plate=shlp.SPlate()
@@ -1973,8 +1992,9 @@ class MainWindow(QMainWindow):
         import SHelpers as shlp
 
         txtfiles = []    
+        self.RT_Frame_Counter=0
         global EXIT_RT_FLAG
-                        
+                                       
         t = threading.current_thread()
         while(getattr(t, "do_run", True)):
             #check for exit
@@ -2020,7 +2040,7 @@ class MainWindow(QMainWindow):
 
                 print("")
                 print("********************************************************************")
-                print("***********************NEW MEASUREMENT******************************")                         
+                print("***********************MEASUREMENT " +str(self.RT_Frame_Counter)+"*************************")                         
                 #open/processing                
                 plates=[]
                 try: 
@@ -2031,9 +2051,9 @@ class MainWindow(QMainWindow):
                 print("********************************************************************")
                 print("")
                 print("")
-
+                self.RT_Frame_Counter=self.RT_Frame_Counter+1
                 #delete files after processing if needed
-                if(bool(self.proc_settings.get("RealT_filse_folders_delete_files_checkbox"))):
+                if(bool(self.proc_settings.get("RealT_filse_folders_delete_files_checkbox"))==True):
                     try: os.remove(txt_path)                    
                     except: pass
                     try: os.remove(bin_path)           
@@ -2042,8 +2062,18 @@ class MainWindow(QMainWindow):
                 if(bool(self.proc_settings.get("only_single_shot")) ==True):
                     break
 
+                if(bool(self.proc_settings.get("RT_impose_delay_between_measurements_checkbox_3")) ==True):
+                    time_to_wait=int(self.proc_settings.get("RT_impose_delay_between_measurements_textbox_5"))/1000
+                    time.sleep(time_to_wait)
+                
             txtfiles=[] #clean up
-            self.Real_Time_Stop_Click()
+        #finally we press virtuall stop vbutton
+        self.Real_Time_Stop_Click()
+
+
+    #****************************************************************************************************************************
+    #****************************************************************************************************************************
+    #****************************************************************************************************************************
 
     def Process_RT_Data(self,plate):
 
@@ -2091,7 +2121,6 @@ class MainWindow(QMainWindow):
                 else:
                     labels_in_segment.append([])
                 snips_len=len(snippets)
-
             snips_num=snips_num+snips_len         
         #**********************************************************************************************
         proc_time_total.append(time.time())
@@ -2104,23 +2133,11 @@ class MainWindow(QMainWindow):
                 #multiprocessing.Process
                 if(self.show_proc_result_in_progress==False):#self.show_proc_results_thread.is_alive()==False):
                     self.show_proc_result_in_progress==True
-                    self.show_proc_results_thread = threading.Thread (target=self.ShowProcessedResults,args=(plate,labels_in_segment))
-                    """
-                    self.show_proc_results_thread = threading.Thread (target=shlp.ShowAllSingleSegmentsWithLabels,args=(self.RT_fig_proc_results,plate),
-                                                                                                   kwargs={"colors_code" : self.colors_id,
-                                                                                                           "indx_chan" : CHANNELS_TO_USE,
-                                                                                                            "aplpha":0.1,
-                                                                                                            "show_labels":False, #this is for ground truth labels
-                                                                                                            "points_num_limit_check":bool(self.proc_settings.get("GUI_show_results_points_number_limit_checkbox")),
-                                                                                                            "points_num_limit":int(self.proc_settings.get("GUI_show_results_points_number_limit_textbox")),
-                                                                                                            "show_proc_labels":True, #this is for processed labels
-                                                                                                            "proc_labels_snip_size":snip_size,
-                                                                                                            "proc_labels_color_scheme":self.proc_settings.get("Show_results_color_scheme_drop_down_1"),
-                                                                                                            "proc_labels":labels_in_segment,            
-                                                                                                         })
-                    """
+                    #self.ShowProcessedResults,args=(plate,labels_in_segment)
+                    self.show_proc_results_thread = threading.Thread (target=self.ShowProcessedResults,args=(plate,labels_in_segment))                    
                     self.show_proc_results_thread.start()
-                else: skipped_results=True
+                else: 
+                    skipped_results=True
                 display_time.append(time.time())
             except Exception as Ex: print("Cant display processed data. Exception: "+str(Ex))
 
@@ -2284,10 +2301,36 @@ class MainWindow(QMainWindow):
                                              mark_segm_borders=bool(self.proc_settings.get("GUI_mark_segments_checkbox")),
                                              show_wait_time=impose_addit_delay_showing_results,
                                              show_wait_time_value=addit_delay_value/1000,#delay of plotting in ms
+                                             add_title_text=bool(self.proc_settings.get("GUI_settitle_figure_checkbox_2")),
+                                             title_text="Measurement "+str(self.RT_Frame_Counter),
                                             )
-        self.show_proc_result_in_progress==False
-        #time.sleep(0.2)
 
+        
+        self.show_proc_result_in_progress==False 
+        
+        """
+        if(isinstance(self.RT_fig_proc_results,plt.Figure)):          
+            self.RT_fig_proc_results.canvas.draw_idle() #draw_idle() #draw()                
+            self.RT_fig_proc_results.canvas.flush_events()
+        else:                       
+            self.RT_fig_proc_results.Canvas.fig.canvas.draw_idle()#draw()
+            self.RT_fig_proc_results.Canvas.fig.canvas.flush_events()
+        """
+
+        """
+        self.show_proc_results_thread = threading.Thread (target=shlp.ShowAllSingleSegmentsWithLabels,args=(self.RT_fig_proc_results,plate),
+                                                                                                   kwargs={"colors_code" : self.colors_id,
+                                                                                                           "indx_chan" : CHANNELS_TO_USE,
+                                                                                                            "aplpha":0.1,
+                                                                                                            "show_labels":False, #this is for ground truth labels
+                                                                                                            "points_num_limit_check":bool(self.proc_settings.get("GUI_show_results_points_number_limit_checkbox")),
+                                                                                                            "points_num_limit":int(self.proc_settings.get("GUI_show_results_points_number_limit_textbox")),
+                                                                                                            "show_proc_labels":True, #this is for processed labels
+                                                                                                            "proc_labels_snip_size":snip_size,
+                                                                                                            "proc_labels_color_scheme":self.proc_settings.get("Show_results_color_scheme_drop_down_1"),
+                                                                                                            "proc_labels":labels_in_segment,            
+                                                                                                         })
+                    """
 
     #this is an old version
     def FilesFolderTracking1(self,rt_folder,chan_indx,snip_size,preprocessing,s_model,colorscheme,fig,fig_ax): 
@@ -2786,7 +2829,8 @@ class MainWindow(QMainWindow):
 #*****************************************************************************************************
 
 if __name__ == "__main__":                
-    app = QApplication(sys.argv)      
+    app = QApplication(sys.argv)     
     window = MainWindow()
-    window.show()    
+    window.setAttribute(PySide6.QtCore.Qt.WA_DeleteOnClose)
+    window.show()        
     sys.exit(app.exec())
