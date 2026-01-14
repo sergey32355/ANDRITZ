@@ -1,3 +1,4 @@
+from ast import Try
 from turtle import width
 import numpy as np
 import pandas as pd
@@ -603,8 +604,8 @@ def OpenDataFromFolder(PATH="",
             print_progress_bar(l+1, len(arr_txt), "File opened (SPECTRUM *.bin)")    
 
     #csv format
-    
-    if(len(arr_csv)!=0) and (len(arr_csv)==1 and arr_csv[0]!=""):        
+    check=len(arr_csv)
+    if(len(arr_csv)!=0) and (arr_csv[0]!=""):        
         cnt=0
         files_cnt=0
         for l in arr_csv:
@@ -927,22 +928,26 @@ def ShowAllSingleSegmentsWithLabels(fig_id,
                 if(show_scheme=="all_grades"):    
                     if(draw_window_type!="pg_plot"): fig_ax.axvspan(st_, en_, alpha=0.1, color=cur_color) 
                     else:#this is pyqtplot                        
+                        pass
                         #https://pyqtgraph.readthedocs.io/en/latest/api_reference/graphicsItems/fillbetweenitem.html
-                        p1=pg.InfiniteLine(pos=st_,angle=90)
-                        p2=pg.InfiniteLine(pos=en_,angle=90)
+                        p1=pg.InfiniteLine(pos=st_,angle=90).setOpts()                        
+                        p2=pg.InfiniteLine(pos=en_,angle=90).setOpts()
                         fig_ax.addItem(p1)
                         fig_ax.addItem(p2)
-                        pg.fill_between(p1, p2, brush=pg.mkBrush(cur_color)) #cur_color[0]*255,cur_color[1]*255,cur_color[2]*255,25))
+                        pg.QtGui.QApplication.processEvents()
+                        #pg.fill_between(p1, p2, brush=pg.mkBrush(cur_color)) #cur_color[0]*255,cur_color[1]*255,cur_color[2]*255,25))
                 if(show_scheme=="only_anom"):    
                     if(draw_window_type!="pg_plot"):
                         if(cur_l!=0): fig_ax.axvspan(st_, en_, alpha=0.1, color=cur_color) 
                     else:#this is pyqtplot                        
                         if(cur_l!=0):
-                            p1=pg.InfiniteLine(pos=st_,angle=90)
-                            p2=pg.InfiniteLine(pos=en_,angle=90)
-                            fig_ax.addItem(p1)
-                            fig_ax.addItem(p2)
-                            pg.fill_between(p1, p2, brush=pg.mkBrush(cur_color))
+                            pass
+                            #p1=pg.InfiniteLine(pos=st_,angle=90).setOpts()     
+                            #p2=pg.InfiniteLine(pos=en_,angle=90).setOpts()     
+                            #fig_ax.addItem(p1)
+                            #fig_ax.addItem(p2)                            
+                            pg.QtGui.QApplication.processEvents()
+                            #pg.fill_between(p1, p2, brush=pg.mkBrush(cur_color))
                 st_= en_
     """
             shp_=np.shape(plate.sigments_sign[indx_segment][chan_num[i]])
@@ -1292,7 +1297,7 @@ def OneCLassSVMTraining(feat=None,labels=None):
     #--------------------------------------------------------------
     
 class DataPreproc:
-    def __init__ (self):
+    def __init__ (self,n_fft=64,n_mels=512):
         #SplitEntireSignalIntoSnippets
         self.sign_1=torch.empty
         self.sign_2=torch.empty
@@ -1324,7 +1329,11 @@ class DataPreproc:
         self.segm_labels_list1=[]
         self.segm_sign_list1=[]       
         self.segm_labels_list2=[]
-        self.segm_sign_list2=[]       
+        self.segm_sign_list2=[]    
+
+        #processing parameters
+        self.n_fft=n_fft
+        self.n_mels=n_mels
         
     #this splits the entire number of segments pf the plate
     def SplitAllPlateSegmentsIntoSnippets(self,plate, 
@@ -1560,12 +1569,12 @@ class DataPreproc:
 
         shp=signal.shape
         
-        if(preproc_type=="torch_MEL"):
+        if(preproc_type=="torch_MEL") or (preproc_type=="torch_MEL_rel"):
             #parameters
-            n_fft = 128         #256       #Toni_MEL_nfft
+            n_fft = self.n_fft  #128         #256       #Toni_MEL_nfft
             win_length = None
             hop_length = 2024   #2024  #Toni_MEL_Samp_hop_length
-            n_mels = 512 #512   #self.Toni_MEL_Samp_n_mels
+            n_mels = self.n_mels #512 #512   #self.Toni_MEL_Samp_n_mels
             sample_rate = 1000000 #40000 #self.Toni_MEL_samp_rate
             #MEL decomposition            
             for l in range(0,shp[0]):
@@ -1587,8 +1596,14 @@ class DataPreproc:
                 self.preproc_flat = self.preproc.reshape(-1)    
                 self.preproc_flat=self.preproc_flat.unsqueeze(0)                
                 if(self.preproc_final==torch.empty): self.preproc_final = self.preproc_flat
-                else:   self.preproc_final=torch.cat([self.preproc_final,self.preproc_flat],dim=0)                    
-            return self.preproc_final.clone()
+                else:   self.preproc_final=torch.cat([self.preproc_final,self.preproc_flat],dim=0)    
+
+            if(preproc_type=="torch_MEL"):
+                return self.preproc_final.clone()
+            if(preproc_type=="torch_MEL_rel"):
+                torch_sum=torch.sum(self.preproc_final)
+                self.preproc_final=torch.div(self.preproc_final,torch_sum)
+                return self.preproc_final.clone()
         #fft
         if(preproc_type=="torch_FFT"):
             #https://www.kaggle.com/code/yassinealouini/signal-processing-theory-and-practice-with-pytorch
@@ -1615,7 +1630,10 @@ class DataPreproc:
                 #https://pytorch.org/audio/stable/tutorials/audio_feature_extractions_tutorial.html#sphx-glr-tutorials-audio-feature-extractions-tutorial-py
                 MFCC_transoform = torchaudio.transforms.MFCC(sample_rate=sample_rate,
                                                             n_mfcc=n_mfcc,
-                                                            melkwargs={"n_fft": 50, "hop_length": 50, "n_mels": 23, "center": False},
+                                                            melkwargs={"n_fft": self.n_fft,#50, 
+                                                                       "hop_length": 50, 
+                                                                       "n_mels": self.n_mels, #23, 
+                                                                       "center": False},
                                                            ).to(torch.double)   
                 
                 self.preproc = MFCC_transoform(self.preproc_in)                
@@ -1628,7 +1646,7 @@ class DataPreproc:
         #widow fft spectrogram
         if(preproc_type=="torch_WFFT"):
             #parameters
-            n_fft=50
+            n_fft=self.n_fft #50
             win_len=None
             hop_len=None
             power=2.0
@@ -1655,7 +1673,7 @@ class DataPreproc:
         #Griffin-Lim transform
         if(preproc_type=="torch_GrifLim"):
             #parameters
-            n_fft=64 #should be order of two
+            n_fft=self.n_fft #64 #should be order of two
                         
             #MEL decomposition            
             for l in range(0,shp[0]):
@@ -1696,7 +1714,7 @@ class DataPreproc:
         if(preproc_type=="torch_SpecCentr"):
             #parameters            
             sample_rate = 1000000
-            n_fft = 50
+            n_fft = self.n_fft #50
                         
             #MEL decomposition            
             for l in range(0,shp[0]):
@@ -1753,6 +1771,7 @@ def ExtractChannelsFromString(chans_string,separator=","):
 
 #read settings before execuring processing
 def ReadSettings(window):
+
     settings={}
     
     #snippet     
@@ -1813,9 +1832,13 @@ def ReadSettings(window):
     #SPECTROGRAMS SHOW
     spectrogrym_type = window.ui.classification_preproc_dropdown_4.currentText()
     settings["spectrogrym_type"] = spectrogrym_type
+
     #MEL SPECTROGRAMS
     spectrogrym_MEL_nfft = int(window.ui.Settings_MEL_num_ffts.text())
     settings["spectrogrym_MEL_nfft"] = spectrogrym_MEL_nfft
+
+    Settings_MEL_num_MELS_2 = int(window.ui.Settings_MEL_num_MELS_2.text())
+    settings["Settings_MEL_num_MELS_2"] = Settings_MEL_num_MELS_2
     
     #CLASIFIERS AND ANOMALY DETECTORS
     autoencoder_torch_thershold=window.ui.Autoencoder_torch_threshold_factor.text()
@@ -1873,6 +1896,12 @@ def ReadSettings(window):
     GUI_impose_measurements_delay_value_textbox_2= str(window.ui.GUI_impose_measurements_delay_value_textbox_2.text())
     settings["GUI_impose_measurements_delay_value_textbox_2"] = GUI_impose_measurements_delay_value_textbox_2
 
+    #labeling data - show
+    classification_plot_choice_dropdown_3= window.ui.classification_plot_choice_dropdown_3.currentText()
+    settings["classification_plot_choice_dropdown_3"] = classification_plot_choice_dropdown_3
+    classification_plot_choice_index= window.ui.classification_plot_choice_dropdown_3.currentIndex()
+    settings["classification_plot_choice_index"] = classification_plot_choice_index
+
     #files folder
     RealT_filse_folders_delete_files_checkbox= bool(window.ui.RealT_filse_folders_delete_files_checkbox.isChecked())
     settings["RealT_filse_folders_delete_files_checkbox"] = RealT_filse_folders_delete_files_checkbox
@@ -1924,6 +1953,16 @@ def LoadInterfaceFromFile(window,path):
     window.ui.GUI_show_results_points_number_limit_textbox.setText(str(my_set["GUI_show_results_points_number_limit_textbox"])) 
     window.ui.GUI_show_results_points_number_limit_checkbox.setChecked(bool(my_set["GUI_show_results_points_number_limit_checkbox"]))
     window.ui.RealT_show_processed_signals_checkbox_3.setChecked(bool(my_set["RealT_show_processed_signals_checkbox_3"]))
+
+    #settings #MEL SPECTROGRAMS
+    try:
+        window.ui.Settings_MEL_num_ffts.setText(str(my_set["spectrogrym_MEL_nfft"])) 
+        window.ui.Settings_MEL_num_MELS_2.setText(str(my_set["Settings_MEL_num_MELS_2"])) 
+    except: pass
+
+    #show labeled data
+    try:window.ui.classification_plot_choice_dropdown_3.setCurrentIndex(int(my_set["classification_plot_choice_index"]))
+    except: pass
 
     #real time spectrum/files folders
     try:

@@ -1,4 +1,6 @@
 
+import array
+from turtle import color
 import numpy as np
 import os
 from os import walk
@@ -25,6 +27,7 @@ import multiprocessing
 from barbar import Bar
 import warnings
 import pyqtgraph as pg
+import webcolors
 #import pylab as pl
 
 import PySide6
@@ -43,7 +46,7 @@ from PySide6.QtWidgets import QDialog, QVBoxLayout
 from PySide6.QtWidgets import QMessageBox
 
 #additional libs
-import librosa
+#import librosa
 import spcm #the DAQ card library
 from spcm import units # spcm uses the pint library for unit handling (units is a UnitRegistry object)
 import datetime
@@ -475,46 +478,49 @@ class MainWindow(QMainWindow):
            
     #classification section - Tools->Page 1
     def Classification_Dataset_Info_Click(self):
-
-        graph_settings = shlp.ReadGraphSettings(self)
+                
         self.proc_settings = shlp.ReadSettings(self)
         print("")
         print("Settings:")
         print(self.proc_settings)
         
+
+
     def Classification_Plot_Segment(self):      
         
         if(self.plates==[]) or(len(self.plates)==0) or (self.plates is None):
             print("Plates are not loaded")
             return   
-
-        self.proc_graph_settings = shlp.ReadGraphSettings(self)
-        plot_type = self.proc_graph_settings.get("classification_show_labeled_data_type")
-            
+               
+        self.proc_settings = shlp.ReadSettings(self)   
+        show_data_type=str(self.proc_settings.get("classification_plot_choice_dropdown_3"))
+        
         p_name = self.ui.plot_plate_dropdown.currentText()
         ch_name=self.ui.Channel_segment_plot.currentText()        
         segment_name=self.ui.plot_segment_dropdown.currentText()    
                 
         indx_plate,indx_chan, indx_segment = shlp.FindPlateInArray(plates=self.plates.copy(),plate_name=p_name,chan_name=ch_name,segm_name=segment_name)
         if (self.classif_plot_fig_id==""):self.classif_plot_fig_id = str(uuid.uuid1())[:5]  
+
         #%matplotlib qt
-        if(plot_type=="Segment"):
+        if(show_data_type == "Segment"):
             shlp.ShowSingleSegmentWithLabels(self.classif_plot_fig_id,self.plates[indx_plate],indx_segment=indx_segment,
                                                                                               colors_code=self.colors_id,
                                                                                               indx_chan=indx_chan,
                                                                                               show_labels=True,
-                                                                                              points_num_limit_check=bool(self.proc_graph_settings.get("GUI_show_results_points_number_limit_checkbox")),
-                                                                                              points_num_limit=int(self.proc_graph_settings.get("GUI_show_results_points_number_limit_textbox")),
+                                                                                              points_num_limit_check=bool(self.proc_settings.get("GUI_show_results_points_number_limit_checkbox")),
+                                                                                              points_num_limit=int(self.proc_settings.get("GUI_show_results_points_number_limit_textbox")),
                                                                                               )
-        if(plot_type=="All_segments"):
+        if(show_data_type=="All_segments"):
+            segm_borders_show_flag=bool(self.proc_settings.get("GUI_mark_segments_checkbox"))
             shlp.ShowAllSingleSegmentsWithLabels(self.classif_plot_fig_id, self.plates[indx_plate],
                                                  colors_code=self.colors_id,
                                                  indx_chan=indx_chan,
                                                  aplpha=0.1,
                                                  show_labels=True,
-                                                 points_num_limit_check=bool(self.proc_graph_settings.get("GUI_show_results_points_number_limit_checkbox")),
-                                                 points_num_limit=int(self.proc_graph_settings.get("GUI_show_results_points_number_limit_textbox")),
-                                                 mark_segm_borders=bool(self.proc_settings.get("GUI_mark_segments_checkbox")),
+                                                 points_num_limit_check=bool(self.proc_settings.get("GUI_show_results_points_number_limit_checkbox")),
+                                                 points_num_limit=int(self.proc_settings.get("GUI_show_results_points_number_limit_textbox")),
+                                                 mark_segm_borders=segm_borders_show_flag,
                                                 )
             
         """
@@ -677,6 +683,9 @@ class MainWindow(QMainWindow):
         indx_plate,indx_chan, indx_segment = shlp.FindPlateInArray(plates=self.plates.copy(),plate_name=p_name,chan_name=ch_name,segm_name=segment_name)        
         channels_to_use=[indx_chan]
 
+        CHANNELS_TO_USE=self.GetChannels()
+
+        """
         try:
             if( int(self.proc_settings.get("classification_channels_choice_drop_down")) == 0):
                 chan_index= int(self.proc_settings.get("chan_from_settings"))-1
@@ -693,7 +702,8 @@ class MainWindow(QMainWindow):
         if(len(CHANNELS_TO_USE)==0):
             print("define channels to use and repeat...")
             return
-        
+        """
+
         """
         if(self.proc_settings.get("chans_to_use")=="From settings"):
             pass
@@ -721,7 +731,10 @@ class MainWindow(QMainWindow):
         unique_labs_tags=[]
         feat=[]
         labs=[]
-        if(self.DataPreproc is None): self.DataPreproc=shlp.DataPreproc()   
+        if(self.DataPreproc is None): self.DataPreproc=shlp.DataPreproc(n_fft=int(self.proc_settings.get("spectrogrym_MEL_nfft")),
+                                                                        n_mels=int(self.proc_settings.get("Settings_MEL_num_MELS_2")),
+                                                                        )   
+
         plate_segm=self.proc_settings.get("plate_segm_process")        
         if(plate_segm == "this_plate_this_segment"):
             feat,labs= self.DataPreproc.SplitLabPlateSegmentIntoSnips(self.plates[indx_plate],
@@ -910,9 +923,12 @@ class MainWindow(QMainWindow):
         if(self.s_model!=None):
             self.s_model.train_feat=feat
             self.s_model.train_labs=new_lab
-        global CLASSIFIER
-        CLASSIFIER=clf#self.classif_tmp
-        print("Training is complete. Classifier type: "+str(type(CLASSIFIER)))        
+            self.ui.Model_ready_label.setStyleSheet("background-color: green") 
+            global CLASSIFIER
+            CLASSIFIER=clf#self.classif_tmp
+            print("Training is complete. Classifier type: "+str(type(self.s_model.classifier)))#CLASSIFIER)))  
+            
+              
             
     def SaveLabelingAsCSV_Click(self):
         
@@ -982,6 +998,8 @@ class MainWindow(QMainWindow):
     def RunClassifForSegment_Click(self):
 
         self.proc_settings = shlp.ReadSettings(self)
+        show_results_scheme=str(self.proc_settings.get("Show_results_color_scheme_drop_down_1"))
+
         if(self.plates is None): return
         if(len(self.plates)==0): return
         if(self.s_model is None): 
@@ -993,7 +1011,10 @@ class MainWindow(QMainWindow):
         segment_name=self.ui.plot_segment_dropdown.currentText()   
         indx_plate,indx_chan, indx_segment = shlp.FindPlateInArray(plates=self.plates,plate_name=p_name,chan_name=ch_name,segm_name=segment_name)
         snip_size=int(self.proc_settings.get("snippet_size"))
-        dp=shlp.DataPreproc()     
+        CHANNELS_TO_USE=self.GetChannels()
+        dp=shlp.DataPreproc(n_fft=int(self.proc_settings.get("spectrogrym_MEL_nfft")),
+                            n_mels=int(self.proc_settings.get("Settings_MEL_num_MELS_2"))
+                            )     
 
         """
         channels_to_use=[indx_chan]
@@ -1009,6 +1030,8 @@ class MainWindow(QMainWindow):
                 pass
         """
 
+        """
+        #now this is a function
         if( int(self.proc_settings.get("classification_channels_choice_drop_down")) == 0):
             chan_index= int(self.proc_settings.get("chan_from_settings"))-1
             if(chan_index<0):
@@ -1018,6 +1041,7 @@ class MainWindow(QMainWindow):
             
         else:
             CHANNELS_TO_USE = [int(i) for i in self.proc_settings.get("classification_user_channels_text_box").split(",") if i.strip().isdigit()]
+        """
 
         print("")
         print("*********************************************************************")
@@ -1648,10 +1672,25 @@ class MainWindow(QMainWindow):
             shlp.plot_spectrogram(spec[0], title="spectrogram", ax=axs[1])
             axs[0].vlines(snip_size, ymin, ymax,colors="red")
             fig.tight_layout()
+
+
+    def GetChannels(self):
+        #self.proc_settings=shlp.ReadSettings(self)
+        CHANNELS_TO_USE=[]
+        if( int(self.proc_settings.get("classification_channels_choice_drop_down")) == 0):
+            chan_index= int(self.proc_settings.get("chan_from_settings"))-1
+            if(chan_index<0):
+                CHANNELS_TO_USE=list([0,1,2,3,4,5,6,7]) #all channels are selected
+            else:
+                CHANNELS_TO_USE=list([chan_index])            
+        else:
+            CHANNELS_TO_USE = [int(i) for i in self.proc_settings.get("classification_user_channels_text_box").split(",") if i.strip().isdigit()]
+        return CHANNELS_TO_USE
     #**********************************************************************************************
     #**********************************************************************************************
     #******************************FILES FOLDERS/DAQ TRACKING**************************************
     #**********************************************************************************************
+        
     def Real_Time_Stop_Click(self):     
         
         global EXIT_RT_FLAG
@@ -1695,7 +1734,9 @@ class MainWindow(QMainWindow):
         colors=self.colors_id        
         preprocessing=self.proc_settings.get("classification_preproc_dropdown")
         
-        self.rt_data_proc=shlp.DataPreproc()
+        self.rt_data_proc=shlp.DataPreproc(n_fft=int(self.proc_settings.get("spectrogrym_MEL_nfft")),
+                                           n_mels=int(self.proc_settings.get("Settings_MEL_num_MELS_2"))
+                                           )
         global EXIT_RT_FLAG
         EXIT_RT_FLAG=False        
         
@@ -1716,9 +1757,10 @@ class MainWindow(QMainWindow):
             """
             #print("Prepaired processing results graph. Object type: "+str(type(shlp.ChartWindow)))   
             
-            #this is pyqt graüphics
+            #this is pyqt graphics
             #https://pyqtgraph.readthedocs.io/en/latest/getting_started/installation.html
-            self.RT_fig_proc_results = pg.plot(title="self.RT_Figure_if_proc_results_id") #pg.GraphicsLayoutWidget()  # Automatically generates grids with multiple items            
+            #self.RT_fig_proc_results = pg.plot(title="self.RT_Figure_if_proc_results_id") #pg.GraphicsLayoutWidget()  # Automatically generates grids with multiple items            
+            self.RT_fig_proc_results=RTPlotWidget(parent=self)
 
             #this is pylab
             """
@@ -2074,7 +2116,7 @@ class MainWindow(QMainWindow):
     #****************************************************************************************************************************
     #****************************************************************************************************************************
     #****************************************************************************************************************************
-
+        
     def Process_RT_Data(self,plate):
 
         import SHelpers as shlp
@@ -2098,7 +2140,7 @@ class MainWindow(QMainWindow):
             CHANNELS_TO_USE = [int(i) for i in self.proc_settings.get("classification_user_channels_text_box").split(",") if i.strip().isdigit()]
                      
         sgn_len= len(plate.sigments_sign)
-        
+                
         proc_time_total.append(time.time())
         #*********************************************************************************************
         for seg_i in range(0,sgn_len):
@@ -2110,35 +2152,38 @@ class MainWindow(QMainWindow):
             snips_len=0
             snippets=self.rt_data_proc.SplitEntireSignalIntoSnippets(signal=segm_signal,channs_indx=CHANNELS_TO_USE,torch_tensor=False, snip_size = snip_size,preproc_type = preprocessing)
             if snippets is None:                
-                labels_in_segment.append([])
+                labels_in_segment.append(list())
             else:
                 if(self.s_model is not None): 
-                    if(len(snippets)!=0):
+                    if(len(snippets.shape)!=0):
+                        shp_snip=np.shape(np.asarray(snippets))
                         proc_labels=self.s_model.np_predict(np.asarray(snippets))
                         labels_in_segment.append(proc_labels)
                     else:
-                        labels_in_segment.append([])
+                        labels_in_segment.append(list())
                 else:
-                    labels_in_segment.append([])
+                    labels_in_segment.append(list())
                 snips_len=len(snippets)
-            snips_num=snips_num+snips_len         
+            snips_num=snips_num+snips_len        
+            shlp.print_progress_bar(seg_i+1, sgn_len, "segments proc.progress")    
         #**********************************************************************************************
         proc_time_total.append(time.time())
 
-        show_results=bool(self.proc_settings.get("RealT_show_processed_signals_checkbox_3"))==True
+        #SHOW RESULTS        
         skipped_results = False
-        if(show_results):                        
-            try:        
-                display_time.append(time.time())
+        if(bool(self.proc_settings.get("RealT_show_processed_signals_checkbox_3"))):                        
+            try:                       
                 #multiprocessing.Process
                 if(self.show_proc_result_in_progress==False):#self.show_proc_results_thread.is_alive()==False):
                     self.show_proc_result_in_progress==True
-                    #self.ShowProcessedResults,args=(plate,labels_in_segment)
-                    self.show_proc_results_thread = threading.Thread (target=self.ShowProcessedResults,args=(plate,labels_in_segment))                    
+                    self.curMeas_num=self.RT_Frame_Counter #we fix here the current frame counter number that corresponds to this measurements                    
+                    self.show_proc_results_thread = threading.Thread (target=self.ShowProcResults_REAL_TIME,args=(plate,labels_in_segment))                    
                     self.show_proc_results_thread.start()
+                    display_time.append(0)
+                    display_time.append(1)
                 else: 
                     skipped_results=True
-                display_time.append(time.time())
+                
             except Exception as Ex: print("Cant display processed data. Exception: "+str(Ex))
 
         if(bool(self.proc_settings.get("show_info"))==True):
@@ -2156,9 +2201,9 @@ class MainWindow(QMainWindow):
                 if(snips_num!=0): 
                     try: print("Proc.-snippet/s: "+str((proc_time_total[1]-proc_time_total[0])/snips_num))
                     except: pass
-                if(show_results):                    
-                    if(skipped_results==False): print("Display time of results (s): "+str(display_time[1]-display_time[0]))
-                    else: print("Results are not shown")
+                #if(show_results): 
+                    #if(skipped_results==False): print("Display time of results (s): "+str(display_time[1]-display_time[0]))
+                    #else: print("Results are not shown")
             except Exception as ex:
                 print("Cant display data.Exception: "+str(ex))
 
@@ -2271,7 +2316,157 @@ class MainWindow(QMainWindow):
                         break
 
             """#end of processing
+               
 
+    def ShowProcResults_REAL_TIME(self,plate,labels_in_segment):
+
+        import SHelpers as shlp
+
+        warnings.filterwarnings( "ignore")
+
+        chan_num=self.GetChannels()
+        snip_size=int(self.proc_settings.get("MAIN_classification_snippet_size_text"))   
+        impose_addit_delay_showing_results=bool(self.proc_settings.get("GUI_impose_delay_checkbox_2"))
+        addit_delay_value=int(self.proc_settings.get("GUI_impose_measurements_delay_value_textbox_2"))
+        points_num_limit_check=bool(self.proc_settings.get("GUI_show_results_points_number_limit_checkbox"))
+        points_num_limit=int(self.proc_settings.get("GUI_show_results_points_number_limit_textbox"))
+        show_labels=bool(self.proc_settings.get("GUI_show_labels_checkbox"))
+        mark_segm_borders=bool(self.proc_settings.get("GUI_mark_segments_checkbox"))
+        #show the labels
+        show_results_scheme=str(self.proc_settings.get("Show_results_color_scheme_drop_down_1"))
+        
+        if(isinstance(self.RT_fig_proc_results,plt.Figure)):                     
+            self.RT_fig_proc_results.clf()
+            fig_ax= self.RT_fig_proc_results.add_subplot(111)
+            draw_window_type="plt_figure"   
+        if(isinstance(self.RT_fig_proc_results,RTPlotWidget)):#,pg.widgets.PlotWidget.PlotWidget)):
+            #https://pyqtgraph.readthedocs.io/en/latest/getting_started/plotting.html            
+            self.RT_fig_proc_results.clear()
+            draw_window_type="pg_plot"
+
+        #start_display = pg.time.ptime.time()pg.time.ptime.time()#pg.ptime.time()
+        #******************************************************************************************************************************
+        #make full signals first
+        full_sign=[]
+        sample_stamp=[]    
+        for kks in range(0,len(chan_num)):    
+            full_sign.append([])       
+            sample_stamp.append([])
+            sample_stamp[-1].append(0)
+            for segment in plate.sigments_sign:               
+                if(len(full_sign[-1])==0):full_sign[-1]=np.asarray(segment[chan_num[kks]])                                
+                else:
+                    sfg = np.asarray(full_sign[-1])            
+                    sfg1=np.concatenate((sfg,segment[chan_num[kks]]),axis=None)
+                    full_sign[-1]=np.empty
+                    full_sign[-1]=np.asarray(sfg1)            
+                    #sample_stamp[-1].append(len(sfg1)+sample_stamp[-1][len(sample_stamp[-1])-1])            
+                sample_stamp[-1].append(len(full_sign[-1]))
+        #sparse signal if needed
+        step_size=1    
+        if(points_num_limit_check==True):
+            for m in range(0,len(full_sign)):
+                shp_=np.shape(full_sign[m])
+                l_segm_=-1
+                if(len(shp_)==1): l_segm_=shp_[0]
+                else:            l_segm_=shp_[1]
+                if l_segm_>points_num_limit:
+                    step_size=int(l_segm_/points_num_limit)
+                    reduced_signal=[]
+                    points_steps=[]
+                    for kk in range(0,l_segm_,step_size):
+                        reduced_signal.append(full_sign[m][kk])
+                        points_steps.append(kk)                     
+                    self.RT_fig_proc_results.plot(points_steps,reduced_signal)
+
+                else:                 
+                    self.RT_fig_proc_results.plot(full_sign[m])
+        else:                
+            for m in range(0,len(full_sign)):
+                self.RT_fig_proc_results.plot(full_sign[m])
+
+        """
+        if(show_labels==True):
+
+            unique_labels=plate.GetUniqueLabelsList()
+            labels_tags=[]
+            sectors=[]
+
+            for kkj in range(0,len(chan_num)):
+                cnt=0            
+                for k in range(0,len(plate.sigments_labels)):                
+                    if (k!=0): cnt=cnt+len(plate.sigments_sign[k-1][kkj])
+                    for j in range(0,len(plate.sigments_labels[k])):     
+                        curs_start=int((plate.sigments_labels[k][j][0]+cnt))
+                        curs_end=int((plate.sigments_labels[k][j][1]+cnt))
+                        label=plate.sigments_labels[k][j][2]                
+                        c_ind=unique_labels.index(label)
+                        if(c_ind>len(self.colors_id)-1): c_ind=len(self.colors_id)-1
+                        sector_=plt.axvspan(curs_start, curs_end, facecolor=self.colors_id[c_ind], alpha=0.1)    
+                        if(label not in labels_tags):
+                           labels_tags.append(label)
+                           sectors.append(sector_)
+        """
+
+        min_v=np.min(np.asarray(full_sign),axis=None)
+        max_v=np.max(np.asarray(full_sign),axis=None)
+
+        if(mark_segm_borders==True):           
+                if(isinstance(self.RT_fig_proc_results,RTPlotWidget)):
+                    #fig_ax.plot(pg.InfiniteLine(sample_stamp[0][b]))                    
+                    #line_=pg.InfiniteLine(pos=cur_pos,angle=90,bounds=[min_v,max_v])
+                    self.RT_fig_proc_results.vlines(sample_stamp[0][:],min_v,max_v)#self.RT_fig_proc_results.addItem(pg.InfiniteLine(pos=cur_pos,angle=90))#,bounds=[min_v,max_v]))
+                else:
+                    for b in range(0,len(sample_stamp[0])):
+                        self.RT_fig_proc_results.vlines(sample_stamp[0][b],ymin=min_v,ymax=max_v,colors="black",linestyles="solid")
+
+        if (labels_in_segment is not None) and (len(labels_in_segment)!=0):                           
+            cnt = 0        
+            chan_n=chan_num[0]
+            pnts=[]
+            x=[]
+            y=[]
+            unique_l=[]
+            proceed=True
+            for p in range(0,len(labels_in_segment)):                
+                if(p>0): cnt=cnt+len(plate.sigments_sign[p-1][chan_n])   
+                if(labels_in_segment[p] is None): #or (not labels_in_segment[p]):
+                    #proceed=False
+                    #break
+                    x.append(cnt+snip_size/2)
+                    y.append(-1)
+                else:
+                    for k in range(0,len(labels_in_segment[p])):
+                        cur_pnt=[]
+                        st_ = k * snip_size + cnt
+                        en_ = st_ + snip_size
+                        if(labels_in_segment[p][k] not in unique_l): unique_l.append(labels_in_segment[p][k])
+                        x.append(st_+(st_-en_)/2)
+                        y.append(labels_in_segment[p][k])
+                        st_= en_
+                                        
+            #show in scatter plot
+            if(isinstance(self.RT_fig_proc_results,RTPlotWidget)):                 
+                self.RT_fig_proc_results.plot_results(x,y,unique_l,self.colors_id)
+        #end_display = pg.time.ptime.time()
+        #******************************************************************************************************************************
+        text_to_add="Measurement "+str(self.curMeas_num)
+        if(isinstance(self.RT_fig_proc_results,plt.Figure)):
+            if(bool(self.proc_settings.get("GUI_settitle_figure_checkbox_2"))): self.RT_fig_proc_resultsg.set_title(text_to_add)
+            self.RT_fig_proc_resultsg.legend(sectors,labels_tags)
+            self.RT_fig_proc_results.canvas.draw_idle() #draw_idle() #draw()    
+            self.RT_fig_proc_results.show()
+            self.RT_fig_proc_results.canvas.flush_events()        
+        elif(isinstance(self.RT_fig_proc_results,RTPlotWidget)):        
+            if(bool(self.proc_settings.get("GUI_settitle_figure_checkbox_2"))):                                
+                self.RT_fig_proc_results.label.setText(text_to_add)
+        if(bool(self.proc_settings.get("GUI_impose_delay_checkbox_2"))==True):
+            time.sleep(float(self.proc_settings.get("RT_impose_delay_between_measurements_textbox_5"))/1000)
+        #******************************************************************************************************************************        
+        #at the and
+        self.show_proc_result_in_progress==False
+
+    #this are the old versions below, now substituted by the newer ones
     def ShowProcessedResults(self,plate,labels_in_segment):
 
         snip_size=int(self.proc_settings.get("MAIN_classification_snippet_size_text"))   
@@ -2342,10 +2537,14 @@ class MainWindow(QMainWindow):
         
         Counter=0
         txtfiles = []          
-        proc_data=shlp.DataPreproc()
+        proc_data=shlp.DataPreproc(n_fft=int(self.proc_settings.get("spectrogrym_MEL_nfft")),
+                                   n_mels=int(self.proc_settings.get("Settings_MEL_num_MELS_2"))
+                                  )
         Proceed_to_proc=False
         plates=[]
-        data_proc=shlp.DataPreproc()
+        data_proc=shlp.DataPreproc(n_fft=int(self.proc_settings.get("spectrogrym_MEL_nfft")),
+                                   n_mels=int(self.proc_settings.get("Settings_MEL_num_MELS_2"))
+                                   )
         all_labels=[]
         all_segm_sign=[]
 
@@ -2529,7 +2728,9 @@ class MainWindow(QMainWindow):
         for i in range(0,8):
             signals.append([])        
         plate=None
-        data_proc=shlp.DataPreproc()
+        data_proc=shlp.DataPreproc(n_fft=int(self.proc_settings.get("spectrogrym_MEL_nfft")),
+                                   n_mels=int(self.proc_settings.get("Settings_MEL_num_MELS_2")),
+                                   )
         all_labels=[]
         all_segm_sign=[]
         proc_time=[]
@@ -2822,13 +3023,147 @@ class MainWindow(QMainWindow):
         print("Data acquisition is terminated on event")
         print(str(now))
         print("******************************************")
+#*****************************************************************************************************
+#*****************************************************************************************************
+
+#**********real time plot item**************
+
+class RTPlotWidget(): #PySide6.QtWidgets.QWidget): #PySide6.QtWidgets.QGraphicsScene):
+    
+    def __init__(self,**kargs):
+        
+        #https://www.pythonguis.com/tutorials/plotting-pyqtgraph/
+        self.window=PySide6.QtWidgets.QWidget() #QMainWindow()        
+        self.window.setAttribute(PySide6.QtCore.Qt.WA_DeleteOnClose)
+        self.layout=PySide6.QtWidgets.QGridLayout()        
+        
+        self.label =  PySide6.QtWidgets.QLabel("Measurements...")
+        self.label.setMinimumWidth(130)
+
+        self.plot_graph = pg.plot(parent=self.window)#PlotWidget(parent=self.window)
+        self.scat_graph = pg.plot(parent=self.window,height=3)#PlotWidget(parent=self.window)
+                
+        self.layout.addWidget(self.label, 1, 0)              
+        self.layout.addWidget(self.plot_graph, 2, 0)          
+        self.layout.addWidget(self.scat_graph, 3, 0)          
+        
+        #self.layout.addWidget(self.plot_graph_1, 3, 0)             
+        
+        self.window.setLayout(self.layout)
+        #self.window.setCentralWidget(self.plot_graph)
+        self.window.show()
+        
+        
+        """
+        #https://www.geeksforgeeks.org/python/pyqtgraph-getting-parent-item-of-scatter-plot-graph/        
+        layout = PySide6.QtWidgets.QGridLayout()
+        self.window = PySide6.QtWidgets.QMainWindow()        #QMainWindow() #QWidget()    
+        self.window.setLayout(layout)
+        self.label =  PySide6.QtWidgets.QLabel("Measurements...")
+        self.label.setMinimumWidth(130)
+        self.plotItem = pg.plot()  
+        layout.addWidget(self.label, 1, 0)              
+        layout.addWidget(self.plotItem, 2, 0)
+        #self.window.setCentralWidget(self.plotItem)
+        self.window.show()     
+        """
+
+        """
+        #https://www.qtcentre.org/threads/12135-PyQt-QTimer-problem-FIXED
+        #self.window = PySide6.QtWidgets.QWidget()
+        PySide6.QtWidgets.QWidget()
+        #PySide6.QtWidgets.QGraphicsScene.__init__(self)       
+        self.plotItem = pg.plot(title="self.RT_Figure_if_proc_results_id",parent=self)
+        # make sure the item gets a parent
+        #self.plotItem.setParent(self)
+        #self.setCentralItem(self.plotItem)
+        #plotItem.show()        
+        """
+
+    def plot(self,x,y):    
+        self.plot_graph.clear()
+        if(None in x):
+            self.plot_graph.plot(y)
+        else:
+            self.plot_graph.plot(x,y)
+    
+    def clear(self):
+        self.plot_graph.clear()
+
+    #show vertical markers
+    def vlines(self,cur_pos,min_v,max_v):
+        if(isinstance(cur_pos,list) or isinstance(cur_pos,np.array)):
+            for k in range(0,len(cur_pos)):
+                #    self.plot_graph.plot((cur_pos[k],cur_pos[k]),(min_v,max_v),color="g")            
+                #self.plot_graph.addItem(pg.InfiniteLine(pos=cur_pos[k],angle=90,color="g"))
+                #draw vertical lines
+                #https://stackoverflow.com/questions/61407911/pyqtgraph-color-specific-regions-in-plot
+                l=self.plot_graph.addLine(x=cur_pos[k], pen=(50, 150, 50), markers=[('^', 0, 10)])
+           
+    def hex_to_rgb(self,value):
+        h = value.lstrip('#')
+        return tuple(int(h[i:i+2], 16) for i in (0, 2 ,4))
+        #value = value.lstrip('#')
+        #lv = len(value)
+        #return tuple(int(value[i:i + lv // 3], 16) for i in range(0, lv, lv // 3))
         
 
+    def plot_results(self,x,y,unique_l,color_scheme):
 
-#*****************************************************************************************************
-#*****************************************************************************************************
+        import webcolors
+        if(len(x)==0) or (len(y)==0):
+            return
+        #ATTENTION - we count here that zero is the normal weld, the rest are anomalies
+        self.scat_graph.clear()        
+        back_gr=[]
+        curves=[]
+        pfills=[]
+        for m in range(0,len(unique_l)):
+            if(unique_l[m]==-1):continue #-1 is when the system could not do analysis for some reason
+            color_indx=int(unique_l[m])
+            if(color_indx>len(color_scheme)):
+                color_indx=len(color_scheme)-1
+            hex_col=color_scheme[color_indx]
+            rgb_col=self.hex_to_rgb(hex_col)
+            offset=0.5
+            if(m<len(unique_l)-1):offset=(unique_l[m+1]-unique_l[m])/2
+            back_gr.append(np.ones(len(x))*unique_l[m]+offset)
+            curve=pg.PlotCurveItem(x,back_gr[-1],pen =(rgb_col[0], rgb_col[1], rgb_col[2]))#self.scat_graph.addLine(x=x,y=back_gr[-1], pen=(rgb_col[0], rgb_col[1], rgb_col[2]), markers=[('o', 0, 5)]) 
+            br=pg.mkBrush(rgb_col[0], rgb_col[1], rgb_col[2], 70)            
+            if(m == 0): 
+                x1 = np.ones(len(x))*unique_l[m]-offset
+                zero_curve_=pg.PlotCurveItem(x,x1,pen =(rgb_col[0], rgb_col[1], rgb_col[2]))#self.scat_graph.addLine(x=x,y=x1, pen=(rgb_col[0], rgb_col[1], rgb_col[2]), markers=[('o', 0, 5)])
+                pfill = pg.FillBetweenItem(zero_curve_,curve, brush = br)            
+            else: 
+                pfill = pg.FillBetweenItem(curve,curves[-1], brush = br)
+            self.scat_graph.addItem(pfill)
+            curves.append(curve)
+            pfills.append(pfill)
+        #l=pg.PlotCurveItem(x,y,color="red",)
+        #self.scat_graph.addItem(l)
+        self.scat_graph.plot(x,y,pen="b")
+        
+        #lena=len(arr)
+        #for n in range(0,lena):
+        #    hex_col=arr[n][2]
+        #    rgb_col=self.hex_to_rgb(arr[n][2])
+        #   color_name=webcolors.rgb_to_name(rgb_col, spec='css3')
+        """
+            scat.addPoints([{
+                        "pos": (arr[n][0],arr[n][1]), 
+                        "pen": pg.mkPen(width=5, color=color_name),#'white',
+                        "symbol": 'o',
+                        }])          
+            
+        self.scat_graph.addItem(scat)
+        """
+        #self.scat_graph.addLine(x=(arr[n][0]+(arr[n][1]-arr[n][0])/2), pen=(rgb_col[0], rgb_col[1], rgb_col[0]), markers=[('^', 0, 10)])
 
-if __name__ == "__main__":                
+
+#*******************************************
+
+if __name__ == "__main__":       
+    global app
     app = QApplication(sys.argv)     
     window = MainWindow()
     window.setAttribute(PySide6.QtCore.Qt.WA_DeleteOnClose)
