@@ -1153,7 +1153,7 @@ def ShowSingleSegmentWithLabels(fig_id, plate,
 
 #classifiers
 
-def XGBoostClassifRun(X_train=[], X_test=[], y_train=[], y_test=[]):
+def XGBoostClassifRun(X_train=[], X_test=[], y_train=[], y_test=[],trees_num=800,max_depth=12,learn_rate=0.01):
                 bst=None
                 xgb_labs_back=[]
                 try:
@@ -1174,7 +1174,7 @@ def XGBoostClassifRun(X_train=[], X_test=[], y_train=[], y_test=[]):
                         xgb_lab_test[i]=int(xgb_unique_labs[indx1])                    
                     #print("xgb_test_labs:"+str(xgb_lab_test))            
                     #print("unique_labels:"+str(unique_labels))                              
-                    bst = XGBClassifier(n_estimators=8000, max_depth=12, learning_rate=0.01, objective='binary:logistic')
+                    bst = XGBClassifier(n_estimators=trees_num, max_depth=max_depth, learning_rate=learn_rate, objective='binary:logistic')
                     bst.fit(X_train, xgb_lab_train)
                     preds = bst.predict(X_test)
                     #show in figure  
@@ -1186,7 +1186,8 @@ def XGBoostClassifRun(X_train=[], X_test=[], y_train=[], y_test=[]):
                     print(str(ex))                    
                 return bst, xgb_labs_back,unique_labels,xgb_unique_labs
 
-def IsolTreesTraining(feat=None,labels=None):
+def IsolTreesTraining(feat=None,labels=None,trees_num=800,max_depth=12,contaminat=0.01):
+        
     if(feat is None) or (len(feat)==0): 
         print("")
         print("features are emopty - training aborted...")
@@ -1208,7 +1209,7 @@ def IsolTreesTraining(feat=None,labels=None):
     print("Isolation trees dataset inlcudes lab. - "+str(ref_l))
     print("Trainset shape - "+str(shp_training_set))
     print("Isolation trees training...")
-    clf = IsolationForest(n_estimators=8000, contamination=0.01)
+    clf = IsolationForest(n_estimators=trees_num, contamination=contaminat,bootstrap=True,)
     start_t = time.time()
     clf.fit(np.asarray(x_sf))
     end_t = time.time()
@@ -1297,7 +1298,7 @@ def OneCLassSVMTraining(feat=None,labels=None):
     #--------------------------------------------------------------
     
 class DataPreproc:
-    def __init__ (self,n_fft=64,n_mels=512):
+    def __init__ (self,n_fft=64,n_mels=512,n_mfcc=13):
         #SplitEntireSignalIntoSnippets
         self.sign_1=torch.empty
         self.sign_2=torch.empty
@@ -1334,6 +1335,7 @@ class DataPreproc:
         #processing parameters
         self.n_fft=n_fft
         self.n_mels=n_mels
+        self.n_mfcc=n_mfcc
         
     #this splits the entire number of segments pf the plate
     def SplitAllPlateSegmentsIntoSnippets(self,plate, 
@@ -1605,7 +1607,7 @@ class DataPreproc:
                 self.preproc_final=torch.div(self.preproc_final,torch_sum)
                 return self.preproc_final.clone()
         #fft
-        if(preproc_type=="torch_FFT"):
+        if(preproc_type=="torch_FFT") or (preproc_type=="torch_FFT_rel"):
             #https://www.kaggle.com/code/yassinealouini/signal-processing-theory-and-practice-with-pytorch
             for l in range(0,shp[0]):
                 self.preproc_in=torch.empty
@@ -1615,12 +1617,19 @@ class DataPreproc:
                 cut_half=int(shp_proc[1]/2)
                 self.preproc=self.preproc[:,0:]
                 if(self.preproc_final==torch.empty): self.preproc_final = self.preproc
-                else:   self.preproc_final=torch.cat([self.preproc_final,self.preproc],dim=0)                       
-            return self.preproc_final.clone()
+                else:   self.preproc_final=torch.cat([self.preproc_final,self.preproc],dim=0) 
+                
+            result=self.preproc_final.abs().clone()
+            if(preproc_type=="torch_FFT"):
+                return result
+            if(preproc_type=="torch_FFT_rel"):
+                sum_=result.sum()
+                result=torch.div(result,sum_)
+                return result
         #mfcc spectrogram
         if(preproc_type=="torch_MFCC"):
             #parameters
-            n_mfcc=13
+            n_mfcc=self.n_mfcc#13
             sample_rate = 1000000 #40000 
             
             #MEL decomposition            
@@ -1839,8 +1848,26 @@ def ReadSettings(window):
 
     Settings_MEL_num_MELS_2 = int(window.ui.Settings_MEL_num_MELS_2.text())
     settings["Settings_MEL_num_MELS_2"] = Settings_MEL_num_MELS_2
-    
+
+    Settings_nmfcc_num_MFCC_text = int(window.ui.Settings_nmfcc_num_MFCC_text.text())
+    settings["Settings_nmfcc_num_MFCC_text"] = Settings_nmfcc_num_MFCC_text
+            
     #CLASIFIERS AND ANOMALY DETECTORS
+    #xgboost
+    Settings_Trees_Trees_Number_2=window.ui.Settings_Trees_Trees_Number_2.text()
+    settings["Settings_Trees_Trees_Number_2"] = Settings_Trees_Trees_Number_2
+
+    Settings_Trees_Tree_depth_text_3=window.ui.Settings_Trees_Tree_depth_text_3.text()
+    settings["Settings_Trees_Tree_depth_text_3"] = Settings_Trees_Tree_depth_text_3
+
+    Settings_Trees_learn_rate_value_text_4=window.ui.Settings_Trees_learn_rate_value_text_4.text()
+    settings["Settings_Trees_learn_rate_value_text_4"] = Settings_Trees_learn_rate_value_text_4    
+
+    Settings_Trees_contaminations_value_text_5=window.ui.Settings_Trees_contaminations_value_text_5.text()
+    settings["Settings_Trees_contaminations_value_text_5"] = Settings_Trees_contaminations_value_text_5    
+       
+
+    #autencoders
     autoencoder_torch_thershold=window.ui.Autoencoder_torch_threshold_factor.text()
     settings["autoencoder_torch_thershold"] = autoencoder_torch_thershold
     autoencoder_torch_epochs_num=window.ui.Autoencoder_torch_epochs_num.text()
@@ -1954,10 +1981,19 @@ def LoadInterfaceFromFile(window,path):
     window.ui.GUI_show_results_points_number_limit_checkbox.setChecked(bool(my_set["GUI_show_results_points_number_limit_checkbox"]))
     window.ui.RealT_show_processed_signals_checkbox_3.setChecked(bool(my_set["RealT_show_processed_signals_checkbox_3"]))
 
+    #settings trees classifier
+    try:
+        window.ui.Settings_Trees_Trees_Number_2.setText(str(my_set["Settings_Trees_Trees_Number_2"]))
+        window.ui.Settings_Trees_Tree_depth_text_3.setText(str(my_set["Settings_Trees_Tree_depth_text_3"]))
+        window.ui.Settings_Trees_learn_rate_value_text_4.setText(str(my_set["Settings_Trees_learn_rate_value_text_4"]))
+        window.ui.Settings_Trees_contaminations_value_text_5.setText(str(my_set["Settings_Trees_contaminations_value_text_5"]))
+    except: pass
+
     #settings #MEL SPECTROGRAMS
     try:
         window.ui.Settings_MEL_num_ffts.setText(str(my_set["spectrogrym_MEL_nfft"])) 
         window.ui.Settings_MEL_num_MELS_2.setText(str(my_set["Settings_MEL_num_MELS_2"])) 
+        window.ui.Settings_nmfcc_num_MFCC_text.setText(str(my_set["Settings_nmfcc_num_MFCC_text"]))         
     except: pass
 
     #show labeled data

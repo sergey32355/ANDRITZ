@@ -110,7 +110,7 @@ class MainWindow(QMainWindow):
         self.ui.classification_clear_all_segments_labels_button_2.clicked.connect(self.Classification_ClearLabellingForAllSegments_Click)
         self.ui.classification_run_classification_button.clicked.connect(self.RunClassificationClick)
         self.ui.calssification_segment_savetofolder_button.clicked.connect(self.SaveLabelingAsCSV_Click)
-        self.ui.Classification_set_as_main_model_button.clicked.connect(self.SetAsMainModelButton_Click)
+        self.ui.Classification_extract_save_features_to_file_button.clicked.connect(self.SaveExtractedFeatToFIle)
         self.ui.Classification_run_test_on_complete_segment_button.clicked.connect(self.RunClassifForSegment_Click)
         self.ui.classification_dataset_info_button.clicked.connect(self.Classification_Dataset_Info_Click)
         self.ui.classification_entire_segment_to_label_button.clicked.connect(self.Classification_Entire_Segm_To_Label_Click)
@@ -733,6 +733,7 @@ class MainWindow(QMainWindow):
         labs=[]
         if(self.DataPreproc is None): self.DataPreproc=shlp.DataPreproc(n_fft=int(self.proc_settings.get("spectrogrym_MEL_nfft")),
                                                                         n_mels=int(self.proc_settings.get("Settings_MEL_num_MELS_2")),
+                                                                        n_mfcc=int(self.proc_settings.get("Settings_nmfcc_num_MFCC_text")),
                                                                         )   
 
         plate_segm=self.proc_settings.get("plate_segm_process")        
@@ -763,7 +764,8 @@ class MainWindow(QMainWindow):
             feat,labs= self.DataPreproc.SplitAllLabPlateOfAllSegmentsIntoSnips(self.plates,
                                                                                channs_indx=CHANNELS_TO_USE,#indx_chan,
                                                                                torch_tensor=False,
-                                                                               snip_size=snip_size
+                                                                               snip_size=snip_size,
+                                                                               preproc_type=preproc
                                                                               )
             rrt=[]
             for l in range(0,len(self.plates)):
@@ -817,6 +819,7 @@ class MainWindow(QMainWindow):
         self.s_model=None
                 
         if(self.proc_settings.get("algorithm")=="XGBoost"):    
+
             unique_labs=shlp.GetUniqueElements_List(new_lab)
             if(len(unique_labs)<=1):
                 print("")
@@ -829,7 +832,12 @@ class MainWindow(QMainWindow):
                 return
             X_train, X_test, y_train, y_test = train_test_split(feat, new_lab, test_size=test_size)
             print("training with XGBoost...")               
-            clf,tests_l,orig_labs,intern_labs = shlp.XGBoostClassifRun(X_train=X_train, X_test=X_test, y_train=y_train, y_test=y_test)                           
+            clf,tests_l,orig_labs,intern_labs = shlp.XGBoostClassifRun(X_train=X_train, X_test=X_test, y_train=y_train, y_test=y_test,
+                                                                       trees_num=int(self.proc_settings.get("Settings_Trees_Trees_Number_2")),
+                                                                       max_depth=int(self.proc_settings.get("Settings_Trees_Tree_depth_text_3")),
+                                                                       learn_rate=float(self.proc_settings.get("Settings_Trees_learn_rate_value_text_4")),
+                                                                       )   
+            
             cm = confusion_matrix(y_test,tests_l)#, xgb_labs_back)            
             self.s_model=shlp.S_Classif()
             self.s_model.AssignClassif(clf,unique_labs_tags,tag_tmp)  
@@ -842,7 +850,11 @@ class MainWindow(QMainWindow):
         if(self.proc_settings.get("algorithm")=="IsolationForest"):
             
             #binary anomaly detector
-            clf = shlp.IsolTreesTraining(feat=feat,labels=new_lab)                        
+            clf = shlp.IsolTreesTraining(feat=feat,labels=new_lab,
+                                         trees_num=int(self.proc_settings.get("Settings_Trees_Trees_Number_2")),
+                                         max_depth=int(self.proc_settings.get("Settings_Trees_Tree_depth_text_3")),
+                                         contaminat=float(self.proc_settings.get("Settings_Trees_contaminations_value_text_5"))
+                                         )                        
             self.s_model=shlp.S_Classif()
             self.s_model.AssignClassif(clf,None,None)  
 
@@ -981,7 +993,19 @@ class MainWindow(QMainWindow):
                     df = pd.DataFrame(arr)
                     df.to_csv(f_name)
 
-    def SetAsMainModelButton_Click(self):
+    def SaveExtractedFeatToFIle(self):
+        global CLASSIF_FEAT        
+        global CLASSIF_LABS
+        if(len(np.shape(np.asarray(CLASSIF_FEAT)))==0):
+            print("features are not extracted. Extract features and repeat.")
+            return
+        else:
+            path_file, _ = QFileDialog.getSaveFileName(self, "Save features", "", "Pickle Files (*.pkl);;All Files (*)")
+            print("saveing feature tensor of shape: "+str(np.shape(np.asarray(CLASSIF_FEAT))))
+            df=pd.DataFrame({'labels': CLASSIF_LABS, 'features': CLASSIF_FEAT})
+            df.to_pickle(path_file)
+            print("Features are saved into file.")
+        """
         if(self.s_model is None):
             print("Prepare the model first and repeat....")
             self.ui.Model_ready_label.setStyleSheet("background-color: red")
@@ -990,7 +1014,7 @@ class MainWindow(QMainWindow):
         #if(self.model is None): self.ui.Model_ready_label.setStyleSheet("background-color: red")
         #else: self.ui.Model_ready_label.setStyleSheet("background-color: green")        
         self.ui.train_dropdown.setCurrentText(self.ui.classificationclassifier_dropdown.currentText())  
-
+        """
     #****************************************************************************************************************
     #****************************************************************************************************************
     #*********************READ CLASSification************************************************************************
@@ -1013,7 +1037,8 @@ class MainWindow(QMainWindow):
         snip_size=int(self.proc_settings.get("snippet_size"))
         CHANNELS_TO_USE=self.GetChannels()
         dp=shlp.DataPreproc(n_fft=int(self.proc_settings.get("spectrogrym_MEL_nfft")),
-                            n_mels=int(self.proc_settings.get("Settings_MEL_num_MELS_2"))
+                            n_mels=int(self.proc_settings.get("Settings_MEL_num_MELS_2")),
+                            n_mfcc=int(self.proc_settings.get("Settings_nmfcc_num_MFCC_text")),
                             )     
 
         """
@@ -1735,7 +1760,8 @@ class MainWindow(QMainWindow):
         preprocessing=self.proc_settings.get("classification_preproc_dropdown")
         
         self.rt_data_proc=shlp.DataPreproc(n_fft=int(self.proc_settings.get("spectrogrym_MEL_nfft")),
-                                           n_mels=int(self.proc_settings.get("Settings_MEL_num_MELS_2"))
+                                           n_mels=int(self.proc_settings.get("Settings_MEL_num_MELS_2")),
+                                           n_mfcc=int(self.proc_settings.get("Settings_nmfcc_num_MFCC_text")),
                                            )
         global EXIT_RT_FLAG
         EXIT_RT_FLAG=False        
@@ -2538,12 +2564,15 @@ class MainWindow(QMainWindow):
         Counter=0
         txtfiles = []          
         proc_data=shlp.DataPreproc(n_fft=int(self.proc_settings.get("spectrogrym_MEL_nfft")),
-                                   n_mels=int(self.proc_settings.get("Settings_MEL_num_MELS_2"))
+                                   n_mels=int(self.proc_settings.get("Settings_MEL_num_MELS_2")),
+                                   n_mfcc=int(self.proc_settings.get("Settings_nmfcc_num_MFCC_text")),
                                   )
+        
         Proceed_to_proc=False
         plates=[]
         data_proc=shlp.DataPreproc(n_fft=int(self.proc_settings.get("spectrogrym_MEL_nfft")),
-                                   n_mels=int(self.proc_settings.get("Settings_MEL_num_MELS_2"))
+                                   n_mels=int(self.proc_settings.get("Settings_MEL_num_MELS_2")),
+                                   n_mfcc=int(self.proc_settings.get("Settings_nmfcc_num_MFCC_text")),
                                    )
         all_labels=[]
         all_segm_sign=[]
@@ -2730,6 +2759,7 @@ class MainWindow(QMainWindow):
         plate=None
         data_proc=shlp.DataPreproc(n_fft=int(self.proc_settings.get("spectrogrym_MEL_nfft")),
                                    n_mels=int(self.proc_settings.get("Settings_MEL_num_MELS_2")),
+                                   n_mfcc=int(self.proc_settings.get("Settings_nmfcc_num_MFCC_text")),
                                    )
         all_labels=[]
         all_segm_sign=[]
