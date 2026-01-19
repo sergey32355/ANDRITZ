@@ -29,6 +29,7 @@ import warnings
 import pyqtgraph as pg
 import webcolors
 import copy
+from time import gmtime, strftime
 #import pylab as pl
 
 import PySide6
@@ -123,7 +124,7 @@ class MainWindow(QMainWindow):
 
         #classification add-onns(1)
         self.ui.Classification_save__all_plates_segm_to_file_labeling_button_2.clicked.connect(self.SaveAllPlatesSegmToFile_Click)
-        #self.ui.Classification_load_from_file_labeling_button_2.clicked.connect(self.LoadLabelingFromFile_Click)
+        self.ui.Classification_load__all_plates_segm_to_file_labeling_button_2.clicked.connect(self.LoadAllPlatesSegmFromFile_Click)
         
         #settings
         #colors
@@ -1058,7 +1059,8 @@ class MainWindow(QMainWindow):
                                           n_mels=int(self.proc_settings.get("Settings_MEL_num_MELS_2")),
                                           n_mfcc=int(self.proc_settings.get("Settings_nmfcc_num_MFCC_text")),
                                          )
-
+        print("")
+        print("Features extraction started for "+str(len(self.plates))+" plates...")
         for p in range(0,len(self.plates)):
 
             plate=copy.deepcopy(self.plates[p])
@@ -1083,10 +1085,13 @@ class MainWindow(QMainWindow):
             unique_labs_tags=self.plates[p].GetUniqueLabelsList()
             shp=np.shape(np.asarray(feat))
 
-            if(p==0):                
+            if(p==0):  
+                
                 c_names=[]
                 c_names.append("Plate_name")
-                c_names.append("labels")            
+                c_names.append("segment_num")   
+                c_names.append("labels")   
+                
                 for j in range(0,shp[1]):
                     c_names.append("feat_"+str(j))    
                 df=pd.DataFrame(columns=c_names)
@@ -1094,6 +1099,7 @@ class MainWindow(QMainWindow):
             for j in range(0,shp[0]):
                 l=[]
                 l.append(p_name)
+                l.append("segment_"+str("unknown"))
                 l.append(labs[j])#label we do not know
                 for i in range(0,shp[1]):
                     l.append(feat[j][i])
@@ -1102,6 +1108,29 @@ class MainWindow(QMainWindow):
         df.to_pickle(path_file)
         print("")
         print("Features are saved into file.")
+
+    def LoadAllPlatesSegmFromFile_Click(self):
+
+        path_file, _ = QFileDialog.getOpenFileName(self, "Load features", "", "Pickle Files (*.pkl);;All Files (*)")                
+        pl_n,pl_feat = shlp.OpenfeatFromPickle(path_file)
+        #print("loaded feature tensor of shape: "+str(np.shape(np.asarray(df))))
+
+    #tools - star search for best parameters
+    def SearchBestParams1(self):
+
+        if(len(self.plates)==0):
+            print("Load plates first and repeat")
+            return 
+
+        results_folder_n=self.ui.classification_snippet_size_text_2.text()
+        time_exp=strftime("%Y_%m_%d_%H_%M_%S", gmtime())
+        path_n=results_folder_n+"\\"+str(time_exp)
+        try:
+            if not os.path.exists(path_n):
+                os.makedirs(path_n)
+        except: 
+            print("cant make results folder - check permissions and repeat...")
+            return
 
     #****************************************************************************************************************
     #****************************************************************************************************************

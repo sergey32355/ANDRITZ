@@ -56,6 +56,37 @@ import PySide6
 SEGMENTS_MISSED_SEGMENT_NAME="noname_"
 LABEL_DEFAULT_NAME="Label_"
 
+#general purpose functions
+
+def OpenfeatFromPickle(PATH):
+    df=pd.read_pickle(PATH)
+    cols=df.columns
+    cols = list(cols[2:len(cols)])
+    lk=df[cols].to_numpy()[:,None]#.tolist()
+    if(len(np.shape(lk))==3):lk = lk[:, 0, :]        
+    kj=df[df.columns[0]]
+    plate_name=list()
+    plate_feat=list()
+    
+    for l in range(0,len(kj)):
+        curp_n=kj[l]
+        if(curp_n in (plate_name)):
+            plate_feat[-1].append(np.asarray(lk[l]))
+        else:
+            plate_name.append(curp_n)
+            plate_feat.append([])
+    print("")
+    print("******************************************************")
+    print("Opened feratures for file: "+str(PATH))
+    print("Data shape: "+str(np.shape(np.asarray(lk))))
+    print("Plates num: "+str(len(plate_name)))        
+    print("Plates names: "+str(plate_name))
+    print("******************************************************")
+    return plate_name,plate_feat
+# sue example - pl_n,pl_feat = OpenfeatFromPickle(PATH)
+
+
+#************************************************************************************************************************************
 def get_channel_sorting_dict(channel_order_hex, n_channels):
     """Determine channel sorting dictionary, in case order of channels is alternating"""
 
