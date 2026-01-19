@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>437</width>
-    <height>555</height>
+    <width>431</width>
+    <height>542</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -30,7 +30,7 @@
      </rect>
     </property>
     <property name="currentIndex">
-     <number>2</number>
+     <number>1</number>
     </property>
     <widget class="QWidget" name="tab">
      <attribute name="title">
@@ -767,7 +767,7 @@
           </rect>
          </property>
          <property name="currentIndex">
-          <number>1</number>
+          <number>2</number>
          </property>
          <widget class="QWidget" name="tab_12">
           <attribute name="title">
@@ -998,7 +998,7 @@
             <rect>
              <x>130</x>
              <y>0</y>
-             <width>131</width>
+             <width>141</width>
              <height>31</height>
             </rect>
            </property>
@@ -1068,6 +1068,50 @@
             </property>
             <property name="text">
              <string>Model type:</string>
+            </property>
+           </widget>
+          </widget>
+         </widget>
+         <widget class="QWidget" name="tab_14">
+          <attribute name="title">
+           <string>Add-onn(1)</string>
+          </attribute>
+          <widget class="QGroupBox" name="groupBox_17">
+           <property name="geometry">
+            <rect>
+             <x>0</x>
+             <y>0</y>
+             <width>401</width>
+             <height>61</height>
+            </rect>
+           </property>
+           <property name="title">
+            <string>No labels (labels will not be preserved)</string>
+           </property>
+           <widget class="QPushButton" name="Classification_save__all_plates_segm_to_file_labeling_button_2">
+            <property name="geometry">
+             <rect>
+              <x>6</x>
+              <y>20</y>
+              <width>191</width>
+              <height>31</height>
+             </rect>
+            </property>
+            <property name="text">
+             <string>Save all plates segments  into file</string>
+            </property>
+           </widget>
+           <widget class="QPushButton" name="Classification_load__all_plates_segm_to_file_labeling_button_2">
+            <property name="geometry">
+             <rect>
+              <x>196</x>
+              <y>20</y>
+              <width>201</width>
+              <height>31</height>
+             </rect>
+            </property>
+            <property name="text">
+             <string>Load all plates segments  into file</string>
             </property>
            </widget>
           </widget>
@@ -1190,7 +1234,7 @@
        </rect>
       </property>
       <property name="currentIndex">
-       <number>3</number>
+       <number>1</number>
       </property>
       <widget class="QWidget" name="tab_11">
        <attribute name="title">
@@ -2487,7 +2531,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>437</width>
+     <width>431</width>
      <height>33</height>
     </rect>
    </property>

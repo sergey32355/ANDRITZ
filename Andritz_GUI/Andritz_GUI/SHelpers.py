@@ -1624,6 +1624,7 @@ class DataPreproc:
                 return result
             if(preproc_type=="torch_FFT_rel"):
                 sum_=result.sum()
+                if(sum_[0]==0):sum_[0]=0.000001 
                 result=torch.div(result,sum_)
                 return result
         #mfcc spectrogram

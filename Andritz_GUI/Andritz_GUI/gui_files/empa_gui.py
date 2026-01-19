@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 ################################################################################
-## Form generated from reading UI file 'empa_guiOhevMb.ui'
+## Form generated from reading UI file 'empa_guiNAIFKh.ui'
 ##
 ## Created by: Qt User Interface Compiler version 6.9.0
 ##
@@ -24,7 +24,7 @@ class Ui_EmpaGUI(object):
     def setupUi(self, EmpaGUI):
         if not EmpaGUI.objectName():
             EmpaGUI.setObjectName(u"EmpaGUI")
-        EmpaGUI.resize(437, 555)
+        EmpaGUI.resize(431, 542)
         sizePolicy = QSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
@@ -257,7 +257,7 @@ class Ui_EmpaGUI(object):
         self.Classification_save_to_file_labeling_button.setGeometry(QRect(0, 0, 131, 31))
         self.Classification_load_from_file_labeling_button_2 = QPushButton(self.tab_13)
         self.Classification_load_from_file_labeling_button_2.setObjectName(u"Classification_load_from_file_labeling_button_2")
-        self.Classification_load_from_file_labeling_button_2.setGeometry(QRect(130, 0, 131, 31))
+        self.Classification_load_from_file_labeling_button_2.setGeometry(QRect(130, 0, 141, 31))
         self.groupBox_2 = QGroupBox(self.tab_13)
         self.groupBox_2.setObjectName(u"groupBox_2")
         self.groupBox_2.setGeometry(QRect(0, 30, 401, 51))
@@ -273,6 +273,15 @@ class Ui_EmpaGUI(object):
         self.label_16.setObjectName(u"label_16")
         self.label_16.setGeometry(QRect(10, 23, 71, 16))
         self.tabWidget_3.addTab(self.tab_13, "")
+        self.tab_14 = QWidget()
+        self.tab_14.setObjectName(u"tab_14")
+        self.Classification_save__all_plates_segm_to_file_labeling_button_2 = QPushButton(self.tab_14)
+        self.Classification_save__all_plates_segm_to_file_labeling_button_2.setObjectName(u"Classification_save__all_plates_segm_to_file_labeling_button_2")
+        self.Classification_save__all_plates_segm_to_file_labeling_button_2.setGeometry(QRect(1, 0, 191, 31))
+        self.Classification_load__all_plates_segm_to_file_labeling_button_2 = QPushButton(self.tab_14)
+        self.Classification_load__all_plates_segm_to_file_labeling_button_2.setObjectName(u"Classification_load__all_plates_segm_to_file_labeling_button_2")
+        self.Classification_load__all_plates_segm_to_file_labeling_button_2.setGeometry(QRect(200, 0, 201, 31))
+        self.tabWidget_3.addTab(self.tab_14, "")
         self.tabWidget_2.addTab(self.tab_4, "")
         self.tab_5 = QWidget()
         self.tab_5.setObjectName(u"tab_5")
@@ -609,7 +618,7 @@ class Ui_EmpaGUI(object):
         EmpaGUI.setCentralWidget(self.centralwidget)
         self.menubar = QMenuBar(EmpaGUI)
         self.menubar.setObjectName(u"menubar")
-        self.menubar.setGeometry(QRect(0, 0, 437, 33))
+        self.menubar.setGeometry(QRect(0, 0, 431, 33))
         EmpaGUI.setMenuBar(self.menubar)
         self.statusbar = QStatusBar(EmpaGUI)
         self.statusbar.setObjectName(u"statusbar")
@@ -617,17 +626,17 @@ class Ui_EmpaGUI(object):
 
         self.retranslateUi(EmpaGUI)
 
-        self.tabWidget.setCurrentIndex(2)
+        self.tabWidget.setCurrentIndex(1)
         self.load_data_plate_type_dropdown.setCurrentIndex(-1)
         self.real_time_source_dropdown_2.setCurrentIndex(1)
         self.tabWidget_2.setCurrentIndex(0)
         self.classification_preproc_dropdown_4.setCurrentIndex(0)
         self.classificationclassifier_dropdown.setCurrentIndex(0)
         self.classification_preproc_dropdown_2.setCurrentIndex(0)
-        self.tabWidget_3.setCurrentIndex(1)
+        self.tabWidget_3.setCurrentIndex(2)
         self.classification_plot_choice_dropdown_3.setCurrentIndex(0)
         self.Settings_openfile_segmentation_mode_text.setCurrentIndex(0)
-        self.Settings_Spectrograms_Define_Parameters_Tab.setCurrentIndex(3)
+        self.Settings_Spectrograms_Define_Parameters_Tab.setCurrentIndex(1)
         self.REAL_T_trigger_channel_drop_box.setCurrentIndex(7)
         self.Color_list_drop_down_.setCurrentIndex(0)
         self.Show_results_color_scheme_drop_down_1.setCurrentIndex(0)
@@ -746,6 +755,9 @@ class Ui_EmpaGUI(object):
         self.train_dropdown.setPlaceholderText(QCoreApplication.translate("EmpaGUI", u"Autoencoder", None))
         self.label_16.setText(QCoreApplication.translate("EmpaGUI", u"Model type:", None))
         self.tabWidget_3.setTabText(self.tabWidget_3.indexOf(self.tab_13), QCoreApplication.translate("EmpaGUI", u"Add-onn", None))
+        self.Classification_save__all_plates_segm_to_file_labeling_button_2.setText(QCoreApplication.translate("EmpaGUI", u"Save all plates segments  into file", None))
+        self.Classification_load__all_plates_segm_to_file_labeling_button_2.setText(QCoreApplication.translate("EmpaGUI", u"Load all plates segments  into file", None))
+        self.tabWidget_3.setTabText(self.tabWidget_3.indexOf(self.tab_14), QCoreApplication.translate("EmpaGUI", u"Add-onn(1)", None))
         self.tabWidget_2.setTabText(self.tabWidget_2.indexOf(self.tab_4), QCoreApplication.translate("EmpaGUI", u"Page 1", None))
         self.tabWidget_2.setTabText(self.tabWidget_2.indexOf(self.tab_5), QCoreApplication.translate("EmpaGUI", u"Page 2", None))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_2), QCoreApplication.translate("EmpaGUI", u"Tools", None))

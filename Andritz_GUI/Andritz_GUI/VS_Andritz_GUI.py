@@ -28,6 +28,7 @@ from barbar import Bar
 import warnings
 import pyqtgraph as pg
 import webcolors
+import copy
 #import pylab as pl
 
 import PySide6
@@ -119,6 +120,11 @@ class MainWindow(QMainWindow):
         #classification add-onns
         self.ui.Classification_save_to_file_labeling_button.clicked.connect(self.SaveLabelingToFile_Click)
         self.ui.Classification_load_from_file_labeling_button_2.clicked.connect(self.LoadLabelingFromFile_Click)
+
+        #classification add-onns(1)
+        self.ui.Classification_save__all_plates_segm_to_file_labeling_button_2.clicked.connect(self.SaveAllPlatesSegmToFile_Click)
+        #self.ui.Classification_load_from_file_labeling_button_2.clicked.connect(self.LoadLabelingFromFile_Click)
+        
         #settings
         #colors
         self.ui.COlors_list_generate_button.clicked.connect(self.GenerateCOlors_Botton_Click)
@@ -604,6 +610,7 @@ class MainWindow(QMainWindow):
     
     #assign all labels to to category
     def Classification_All_Segm_To_Label_Click(self):
+
         if(self.plates==[]) or(len(self.plates)==0) or (self.plates is None):
             print("Plates are not loaded")
             return        
@@ -1002,7 +1009,27 @@ class MainWindow(QMainWindow):
         else:
             path_file, _ = QFileDialog.getSaveFileName(self, "Save features", "", "Pickle Files (*.pkl);;All Files (*)")
             print("saveing feature tensor of shape: "+str(np.shape(np.asarray(CLASSIF_FEAT))))
-            df=pd.DataFrame({'labels': CLASSIF_LABS, 'features': CLASSIF_FEAT})
+            if(np.isnan(np.min(np.asarray(CLASSIF_FEAT)))):
+                print("ATTENTION: features array contains non-bvalue variables")
+
+            shp=np.shape(np.asarray(CLASSIF_FEAT))
+            c_names=[]
+            c_names.append("Plate_name")
+            c_names.append("labels")            
+            for j in range(0,shp[1]):
+                c_names.append("feat_"+str(j))    
+            df=pd.DataFrame(columns=c_names)
+            for j in range(0,shp[0]):
+                #h1=pd.Series(CLASSIF_LABS[j])
+                #h2=pd.Series(np.asarray(CLASSIF_FEAT[j]))
+                l=[]
+                l.append("NONAME_PLATE")
+                l.append(CLASSIF_LABS[j])
+                for i in range(0,shp[1]):
+                    l.append(CLASSIF_FEAT[j][i])  
+                kl=len(l)
+                kl1=len(c_names)
+                df=pd.concat([pd.DataFrame([l], columns=df.columns), df], ignore_index=True)
             df.to_pickle(path_file)
             print("Features are saved into file.")
         """
@@ -1015,6 +1042,67 @@ class MainWindow(QMainWindow):
         #else: self.ui.Model_ready_label.setStyleSheet("background-color: green")        
         self.ui.train_dropdown.setCurrentText(self.ui.classificationclassifier_dropdown.currentText())  
         """
+
+    def SaveAllPlatesSegmToFile_Click(self):
+
+        if(len(self.plates)==0):
+            print("No plates are loaded...")
+            return
+        self.proc_settings=shlp.ReadSettings(self)
+        snip_size=int(self.proc_settings.get("snippet_size"))
+        preproc=self.proc_settings.get("classification_preproc_dropdown")
+        path_file, _ = QFileDialog.getSaveFileName(self, "Save features", "", "Pickle Files (*.pkl);;All Files (*)")                
+        CHANNELS_TO_USE=self.GetChannels()
+        df=None
+        self.DataPreproc=shlp.DataPreproc(n_fft=int(self.proc_settings.get("spectrogrym_MEL_nfft")),
+                                          n_mels=int(self.proc_settings.get("Settings_MEL_num_MELS_2")),
+                                          n_mfcc=int(self.proc_settings.get("Settings_nmfcc_num_MFCC_text")),
+                                         )
+
+        for p in range(0,len(self.plates)):
+
+            plate=copy.deepcopy(self.plates[p])
+            p_name = plate.name
+            #we assign some fake labels to all segments in plate
+            #clean all lables first
+            l_sl=len(plate.sigments_labels)
+            for jk in range(0,l_sl):
+                plate.sigments_labels[jk]=[]
+            #assign fake label to all plates segments
+            plate.AssignLabelToAllSegments(label=0)
+
+            
+            feat,labs= self.DataPreproc.SplitAllLabPlateSegmentsIntoSnips(plate,
+                                                                          snip_size=snip_size,
+                                                                          channs_indx=CHANNELS_TO_USE,#indx_chan,
+                                                                          torch_tensor=False, 
+                                                                          preproc_type=preproc
+                                                                         )    
+            
+            feat,labs=self.DataPreproc.Helper_FlatListOfLabeledFeat(feat,labs)
+            unique_labs_tags=self.plates[p].GetUniqueLabelsList()
+            shp=np.shape(np.asarray(feat))
+
+            if(p==0):                
+                c_names=[]
+                c_names.append("Plate_name")
+                c_names.append("labels")            
+                for j in range(0,shp[1]):
+                    c_names.append("feat_"+str(j))    
+                df=pd.DataFrame(columns=c_names)
+
+            for j in range(0,shp[0]):
+                l=[]
+                l.append(p_name)
+                l.append(labs[j])#label we do not know
+                for i in range(0,shp[1]):
+                    l.append(feat[j][i])
+                df=pd.concat([pd.DataFrame([l], columns=df.columns), df], ignore_index=True)
+            shlp.print_progress_bar(p+1,len(self.plates),"=")
+        df.to_pickle(path_file)
+        print("")
+        print("Features are saved into file.")
+
     #****************************************************************************************************************
     #****************************************************************************************************************
     #*********************READ CLASSification************************************************************************
