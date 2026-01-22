@@ -1,6 +1,7 @@
 
 import array
-from turtle import color
+from re import X
+from turtle import color, width
 import numpy as np
 import os
 from os import walk
@@ -30,6 +31,9 @@ import pyqtgraph as pg
 import webcolors
 import copy
 from time import gmtime, strftime
+import pyrvsignal #import Signal
+from tqdm import tqdm
+from itertools import product
 #import pylab as pl
 
 import PySide6
@@ -125,6 +129,9 @@ class MainWindow(QMainWindow):
         #classification add-onns(1)
         self.ui.Classification_save__all_plates_segm_to_file_labeling_button_2.clicked.connect(self.SaveAllPlatesSegmToFile_Click)
         self.ui.Classification_load__all_plates_segm_to_file_labeling_button_2.clicked.connect(self.LoadAllPlatesSegmFromFile_Click)
+
+        #search best poarameters
+        self.ui.Tool_start_best_param_search_button_2.clicked.connect(self.SearchBestParams1)
         
         #settings
         #colors
@@ -189,6 +196,8 @@ class MainWindow(QMainWindow):
         self.RT_SpectrumThread=None
         global EXIT_DAQ_FLAG
         EXIT_DAQ_FLAG=True
+        #real time thread
+        self.Real_Time_Thread=None
         #generate colors lists
         self.colors_id = None
         self.GenerateCOlors_Botton_Click() #dc.get_colors(500)   
@@ -1060,7 +1069,7 @@ class MainWindow(QMainWindow):
                                           n_mfcc=int(self.proc_settings.get("Settings_nmfcc_num_MFCC_text")),
                                          )
         print("")
-        print("Features extraction started for "+str(len(self.plates))+" plates...")
+        print("Features extraction started for "+str(len(self.plates))+" plate(s)...")
         for p in range(0,len(self.plates)):
 
             plate=copy.deepcopy(self.plates[p])
@@ -1073,7 +1082,43 @@ class MainWindow(QMainWindow):
             #assign fake label to all plates segments
             plate.AssignLabelToAllSegments(label=0)
 
-            
+            for b in range(0,len(plate.sigments_sign)):
+
+                signal=plate.sigments_sign[b]
+
+                feat,labs= self.DataPreproc.SplitLabPlateSegmentIntoSnips(plate,
+                                                                          snip_size=snip_size,
+                                                                          segm_index=b,
+                                                                          channs_indx=CHANNELS_TO_USE,#indx_chan,
+                                                                          torch_tensor=False, 
+                                                                          preproc_type=preproc
+                                                                         )    
+                
+                #feat,labs=self.DataPreproc.Helper_FlatListOfLabeledFeat(feat,labs)
+                shp=np.shape(np.asarray(feat))
+
+                if(p==0):
+
+                    c_names=[]
+                    c_names.append("Plate_name")
+                    c_names.append("segment_num")   
+                    c_names.append("labels")   
+                    
+                    for j in range(0,shp[1]):
+                        c_names.append("feat_"+str(j))    
+                    df=pd.DataFrame(columns=c_names)
+
+                for j in range(0,shp[0]):
+                    l=[]
+                    l.append(p_name)
+                    l.append(b)
+                    l.append(labs[j])#label we do not know
+                    for i in range(0,shp[1]):
+                        l.append(feat[j][i])
+                    df=pd.concat([pd.DataFrame([l], columns=df.columns), df], ignore_index=True)
+            shlp.print_progress_bar(p+1,len(self.plates),"=")
+
+            """
             feat,labs= self.DataPreproc.SplitAllLabPlateSegmentsIntoSnips(plate,
                                                                           snip_size=snip_size,
                                                                           channs_indx=CHANNELS_TO_USE,#indx_chan,
@@ -1105,6 +1150,7 @@ class MainWindow(QMainWindow):
                     l.append(feat[j][i])
                 df=pd.concat([pd.DataFrame([l], columns=df.columns), df], ignore_index=True)
             shlp.print_progress_bar(p+1,len(self.plates),"=")
+            """
         df.to_pickle(path_file)
         print("")
         print("Features are saved into file.")
@@ -1118,19 +1164,158 @@ class MainWindow(QMainWindow):
     #tools - star search for best parameters
     def SearchBestParams1(self):
 
+        self.proc_settings = shlp.ReadSettings(self)
+
         if(len(self.plates)==0):
             print("Load plates first and repeat")
             return 
 
-        results_folder_n=self.ui.classification_snippet_size_text_2.text()
+        results_folder_n=self.proc_settings.get("Tools_best_params_search_folder_path_text_2")#self.ui.classification_snippet_size_text_2.text()
+        snip_start=int(self.proc_settings.get("Tools_best_params_search_snippet_size_start_text_3"))
+        snip_end=int(self.proc_settings.get("Tools_best_params_search_snippet_size_end_text_3"))
+        snip_step=int(self.proc_settings.get("Tools_best_params_search_snippet_size_step_text_3"))
+        preproc=self.proc_settings.get("classification_preproc_dropdown")
+        chans_list=self.proc_settings.get("Tools_best_params_search_channels_list_text_3")
+        hj=chans_list.split(",")
+        CHANNELS_TO_USE=[]
+        for k in range(0,len(hj)):
+            CHANNELS_TO_USE.append(int(hj[k]))
+
+        self.DataPreproc=shlp.DataPreproc(n_fft=int(self.proc_settings.get("spectrogrym_MEL_nfft")),
+                                          n_mels=int(self.proc_settings.get("Settings_MEL_num_MELS_2")),
+                                          n_mfcc=int(self.proc_settings.get("Settings_nmfcc_num_MFCC_text")))
+
         time_exp=strftime("%Y_%m_%d_%H_%M_%S", gmtime())
-        path_n=results_folder_n+"\\"+str(time_exp)
+        path_n=results_folder_n+"\\PARAMS_OPTIMIZATION_ANDRITZ_"+str(time_exp)
         try:
             if not os.path.exists(path_n):
                 os.makedirs(path_n)
         except: 
             print("cant make results folder - check permissions and repeat...")
             return
+
+        print("")
+        print("start check for best params...")
+
+        range_= 1
+        sn_st=snip_start
+        while(True):
+            sn_st=sn_st+snip_step
+            if(sn_st>snip_end):break
+            else: range_=range_+1
+
+        df=None
+        cur_snip_size=snip_start
+        c_names=[]        
+               
+        for kks in range(0,range_):
+            print("")
+            print("**********************************************************************")
+            print("Step "+str(kks)+str(" out of ")+str(range_))
+            print("Snip size: "+str(cur_snip_size))
+            print("**********************************************************************")
+            print("")
+            
+            df_list=[]
+            empty_plates_segm_cnt=[]
+            #ECXTRACT FEATURES
+            for isk in range(0,len(self.plates)):#tqdm(range(len(self.plates)),desc="Plates analysis for snip.size "+str(cur_snip_size)):
+
+                plate=copy.deepcopy(self.plates[isk])
+                p_name = plate.name                
+                l_sl=len(plate.sigments_labels)
+
+                empty_segments_cnt=0
+                #assign fake label to all plates segments
+                for jk in range(0,l_sl):
+                    plate.sigments_labels[jk]=[]                
+                plate.AssignLabelToAllSegments(label=0)                
+
+                for b in tqdm(range(0,len(plate.sigments_sign)),desc="Progress: plate "+str(isk)+" out of "+str(len(self.plates))):
+
+                    signal=plate.sigments_sign[b]
+                    feat,labs= self.DataPreproc.SplitLabPlateSegmentIntoSnips(plate,
+                                                                              snip_size=cur_snip_size,
+                                                                              segm_index=b,
+                                                                              channs_indx=CHANNELS_TO_USE,#indx_chan,
+                                                                              torch_tensor=False, 
+                                                                              preproc_type=preproc
+                                                                             )    
+                
+                    #feat,labs=self.DataPreproc.Helper_FlatListOfLabeledFeat(feat,labs)
+                    if(feat is None) or (len(np.shape(np.asarray(feat)))==0):
+                        empty_segments_cnt=empty_segments_cnt+1
+                        continue
+
+                    shp=np.shape(np.asarray(feat))
+                    
+                    if(df is None):
+                        c_names=[]
+                        c_names.append("Plate_name")
+                        c_names.append("segment_num")   
+                        c_names.append("labels")   
+                        for j in range(0,shp[1]):
+                            c_names.append("feat_"+str(j))    
+                        df=pd.DataFrame(columns=c_names)
+                        
+                    data = {c_names[0]: [p_name] * shp[0],
+                            c_names[1]: [str(b)]      * shp[0],
+                            c_names[2]: list(np.asarray(labs[:])),
+                           }
+                    cnt_c_n=3
+                    for j in range(0,shp[1]):
+                        data.update({c_names[cnt_c_n]:list(feat[:,j])})
+                        cnt_c_n=cnt_c_n+1                    
+                    df_list.append(pd.DataFrame.from_dict(data))
+                    """
+                    for j in range(0,shp[0]):                        
+                            l=[]
+                            l.append(p_name)
+                            l.append(b)
+                            l.append(labs[j]) #l.append(labs[j])#label we do not know                        
+                            for i in range(0,shp[1]):
+                                l.append(feat[j][i]) #.append(feat[j][i]                      
+                            df = pd.concat([df, pd.DataFrame([l])], ignore_index=True)
+                    """
+                    """
+                        l={}
+                        l.update({c_names[0]:p_name})
+                        l.update({c_names[1]:b})
+                        l.update({c_names[2]:labs[j]})    
+                        cnt_c_n=3
+                        for ipp in range(0,shp[1]):
+                            l.update({c_names[cnt_c_n]:feat[j][ipp]}) 
+                            cnt_c_n=cnt_c_n+1
+                        df_new_rows=pd.DataFrame.from_dict(l,orient='index')
+                        df = pd.concat([df, df_new_rows])
+                    """
+                        
+                
+                empty_plates_segm_cnt.append(empty_segments_cnt)#print("Empty segm.: "+str(empty_segments_cnt)+" out of "+str(len(plate.sigments_sign))+" total segm. count")
+                     
+            #save to file
+            df_num=len(df_list)
+            for ls in range(0,df_num):
+                df = pd.concat([df, df_list[ls]])
+            df_list=[]
+
+            chans_str="_"
+            for i in range(0,len(CHANNELS_TO_USE)):
+                chans_str=chans_str+str(CHANNELS_TO_USE[i])+"_"
+            f_name=path_n+"\\features_snip_size_"+str(cur_snip_size)+"_chans_"+chans_str+"_preproc_"+str(preproc)+".pkl"
+            print("saving plate data")
+            df.to_pickle(f_name)
+            
+            print("data saved successfully...")
+            print("Lost segments for plates: ")
+            for ik in range(0,len(empty_plates_segm_cnt)):
+                print("Plate "+str(ik)+" : "+str(empty_plates_segm_cnt[ik]))
+
+            df=None
+            cur_snip_size=snip_step+cur_snip_size
+            if(cur_snip_size>snip_end):return
+               
+                   
 
     #****************************************************************************************************************
     #****************************************************************************************************************
@@ -1903,8 +2088,9 @@ class MainWindow(QMainWindow):
             #this is pyqt graphics
             #https://pyqtgraph.readthedocs.io/en/latest/getting_started/installation.html
             #self.RT_fig_proc_results = pg.plot(title="self.RT_Figure_if_proc_results_id") #pg.GraphicsLayoutWidget()  # Automatically generates grids with multiple items            
-            self.RT_fig_proc_results=RTPlotWidget(parent=self)
-
+            self.RT_fig_proc_results=RTPlotWidget_1(colors_id=self.colors_id)
+            self.EndShowProcResultsThread=False
+            self.Channels_In_Use=self.GetChannels()
             #this is pylab
             """
             self.RT_fig_proc_results = pl.figure(self.RT_Figure_if_proc_results_id)
@@ -2263,6 +2449,8 @@ class MainWindow(QMainWindow):
     def Process_RT_Data(self,plate):
 
         import SHelpers as shlp
+        global EXIT_RT_FLAG
+
         #*********************************processing***************************         
         preprocessing = self.proc_settings.get("classification_preproc_dropdown")      
         snip_size=int(self.proc_settings.get("MAIN_classification_snippet_size_text"))   
@@ -2286,7 +2474,11 @@ class MainWindow(QMainWindow):
                 
         proc_time_total.append(time.time())
         #*********************************************************************************************
-        for seg_i in range(0,sgn_len):
+        for seg_i in tqdm(range(0,sgn_len),desc='Segem. proc:'):
+
+            if(EXIT_RT_FLAG==True):
+                return
+
             #take segment
             segm_signal=plate.sigments_sign[seg_i]            
             if(len(segm_signal)==0):
@@ -2308,20 +2500,60 @@ class MainWindow(QMainWindow):
                     labels_in_segment.append(list())
                 snips_len=len(snippets)
             snips_num=snips_num+snips_len        
-            shlp.print_progress_bar(seg_i+1, sgn_len, "segments proc.progress")    
+            #shlp.print_progress_bar(seg_i+1, sgn_len, "segments proc.progress")    
         #**********************************************************************************************
         proc_time_total.append(time.time())
 
         #SHOW RESULTS        
         skipped_results = False
-        if(bool(self.proc_settings.get("RealT_show_processed_signals_checkbox_3"))):                        
+        if(bool(self.proc_settings.get("RealT_show_processed_signals_checkbox_3"))):       
+            
+            if(EXIT_RT_FLAG==True):
+                return
+
             try:                       
                 #multiprocessing.Process
-                if(self.show_proc_result_in_progress==False):#self.show_proc_results_thread.is_alive()==False):
-                    self.show_proc_result_in_progress==True
-                    self.curMeas_num=self.RT_Frame_Counter #we fix here the current frame counter number that corresponds to this measurements                    
-                    self.show_proc_results_thread = threading.Thread (target=self.ShowProcResults_REAL_TIME,args=(plate,labels_in_segment))                    
-                    self.show_proc_results_thread.start()
+                if(self.show_proc_result_in_progress==False): #self.show_proc_results_thread.is_alive()==False):
+
+                    self.show_proc_result_in_progress=True
+
+                    cur_n=self.RT_Frame_Counter #we fix here the current frame counter number that corresponds to this measurements                    
+                    show_proc_results_thread = My_RT_Thread (target=self.Show_Sign_RT, args=(plate,labels_in_segment,cur_n))#self.ShowProcResults_REAL_TIME,args=(plate,labels_in_segment))    
+                    show_proc_results_thread.finished.connect(self.Show_RT_Thread_Finished)
+                    show_proc_results_thread.start() 
+                    #this is the main working stuff
+
+                    #this is another trial
+                    """
+                    curMeas_num=self.RT_Frame_Counter 
+                    Channels_In_Use=self.Channels_In_Use
+
+                    worker = WorkerRTShow(self,plate,labels_in_segment,curMeas_num,Channels_In_Use)#parent,plate,labels_in_segment,curMeas_num                        
+                    worker._display_complete.connect(self.DisplayResultsComplete) #PySide6.QtCore.SIGNAL('ResultsShown'), self.EndShowProcResultsThread)
+
+                    self.show_proc_results_thread = threading.Thread (target=worker.run)#self.ShowProcResults_REAL_TIME,args=(plate,labels_in_segment))                    
+                    self.show_proc_results_thread.start()             
+                    """
+
+                    #https://stackoverflow.com/questions/16879971/example-of-the-right-way-to-use-qthread-in-pyqt     
+                    """                   
+                    if(True):
+                        proceed_to_show=self.EndShowProcResultsThread
+                        if (proceed_to_show==False):                              
+                            curMeas_num=self.RT_Frame_Counter 
+                            Channels_In_Use=self.Channels_In_Use
+                        
+                            worker = WorkerRTShow(self,plate,labels_in_segment,curMeas_num,Channels_In_Use)#parent,plate,labels_in_segment,curMeas_num                        
+                            worker._display_complete.connect(self.DisplayResultsComplete) #PySide6.QtCore.SIGNAL('ResultsShown'), self.EndShowProcResultsThread)
+                        
+                            show_proc_results_thread = PySide6.QtCore.QThread()
+                            worker.moveToThread(show_proc_results_thread)                        
+                            show_proc_results_thread.started.connect(worker.run)                                                
+                            show_proc_results_thread.finished.connect(show_proc_results_thread.deleteLater)
+                        
+                            self.EndShowProcResultsThread=True                        
+                            show_proc_results_thread.start()
+                    """  
                     display_time.append(0)
                     display_time.append(1)
                 else: 
@@ -2458,8 +2690,50 @@ class MainWindow(QMainWindow):
                     if(ONLY_SINGLE_SHOT==True):
                         break
 
-            """#end of processing
-               
+            """#end of processing               
+                
+
+    #///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    #this function is for normal therad 
+    #///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    def Show_RT_Thread_Finished(self):
+        self.show_proc_result_in_progress=False
+
+    def Show_Sign_RT(self,plate,labels_in_segment,cur_num):
+        
+        points_num_limit_check=bool(self.proc_settings.get("GUI_show_results_points_number_limit_checkbox"))
+        points_num_limit=int(self.proc_settings.get("GUI_show_results_points_number_limit_textbox"))
+        only_one_chan_to_she=bool(self.proc_settings.get("RealT_show_processed_signals_checkbox_3"))
+        mark_segm_borders=bool(self.proc_settings.get("GUI_mark_segments_checkbox"))
+
+        full_sign=[]   
+        segm_pos=[]
+        cur_segm_pos=0
+        for kks in range(0,len(self.Channels_In_Use)):    
+            full_sign.append([])                   
+            for segment in plate.sigments_sign:               
+                if(len(full_sign[-1])==0):full_sign[-1]=np.asarray(segment[self.Channels_In_Use[kks]])                                
+                else:
+                    sfg = np.asarray(full_sign[-1])            
+                    sfg1=np.concatenate((sfg,segment[self.Channels_In_Use[kks]]),axis=None)
+                    full_sign[-1]=np.empty
+                    full_sign[-1]=np.asarray(sfg1)      
+                if(mark_segm_borders): 
+                    segm_pos.append(cur_segm_pos+len(segment[0]))
+                    cur_segm_pos=cur_segm_pos+len(segment[0])
+            if(points_num_limit_check) and (points_num_limit!=0):
+                step=int(len(full_sign[-1])/points_num_limit)               
+                full_sign[-1]=full_sign[-1][::step]      
+                if(mark_segm_borders):
+                    for p in range(0,len(segm_pos)): segm_pos[p]=int(segm_pos[p]/step)
+                    #segm_pos = list([x / step for x in segm_pos])#segm_pos=segm_pos/step
+            if(only_one_chan_to_she): break #for the moment we will use only one channel for displaying results
+        
+        self.RT_fig_proc_results.plot(full_sign)
+        if(mark_segm_borders): 
+            self.RT_fig_proc_results.AddBars(segm_pos)
+        self.RT_fig_proc_results.updateText(str(cur_num))
+        self.RT_fig_proc_results.Addlabels(labels_in_segment)
 
     def ShowProcResults_REAL_TIME(self,plate,labels_in_segment):
 
@@ -3173,9 +3447,620 @@ class MainWindow(QMainWindow):
 #*****************************************************************************************************
 #*****************************************************************************************************
 
+
+#///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    #this is QThread approach for showing results 
+    #///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+#https://doc.qt.io/qtforpython-6/PySide6/QtCore/QThread.html
+    
+class WorkerRTShow(PySide6.QtCore.QObject):
+    import SHelpers as shlp  
+    _display_complete=PySide6.QtCore.Signal(str) 
+
+    def __init__(self,parent,plate,labels_in_segment,curMeas_num,chans_num):
+                   
+            #super().__init__()
+            PySide6.QtCore.QObject.__init__(self)
+            self.parent=parent
+            self.chan_num=chans_num
+            self.snip_size=int(self.parent.proc_settings.get("MAIN_classification_snippet_size_text"))   
+            self.impose_addit_delay_showing_results=bool(self.parent.proc_settings.get("GUI_impose_delay_checkbox_2"))
+            self.addit_delay_value=int(self.parent.proc_settings.get("GUI_impose_measurements_delay_value_textbox_2"))
+            self.points_num_limit_check=bool(self.parent.proc_settings.get("GUI_show_results_points_number_limit_checkbox"))
+            self.points_num_limit=int(self.parent.proc_settings.get("GUI_show_results_points_number_limit_textbox"))
+            self.show_labels=bool(self.parent.proc_settings.get("GUI_show_labels_checkbox"))
+            self.mark_segm_borders=bool(self.parent.proc_settings.get("GUI_mark_segments_checkbox"))
+            self.curMeas_num=curMeas_num
+            #show the labels
+            self.show_results_scheme=str(self.parent.proc_settings.get("Show_results_color_scheme_drop_down_1"))            
+            self.plate=plate
+            self.labels_in_segment=labels_in_segment
+
+            if(isinstance(self.parent.RT_fig_proc_results,RTPlotWidget)):#,pg.widgets.PlotWidget.PlotWidget)):
+                #https://pyqtgraph.readthedocs.io/en/latest/getting_started/plotting.html            
+                self.parent.RT_fig_proc_results.clear()      
+                        
+    def run(self):
+
+            plate=self.plate
+            chan_num=self.chan_num
+            points_num_limit_check=self.points_num_limit_check
+            points_num_limit=self.points_num_limit
+            show_labels=self.show_labels
+            mark_segm_borders=self.mark_segm_borders
+            labels_in_segment=self.labels_in_segment
+            snip_size=self.snip_size
+            curMeas_num=self.curMeas_num
+
+            #start_display = pg.time.ptime.time()pg.time.ptime.time()#pg.ptime.time()
+            #******************************************************************************************************************************
+            #make full signals first
+            full_sign=[]
+            sample_stamp=[]    
+            for kks in range(0,len(chan_num)):    
+                full_sign.append([])       
+                sample_stamp.append([])
+                sample_stamp[-1].append(0)
+                for segment in plate.sigments_sign:               
+                    if(len(full_sign[-1])==0):full_sign[-1]=np.asarray(segment[chan_num[kks]])                                
+                    else:
+                        sfg = np.asarray(full_sign[-1])            
+                        sfg1=np.concatenate((sfg,segment[chan_num[kks]]),axis=None)
+                        full_sign[-1]=np.empty
+                        full_sign[-1]=np.asarray(sfg1)            
+                        #sample_stamp[-1].append(len(sfg1)+sample_stamp[-1][len(sample_stamp[-1])-1])            
+                    sample_stamp[-1].append(len(full_sign[-1]))
+            #sparse signal if needed
+            step_size=1    
+            if(points_num_limit_check==True):
+                for m in range(0,len(full_sign)):
+                    shp_=np.shape(full_sign[m])
+                    l_segm_=-1
+                    if(len(shp_)==1): l_segm_=shp_[0]
+                    else:            l_segm_=shp_[1]
+                    if l_segm_>points_num_limit:
+                        step_size=int(l_segm_/points_num_limit)
+                        reduced_signal=[]
+                        points_steps=[]
+                        for kk in range(0,l_segm_,step_size):
+                            reduced_signal.append(full_sign[m][kk])
+                            points_steps.append(kk)                     
+                        self.parent.RT_fig_proc_results.plot(points_steps,reduced_signal)
+
+                    else:                 
+                        self.parent.RT_fig_proc_results.plot(full_sign[m])
+            else:                
+                for m in range(0,len(full_sign)):
+                    self.parent.RT_fig_proc_results.plot(full_sign[m])
+                    
+            min_v=np.min(np.asarray(full_sign),axis=None)
+            max_v=np.max(np.asarray(full_sign),axis=None)
+
+            if(mark_segm_borders==True):           
+                    if(isinstance(self.parent.RT_fig_proc_results,RTPlotWidget)):
+                        self.parent.RT_fig_proc_results.vlines(sample_stamp[0][:],min_v,max_v)#self.RT_fig_proc_results.addItem(pg.InfiniteLine(pos=cur_pos,angle=90))#,bounds=[min_v,max_v]))
+                    else:
+                        for b in range(0,len(sample_stamp[0])):
+                            self.parent.RT_fig_proc_results.vlines(sample_stamp[0][b],ymin=min_v,ymax=max_v,colors="black",linestyles="solid")
+
+            if (labels_in_segment is not None) and (len(labels_in_segment)!=0):                           
+                cnt = 0        
+                chan_n=chan_num[0]
+                pnts=[]
+                x=[]
+                y=[]
+                unique_l=[]
+                proceed=True
+                for p in range(0,len(labels_in_segment)):                
+                    if(p>0): cnt=cnt+len(plate.sigments_sign[p-1][chan_n])   
+                    if(labels_in_segment[p] is None): #or (not labels_in_segment[p]):                        
+                        x.append(cnt+snip_size/2)
+                        y.append(-1)
+                    else:
+                        for k in range(0,len(labels_in_segment[p])):
+                            cur_pnt=[]
+                            st_ = k * snip_size + cnt
+                            en_ = st_ + snip_size
+                            if(labels_in_segment[p][k] not in unique_l): unique_l.append(labels_in_segment[p][k])
+                            x.append(st_+(st_-en_)/2)
+                            y.append(labels_in_segment[p][k])
+                            st_= en_
+                                        
+                #show in scatter plot
+                if(isinstance(self.parent.RT_fig_proc_results,RTPlotWidget)):                 
+                    self.parent.RT_fig_proc_results.plot_results(x,y,unique_l,self.parent.colors_id)
+            #end_display = pg.time.ptime.time()
+            #******************************************************************************************************************************
+            text_to_add="Measurement "+str(self.curMeas_num)            
+            if(isinstance(self.parent.RT_fig_proc_results,RTPlotWidget)):        
+                if(bool(self.parent.proc_settings.get("GUI_settitle_figure_checkbox_2"))):                                
+                    self.parent.RT_fig_proc_results.label.setText(text_to_add)
+            if(bool(self.parent.proc_settings.get("GUI_impose_delay_checkbox_2"))==True):
+                time.sleep(float(self.parent.proc_settings.get("RT_impose_delay_between_measurements_textbox_5"))/1000)
+            #******************************************************************************************************************************        
+            #at the and            
+            self._display_complete.emit("ResultsShown")
+            #self.parent.show_proc_result_in_progress=False
+
 #**********real time plot item**************
 
-class RTPlotWidget(): #PySide6.QtWidgets.QWidget): #PySide6.QtWidgets.QGraphicsScene):
+class My_RT_Thread(threading.Thread):    
+    finished = pyrvsignal.Signal()
+    def __init__(self, target, args):        
+        #threading.Thread.__init__(self)
+        #super(My_RT_Thread, self).__init__()
+        self.target = target
+        self.args = args
+        threading.Thread.__init__(self)
+    def run(self):#-> None:
+        self.target(*self.args)
+        self.finished.emit()
+
+class RTPlotWidget_1(PySide6.QtWidgets.QWidget):
+
+    def __init__(self,colors_id=None):
+
+        super().__init__()
+        
+
+        self.setAttribute(PySide6.QtCore.Qt.WA_DeleteOnClose)
+
+        self.label =  PySide6.QtWidgets.QLabel("Measurements...")
+        self.label.setMinimumWidth(130)    
+        self.label.setFont(PySide6.QtGui.QFont("Arial", 16))
+
+        self.graphWidget=pg.PlotWidget()
+        #self.setCentralWidget(self.graphWidget)
+        self.graphWidget.setBackground('w')
+                
+        self.x1 =[]
+        self.x2 =[]
+        self.x3 =[]
+        self.x4 =[]
+        self.x5 =[]
+        self.x6 =[]
+        self.x7 =[]
+        self.x8 =[]
+                
+        self.pen1=pg.mkPen(color=(255,0,0))
+        self.pen2=pg.mkPen(color=(255,0,0))
+        self.pen3=pg.mkPen(color=(255,0,0))
+        self.pen4=pg.mkPen(color=(255,0,0))
+        self.pen5=pg.mkPen(color=(255,0,0))
+        self.pen6=pg.mkPen(color=(255,0,0))
+        self.pen7=pg.mkPen(color=(255,0,0))
+        self.pen8=pg.mkPen(color=(255,0,0))
+                
+        self.line1=self.graphWidget.plot(self.x1,pen=self.pen1)
+        self.line2=self.graphWidget.plot(self.x2,pen=self.pen2)
+        self.line3=self.graphWidget.plot(self.x3,pen=self.pen3)
+        self.line4=self.graphWidget.plot(self.x4,pen=self.pen4)
+        self.line5=self.graphWidget.plot(self.x5,pen=self.pen5)
+        self.line6=self.graphWidget.plot(self.x6,pen=self.pen6)
+        self.line7=self.graphWidget.plot(self.x7,pen=self.pen7)
+        self.line8=self.graphWidget.plot(self.x8,pen=self.pen8)
+
+        #markers for segments
+        self.v_l1=self.graphWidget.addLine(x=0, pen=(50, 150, 50), markers=[('^', 0, 10)])
+        self.v_l2=self.graphWidget.addLine(x=0, pen=(50, 150, 50), markers=[('^', 0, 10)])
+        self.v_l3=self.graphWidget.addLine(x=0, pen=(50, 150, 50), markers=[('^', 0, 10)])
+        self.v_l4=self.graphWidget.addLine(x=0, pen=(50, 150, 50), markers=[('^', 0, 10)])
+        self.v_l5=self.graphWidget.addLine(x=0, pen=(50, 150, 50), markers=[('^', 0, 10)])
+        self.v_l6=self.graphWidget.addLine(x=0, pen=(50, 150, 50), markers=[('^', 0, 10)])
+        self.v_l7=self.graphWidget.addLine(x=0, pen=(50, 150, 50), markers=[('^', 0, 10)])
+        self.v_l8=self.graphWidget.addLine(x=0, pen=(50, 150, 50), markers=[('^', 0, 10)])
+        self.v_l9=self.graphWidget.addLine(x=0, pen=(50, 150, 50), markers=[('^', 0, 10)])
+        self.v_l10=self.graphWidget.addLine(x=0, pen=(50, 150, 50), markers=[('^', 0, 10)])
+        self.v_l11=self.graphWidget.addLine(x=0, pen=(50, 150, 50), markers=[('^', 0, 10)])
+        self.v_l12=self.graphWidget.addLine(x=0, pen=(50, 150, 50), markers=[('^', 0, 10)])
+        self.v_l13=self.graphWidget.addLine(x=0, pen=(50, 150, 50), markers=[('^', 0, 10)])
+        self.v_l14=self.graphWidget.addLine(x=0, pen=(50, 150, 50), markers=[('^', 0, 10)])
+        self.v_l15=self.graphWidget.addLine(x=0, pen=(50, 150, 50), markers=[('^', 0, 10)])
+        self.v_l16=self.graphWidget.addLine(x=0, pen=(50, 150, 50), markers=[('^', 0, 10)])
+        self.v_l17=self.graphWidget.addLine(x=0, pen=(50, 150, 50), markers=[('^', 0, 10)])
+        self.v_l18=self.graphWidget.addLine(x=0, pen=(50, 150, 50), markers=[('^', 0, 10)])
+        self.v_l19=self.graphWidget.addLine(x=0, pen=(50, 150, 50), markers=[('^', 0, 10)])
+        self.v_l20=self.graphWidget.addLine(x=0, pen=(50, 150, 50), markers=[('^', 0, 10)])        
+
+        self.v_l21=self.graphWidget.addLine(x=0, pen=(50, 150, 50), markers=[('^', 0, 10)])
+        self.v_l22=self.graphWidget.addLine(x=0, pen=(50, 150, 50), markers=[('^', 0, 10)])
+        self.v_l23=self.graphWidget.addLine(x=0, pen=(50, 150, 50), markers=[('^', 0, 10)])
+        self.v_l24=self.graphWidget.addLine(x=0, pen=(50, 150, 50), markers=[('^', 0, 10)])
+        self.v_l25=self.graphWidget.addLine(x=0, pen=(50, 150, 50), markers=[('^', 0, 10)])
+        self.v_l26=self.graphWidget.addLine(x=0, pen=(50, 150, 50), markers=[('^', 0, 10)])
+        self.v_l27=self.graphWidget.addLine(x=0, pen=(50, 150, 50), markers=[('^', 0, 10)])
+        self.v_l28=self.graphWidget.addLine(x=0, pen=(50, 150, 50), markers=[('^', 0, 10)])
+        self.v_l29=self.graphWidget.addLine(x=0, pen=(50, 150, 50), markers=[('^', 0, 10)])
+        self.v_l30=self.graphWidget.addLine(x=0, pen=(50, 150, 50), markers=[('^', 0, 10)])
+        self.v_l31=self.graphWidget.addLine(x=0, pen=(50, 150, 50), markers=[('^', 0, 10)])
+        self.v_l32=self.graphWidget.addLine(x=0, pen=(50, 150, 50), markers=[('^', 0, 10)])
+        self.v_l33=self.graphWidget.addLine(x=0, pen=(50, 150, 50), markers=[('^', 0, 10)])
+        self.v_l34=self.graphWidget.addLine(x=0, pen=(50, 150, 50), markers=[('^', 0, 10)])
+        self.v_l35=self.graphWidget.addLine(x=0, pen=(50, 150, 50), markers=[('^', 0, 10)])
+        self.v_l36=self.graphWidget.addLine(x=0, pen=(50, 150, 50), markers=[('^', 0, 10)])
+        self.v_l37=self.graphWidget.addLine(x=0, pen=(50, 150, 50), markers=[('^', 0, 10)])
+        self.v_l38=self.graphWidget.addLine(x=0, pen=(50, 150, 50), markers=[('^', 0, 10)])
+        self.v_l39=self.graphWidget.addLine(x=0, pen=(50, 150, 50), markers=[('^', 0, 10)])
+        self.v_l40=self.graphWidget.addLine(x=0, pen=(50, 150, 50), markers=[('^', 0, 10)])        
+
+        self.v_l41=self.graphWidget.addLine(x=0, pen=(50, 150, 50), markers=[('^', 0, 10)])
+        self.v_l42=self.graphWidget.addLine(x=0, pen=(50, 150, 50), markers=[('^', 0, 10)])
+        self.v_l43=self.graphWidget.addLine(x=0, pen=(50, 150, 50), markers=[('^', 0, 10)])
+        self.v_l44=self.graphWidget.addLine(x=0, pen=(50, 150, 50), markers=[('^', 0, 10)])
+        self.v_l45=self.graphWidget.addLine(x=0, pen=(50, 150, 50), markers=[('^', 0, 10)])
+        self.v_l46=self.graphWidget.addLine(x=0, pen=(50, 150, 50), markers=[('^', 0, 10)])
+        self.v_l47=self.graphWidget.addLine(x=0, pen=(50, 150, 50), markers=[('^', 0, 10)])
+        self.v_l48=self.graphWidget.addLine(x=0, pen=(50, 150, 50), markers=[('^', 0, 10)])
+        self.v_l49=self.graphWidget.addLine(x=0, pen=(50, 150, 50), markers=[('^', 0, 10)])
+        self.v_l50=self.graphWidget.addLine(x=0, pen=(50, 150, 50), markers=[('^', 0, 10)])
+        self.v_l51=self.graphWidget.addLine(x=0, pen=(50, 150, 50), markers=[('^', 0, 10)])
+        self.v_l52=self.graphWidget.addLine(x=0, pen=(50, 150, 50), markers=[('^', 0, 10)])
+        self.v_l53=self.graphWidget.addLine(x=0, pen=(50, 150, 50), markers=[('^', 0, 10)])
+        self.v_l54=self.graphWidget.addLine(x=0, pen=(50, 150, 50), markers=[('^', 0, 10)])
+        self.v_l55=self.graphWidget.addLine(x=0, pen=(50, 150, 50), markers=[('^', 0, 10)])
+        self.v_l56=self.graphWidget.addLine(x=0, pen=(50, 150, 50), markers=[('^', 0, 10)])
+        self.v_l57=self.graphWidget.addLine(x=0, pen=(50, 150, 50), markers=[('^', 0, 10)])
+        self.v_l58=self.graphWidget.addLine(x=0, pen=(50, 150, 50), markers=[('^', 0, 10)])
+        self.v_l59=self.graphWidget.addLine(x=0, pen=(50, 150, 50), markers=[('^', 0, 10)])
+        self.v_l60=self.graphWidget.addLine(x=0, pen=(50, 150, 50), markers=[('^', 0, 10)])     
+
+        self.v_l61=self.graphWidget.addLine(x=0, pen=(50, 150, 50), markers=[('^', 0, 10)])
+        self.v_l62=self.graphWidget.addLine(x=0, pen=(50, 150, 50), markers=[('^', 0, 10)])
+        self.v_l63=self.graphWidget.addLine(x=0, pen=(50, 150, 50), markers=[('^', 0, 10)])
+        self.v_l64=self.graphWidget.addLine(x=0, pen=(50, 150, 50), markers=[('^', 0, 10)])
+        self.v_l65=self.graphWidget.addLine(x=0, pen=(50, 150, 50), markers=[('^', 0, 10)])
+        self.v_l66=self.graphWidget.addLine(x=0, pen=(50, 150, 50), markers=[('^', 0, 10)])
+        self.v_l67=self.graphWidget.addLine(x=0, pen=(50, 150, 50), markers=[('^', 0, 10)])
+        self.v_l68=self.graphWidget.addLine(x=0, pen=(50, 150, 50), markers=[('^', 0, 10)])
+        self.v_l69=self.graphWidget.addLine(x=0, pen=(50, 150, 50), markers=[('^', 0, 10)])
+        self.v_l70=self.graphWidget.addLine(x=0, pen=(50, 150, 50), markers=[('^', 0, 10)])
+        self.v_l71=self.graphWidget.addLine(x=0, pen=(50, 150, 50), markers=[('^', 0, 10)])
+        self.v_l72=self.graphWidget.addLine(x=0, pen=(50, 150, 50), markers=[('^', 0, 10)])
+        self.v_l73=self.graphWidget.addLine(x=0, pen=(50, 150, 50), markers=[('^', 0, 10)])
+        self.v_l74=self.graphWidget.addLine(x=0, pen=(50, 150, 50), markers=[('^', 0, 10)])
+        self.v_l75=self.graphWidget.addLine(x=0, pen=(50, 150, 50), markers=[('^', 0, 10)])
+        self.v_l76=self.graphWidget.addLine(x=0, pen=(50, 150, 50), markers=[('^', 0, 10)])
+        self.v_l77=self.graphWidget.addLine(x=0, pen=(50, 150, 50), markers=[('^', 0, 10)])
+        self.v_l78=self.graphWidget.addLine(x=0, pen=(50, 150, 50), markers=[('^', 0, 10)])
+        self.v_l79=self.graphWidget.addLine(x=0, pen=(50, 150, 50), markers=[('^', 0, 10)])
+        self.v_l80=self.graphWidget.addLine(x=0, pen=(50, 150, 50), markers=[('^', 0, 10)])     
+
+        self.v_l81=self.graphWidget.addLine(x=0, pen=(50, 150, 50), markers=[('^', 0, 10)])
+        self.v_l82=self.graphWidget.addLine(x=0, pen=(50, 150, 50), markers=[('^', 0, 10)])
+        self.v_l83=self.graphWidget.addLine(x=0, pen=(50, 150, 50), markers=[('^', 0, 10)])
+        self.v_l84=self.graphWidget.addLine(x=0, pen=(50, 150, 50), markers=[('^', 0, 10)])
+        self.v_l85=self.graphWidget.addLine(x=0, pen=(50, 150, 50), markers=[('^', 0, 10)])
+        self.v_l86=self.graphWidget.addLine(x=0, pen=(50, 150, 50), markers=[('^', 0, 10)])
+        self.v_l87=self.graphWidget.addLine(x=0, pen=(50, 150, 50), markers=[('^', 0, 10)])
+        self.v_l88=self.graphWidget.addLine(x=0, pen=(50, 150, 50), markers=[('^', 0, 10)])
+        self.v_l89=self.graphWidget.addLine(x=0, pen=(50, 150, 50), markers=[('^', 0, 10)])
+        self.v_l90=self.graphWidget.addLine(x=0, pen=(50, 150, 50), markers=[('^', 0, 10)])
+        self.v_l91=self.graphWidget.addLine(x=0, pen=(50, 150, 50), markers=[('^', 0, 10)])
+        self.v_l92=self.graphWidget.addLine(x=0, pen=(50, 150, 50), markers=[('^', 0, 10)])
+        self.v_l93=self.graphWidget.addLine(x=0, pen=(50, 150, 50), markers=[('^', 0, 10)])
+        self.v_l94=self.graphWidget.addLine(x=0, pen=(50, 150, 50), markers=[('^', 0, 10)])
+        self.v_l95=self.graphWidget.addLine(x=0, pen=(50, 150, 50), markers=[('^', 0, 10)])
+        self.v_l96=self.graphWidget.addLine(x=0, pen=(50, 150, 50), markers=[('^', 0, 10)])
+        self.v_l97=self.graphWidget.addLine(x=0, pen=(50, 150, 50), markers=[('^', 0, 10)])
+        self.v_l98=self.graphWidget.addLine(x=0, pen=(50, 150, 50), markers=[('^', 0, 10)])
+        self.v_l99=self.graphWidget.addLine(x=0, pen=(50, 150, 50), markers=[('^', 0, 10)])
+        self.v_l100=self.graphWidget.addLine(x=0, pen=(50, 150, 50), markers=[('^', 0, 10)])     
+
+        self.v_l101=self.graphWidget.addLine(x=0, pen=(50, 150, 50), markers=[('^', 0, 10)])
+        self.v_l102=self.graphWidget.addLine(x=0, pen=(50, 150, 50), markers=[('^', 0, 10)])
+        self.v_l103=self.graphWidget.addLine(x=0, pen=(50, 150, 50), markers=[('^', 0, 10)])
+        self.v_l104=self.graphWidget.addLine(x=0, pen=(50, 150, 50), markers=[('^', 0, 10)])
+        self.v_l105=self.graphWidget.addLine(x=0, pen=(50, 150, 50), markers=[('^', 0, 10)])
+        self.v_l106=self.graphWidget.addLine(x=0, pen=(50, 150, 50), markers=[('^', 0, 10)])
+        self.v_l107=self.graphWidget.addLine(x=0, pen=(50, 150, 50), markers=[('^', 0, 10)])
+        self.v_l108=self.graphWidget.addLine(x=0, pen=(50, 150, 50), markers=[('^', 0, 10)])
+        self.v_l109=self.graphWidget.addLine(x=0, pen=(50, 150, 50), markers=[('^', 0, 10)])
+        self.v_l110=self.graphWidget.addLine(x=0, pen=(50, 150, 50), markers=[('^', 0, 10)])
+        self.v_l111=self.graphWidget.addLine(x=0, pen=(50, 150, 50), markers=[('^', 0, 10)])
+        self.v_l112=self.graphWidget.addLine(x=0, pen=(50, 150, 50), markers=[('^', 0, 10)])
+        self.v_l113=self.graphWidget.addLine(x=0, pen=(50, 150, 50), markers=[('^', 0, 10)])
+        self.v_l114=self.graphWidget.addLine(x=0, pen=(50, 150, 50), markers=[('^', 0, 10)])
+        self.v_l115=self.graphWidget.addLine(x=0, pen=(50, 150, 50), markers=[('^', 0, 10)])
+        self.v_l116=self.graphWidget.addLine(x=0, pen=(50, 150, 50), markers=[('^', 0, 10)])
+        self.v_l117=self.graphWidget.addLine(x=0, pen=(50, 150, 50), markers=[('^', 0, 10)])
+        self.v_l118=self.graphWidget.addLine(x=0, pen=(50, 150, 50), markers=[('^', 0, 10)])
+        self.v_l119=self.graphWidget.addLine(x=0, pen=(50, 150, 50), markers=[('^', 0, 10)])
+        self.v_l120=self.graphWidget.addLine(x=0, pen=(50, 150, 50), markers=[('^', 0, 10)])     
+
+        #prepare the labels plot
+        self.labels=[]
+        self.graphWidget_labels=pg.PlotWidget()        
+        self.graphWidget_labels.setBackground('w')
+        self.labels_graph=self.graphWidget_labels.plot(self.labels,pen=pg.mkPen(color=(0,0,255),width=4))
+
+        self.rgb1=self.hex_to_rgb(colors_id[0])
+        self.rgb2=self.hex_to_rgb(colors_id[1])
+        self.rgb3=self.hex_to_rgb(colors_id[2])        
+        
+        #https://stackoverflow.com/questions/56600292/transparency-of-a-filled-plot-in-pyqtgraph
+        self.lab_x1=np.ones(100)*0.5
+        self.lab_x2=np.ones(100)*1.5
+        self.lab_x3=np.ones(100)*2.5
+        
+        
+        self.lab_line1=self.graphWidget_labels.plot(self.lab_x1,fillLevel=-0.5,brush=(self.rgb1[0], self.rgb1[1], self.rgb1[2],50))
+        self.lab_line2=self.graphWidget_labels.plot(self.lab_x2,fillLevel=0.5, brush=(self.rgb2[0], self.rgb2[1], self.rgb2[2],50))
+        self.lab_line3=self.graphWidget_labels.plot(self.lab_x3,fillLevel=1.5, brush=(self.rgb3[0], self.rgb3[1], self.rgb3[2],50))
+        
+        """
+        self.lab_x0=np.ones(100)-1.5
+        self.lab_x1=np.ones(100)-0.5
+        self.lab_curve1=pg.PlotCurveItem(self.lab_x0,self.lab_x1,pen =(self.rgb1[0], self.rgb1[1], self.rgb1[2]))        
+        self.lab_x2=np.ones(100)+0.5
+        self.lab_curve2=pg.PlotCurveItem(self.lab_x1,self.lab_x2,pen =(self.rgb2[0], self.rgb2[1], self.rgb2[2]))        
+        self.lab_x3=np.ones(100)+1.5
+        self.lab_curve3=pg.PlotCurveItem(self.lab_x2,self.lab_x3,pen =(self.rgb3[0], self.rgb3[1], self.rgb3[2]))        
+        self.lab_x4=np.ones(100)+2.5
+        self.lab_curve4=pg.PlotCurveItem(self.lab_x3,self.lab_x4,pen =(self.rgb4[0], self.rgb4[1], self.rgb4[2]))
+        self.br1=pg.mkBrush(self.rgb1[0], self.rgb1[1], self.rgb1[2], 70)    
+        self.br2=pg.mkBrush(self.rgb2[0], self.rgb2[1], self.rgb2[2], 70)    
+        self.br3=pg.mkBrush(self.rgb3[0], self.rgb3[1], self.rgb3[2], 70)    
+        self.pfill1 = pg.FillBetweenItem(self.lab_curve1,self.lab_curve2, brush = self.br1)  
+        self.pfill2 = pg.FillBetweenItem(self.lab_curve2,self.lab_curve3, brush = self.br2)  
+        self.pfill3 = pg.FillBetweenItem(self.lab_curve3,self.lab_curve4, brush = self.br3)  
+        self.graphWidget_labels.addItem(self.pfill1)
+        self.graphWidget_labels.addItem(self.pfill2)
+        self.graphWidget_labels.addItem(self.pfill3)
+        self.labels=[]
+        self.labels_graph=self.graphWidget_labels.plot(self.labels,pen=pg.mkPen(color=(0,0,255),width=4))
+        """
+
+        layout=PySide6.QtWidgets.QGridLayout()     
+        layout.addWidget(self.label, 1, 0)     
+        layout.addWidget(self.graphWidget, 2, 0)       
+        layout.addWidget(self.graphWidget_labels, 3, 0)       
+        self.setLayout(layout)
+                
+        self.show()
+
+    #this are the markers for segments marking
+    def AddBars(self,pos):
+        shp=len(pos)
+
+        if(len(pos)>0): self.v_l1.setValue(pos[0])      #self.v_l1.x1=pos[0] #self.v_l1.setData(pos[0],(50, 150, 50)) #self.v_l1=self.graphWidget.addLine(x=pos[0], pen=(50, 150, 50), markers=[('^', 0, 10)])            
+        if(len(pos)>1): self.v_l2.setValue(pos[1])      #setData(pos[1],(50, 150, 50))#=self.graphWidget.addLine(x=pos[1], pen=(50, 150, 50), markers=[('^', 0, 10)])
+        if(len(pos)>2): self.v_l3.setValue(pos[2])      #self.v_l3.setData(pos[2],(50, 150, 50))#=self.graphWidget.addLine(x=pos[2], pen=(50, 150, 50), markers=[('^', 0, 10)])
+        if(len(pos)>3): self.v_l4.setValue(pos[3])      #self.v_l4.setData(pos[3],(50, 150, 50))#=self.graphWidget.addLine(x=pos[3], pen=(50, 150, 50), markers=[('^', 0, 10)])
+        if(len(pos)>4): self.v_l5.setValue(pos[4])                                #self.v_l5.setData(pos[4],(50, 150, 50))#=self.graphWidget.addLine(x=pos[4], pen=(50, 150, 50), markers=[('^', 0, 10)])
+        if(len(pos)>5): self.v_l6.setValue(pos[5])      #self.v_l6.setData(pos[5],(50, 150, 50))#=self.graphWidget.addLine(x=pos[5], pen=(50, 150, 50), markers=[('^', 0, 10)])
+        if(len(pos)>6): self.v_l7.setValue(pos[6])      #self.v_l7.setData(pos[6],(50, 150, 50))#=self.graphWidget.addLine(x=pos[6], pen=(50, 150, 50), markers=[('^', 0, 10)])
+        if(len(pos)>7): self.v_l8.setValue(pos[7])      #self.v_l8.setData(pos[7],(50, 150, 50))#=self.graphWidget.addLine(x=pos[7], pen=(50, 150, 50), markers=[('^', 0, 10)])
+        if(len(pos)>8): self.v_l9.setValue(pos[8])      #self.v_l9.setData(pos[8],(50, 150, 50))#=self.graphWidget.addLine(x=pos[8], pen=(50, 150, 50), markers=[('^', 0, 10)])
+        if(len(pos)>9): self.v_l10.setValue(pos[9])      #self.v_l10.setData(pos[9],(50, 150, 50))#=self.graphWidget.addLine(x=pos[9], pen=(50, 150, 50), markers=[('^', 0, 10)])
+        if(len(pos)>10):self.v_l11.setValue(pos[10])      #self.v_l11.setData(pos[10],(50, 150, 50))#=self.graphWidget.addLine(x=pos[10], pen=(50, 150, 50), markers=[('^', 0, 10)])
+        if(len(pos)>11):self.v_l12.setValue(pos[11])      #self.v_l12.setData(pos[11],(50, 150, 50))#=self.graphWidget.addLine(x=pos[11], pen=(50, 150, 50), markers=[('^', 0, 10)])
+        if(len(pos)>12):self.v_l13.setValue(pos[12])      #self.v_l13.setData(pos[12],(50, 150, 50))#=self.graphWidget.addLine(x=pos[12], pen=(50, 150, 50), markers=[('^', 0, 10)])
+        if(len(pos)>13):self.v_l14.setValue(pos[13])      #self.v_l14.setData(pos[13],(50, 150, 50))#=self.graphWidget.addLine(x=pos[13], pen=(50, 150, 50), markers=[('^', 0, 10)])
+        if(len(pos)>14):self.v_l15.setValue(pos[14])      #self.v_l15.setData(pos[14],(50, 150, 50))#=self.graphWidget.addLine(x=pos[14], pen=(50, 150, 50), markers=[('^', 0, 10)])
+        if(len(pos)>15):self.v_l16.setValue(pos[15])      #self.v_l16.setData(pos[15],(50, 150, 50))#=self.graphWidget.addLine(x=pos[15], pen=(50, 150, 50), markers=[('^', 0, 10)])
+        if(len(pos)>16):self.v_l17.setValue(pos[16])      #self.v_l17.setData(pos[16],(50, 150, 50))#=self.graphWidget.addLine(x=pos[16], pen=(50, 150, 50), markers=[('^', 0, 10)])
+        if(len(pos)>17):self.v_l18.setValue(pos[17])      #self.v_l18.setData(pos[17],(50, 150, 50))#=self.graphWidget.addLine(x=pos[17], pen=(50, 150, 50), markers=[('^', 0, 10)])
+        if(len(pos)>18):self.v_l19.setValue(pos[18])      #self.v_l19.setData(pos[18],(50, 150, 50))#=self.graphWidget.addLine(x=pos[18], pen=(50, 150, 50), markers=[('^', 0, 10)])
+        if(len(pos)>19):self.v_l20.setValue(pos[19])      #self.v_l20.setData(pos[19],(50, 150, 50))#=self.graphWidget.addLine(x=pos[19], pen=(50, 150, 50), markers=[('^', 0, 10)])
+
+        if(len(pos)>20): self.v_l21.setValue(pos[20])               
+        if(len(pos)>21): self.v_l22.setValue(pos[21])      
+        if(len(pos)>22): self.v_l23.setValue(pos[22])      
+        if(len(pos)>23): self.v_l24.setValue(pos[23])      
+        if(len(pos)>24): self.v_l25.setValue(pos[24])                        
+        if(len(pos)>25): self.v_l26.setValue(pos[25])      
+        if(len(pos)>26): self.v_l27.setValue(pos[26])      
+        if(len(pos)>27): self.v_l28.setValue(pos[27])      
+        if(len(pos)>28): self.v_l29.setValue(pos[28])      
+        if(len(pos)>29): self.v_l30.setValue(pos[29])      
+        if(len(pos)>30):self.v_l31.setValue(pos[30])      
+        if(len(pos)>31):self.v_l32.setValue(pos[31])      
+        if(len(pos)>32):self.v_l33.setValue(pos[32])      
+        if(len(pos)>33):self.v_l34.setValue(pos[33])      
+        if(len(pos)>34):self.v_l35.setValue(pos[34])      
+        if(len(pos)>35):self.v_l36.setValue(pos[35])      
+        if(len(pos)>36):self.v_l37.setValue(pos[36])      
+        if(len(pos)>37):self.v_l38.setValue(pos[37])     
+        if(len(pos)>38):self.v_l39.setValue(pos[38])      
+        if(len(pos)>39):self.v_l40.setValue(pos[39])      
+
+        if(len(pos)>40): self.v_l41.setValue(pos[40])               
+        if(len(pos)>41): self.v_l42.setValue(pos[41])      
+        if(len(pos)>42): self.v_l43.setValue(pos[42])      
+        if(len(pos)>43): self.v_l44.setValue(pos[43])      
+        if(len(pos)>44): self.v_l45.setValue(pos[44])                        
+        if(len(pos)>45): self.v_l46.setValue(pos[45])      
+        if(len(pos)>46): self.v_l47.setValue(pos[46])      
+        if(len(pos)>47): self.v_l48.setValue(pos[47])      
+        if(len(pos)>48): self.v_l49.setValue(pos[48])      
+        if(len(pos)>49): self.v_l50.setValue(pos[49])      
+        if(len(pos)>50): self.v_l51.setValue(pos[50])      
+        if(len(pos)>51): self.v_l52.setValue(pos[51])      
+        if(len(pos)>52): self.v_l53.setValue(pos[52])      
+        if(len(pos)>53): self.v_l54.setValue(pos[53])      
+        if(len(pos)>54): self.v_l55.setValue(pos[54])      
+        if(len(pos)>55): self.v_l56.setValue(pos[55])      
+        if(len(pos)>56): self.v_l57.setValue(pos[56])      
+        if(len(pos)>57): self.v_l58.setValue(pos[57])     
+        if(len(pos)>58): self.v_l59.setValue(pos[58])      
+        if(len(pos)>59): self.v_l60.setValue(pos[59])      
+
+        if(len(pos)>60): self.v_l61.setValue(pos[60])               
+        if(len(pos)>61): self.v_l62.setValue(pos[61])      
+        if(len(pos)>62): self.v_l63.setValue(pos[62])      
+        if(len(pos)>63): self.v_l64.setValue(pos[63])      
+        if(len(pos)>64): self.v_l65.setValue(pos[64])                        
+        if(len(pos)>65): self.v_l66.setValue(pos[65])      
+        if(len(pos)>66): self.v_l67.setValue(pos[66])      
+        if(len(pos)>67): self.v_l68.setValue(pos[67])      
+        if(len(pos)>68): self.v_l69.setValue(pos[68])      
+        if(len(pos)>69): self.v_l70.setValue(pos[69])      
+        if(len(pos)>700): self.v_l71.setValue(pos[70])      
+        if(len(pos)>71): self.v_l72.setValue(pos[71])      
+        if(len(pos)>72): self.v_l73.setValue(pos[72])      
+        if(len(pos)>73): self.v_l74.setValue(pos[73])      
+        if(len(pos)>74): self.v_l75.setValue(pos[74])      
+        if(len(pos)>75): self.v_l76.setValue(pos[75])      
+        if(len(pos)>76): self.v_l77.setValue(pos[76])      
+        if(len(pos)>77): self.v_l78.setValue(pos[77])     
+        if(len(pos)>78): self.v_l79.setValue(pos[78])      
+        if(len(pos)>79): self.v_l80.setValue(pos[79])      
+
+        if(len(pos)>80): self.v_l81.setValue(pos[80])               
+        if(len(pos)>81): self.v_l82.setValue(pos[81])      
+        if(len(pos)>82): self.v_l83.setValue(pos[82])      
+        if(len(pos)>83): self.v_l84.setValue(pos[83])      
+        if(len(pos)>84): self.v_l85.setValue(pos[84])                        
+        if(len(pos)>85): self.v_l86.setValue(pos[85])      
+        if(len(pos)>86): self.v_l87.setValue(pos[86])      
+        if(len(pos)>87): self.v_l88.setValue(pos[87])      
+        if(len(pos)>88): self.v_l89.setValue(pos[88])      
+        if(len(pos)>89): self.v_l90.setValue(pos[89])      
+        if(len(pos)>90): self.v_l91.setValue(pos[90])      
+        if(len(pos)>91): self.v_l92.setValue(pos[91])      
+        if(len(pos)>92): self.v_l93.setValue(pos[92])      
+        if(len(pos)>93): self.v_l94.setValue(pos[93])      
+        if(len(pos)>94): self.v_l95.setValue(pos[94])      
+        if(len(pos)>95): self.v_l96.setValue(pos[95])      
+        if(len(pos)>96): self.v_l97.setValue(pos[96])      
+        if(len(pos)>97): self.v_l98.setValue(pos[97])     
+        if(len(pos)>98): self.v_l99.setValue(pos[98])      
+        if(len(pos)>99): self.v_l100.setValue(pos[99])      
+
+        if(len(pos)>100): self.v_l101.setValue(pos[100])               
+        if(len(pos)>101): self.v_l102.setValue(pos[101])      
+        if(len(pos)>102): self.v_l103.setValue(pos[102])      
+        if(len(pos)>103): self.v_l104.setValue(pos[103])      
+        if(len(pos)>104): self.v_l105.setValue(pos[104])                        
+        if(len(pos)>105): self.v_l106.setValue(pos[105])      
+        if(len(pos)>106): self.v_l107.setValue(pos[106])      
+        if(len(pos)>107): self.v_l108.setValue(pos[107])      
+        if(len(pos)>108): self.v_l109.setValue(pos[108])      
+        if(len(pos)>109): self.v_l110.setValue(pos[109])      
+        if(len(pos)>110): self.v_l111.setValue(pos[110])      
+        if(len(pos)>111): self.v_l112.setValue(pos[111])      
+        if(len(pos)>112): self.v_l113.setValue(pos[112])      
+        if(len(pos)>113): self.v_l114.setValue(pos[113])      
+        if(len(pos)>114): self.v_l115.setValue(pos[114])      
+        if(len(pos)>115): self.v_l116.setValue(pos[115])      
+        if(len(pos)>116): self.v_l117.setValue(pos[116])      
+        if(len(pos)>117): self.v_l118.setValue(pos[117])     
+        if(len(pos)>118): self.v_l119.setValue(pos[118])      
+        if(len(pos)>119): self.v_l120.setValue(pos[119])      
+        
+    def flatten(self,xss):
+        return [x for xs in xss for x in xs]  
+
+    def Addlabels(self,labs):
+        self.labels=np.concatenate(labs).tolist()#self.flatten(labs) 
+        l_l_0=len(labs)
+        l_l_1=len(self.labels)
+        if(l_l_1==0):
+            for i in range(0,l_l_0):
+                if(len(labs[i])==0): self.labels.append(-1)
+                else: 
+                    for k in range(0,len(labs[i])): self.labels.append(labs[i][k])
+        l_l_2=len(self.labels)
+        if(len(self.lab_x1)!=len(self.labels)):
+
+            #self.graphWidget_labels.clear()
+
+            self.lab_x1=np.ones(l_l_2)*0.5
+            self.lab_x2=np.ones(l_l_2)*1.5
+            self.lab_x3=np.ones(l_l_2)*2.5            
+
+            #self.lab_line1.setBrush((self.rgb1[0], self.rgb1[1], self.rgb1[2],50))
+            self.lab_line1.setData(self.lab_x1)
+            #self.lab_line2.setBrush((self.rgb2[0], self.rgb2[1], self.rgb2[2],50))
+            self.lab_line2.setData(self.lab_x2)
+            #self.lab_line3.setBrush((self.rgb3[0], self.rgb3[1], self.rgb3[2],50))
+            self.lab_line3.setData(self.lab_x3)
+            
+            """
+            self.lab_x0=np.ones(len(self.labels))-1.5
+            self.lab_x1=np.ones(len(self.labels))-0.5              
+            self.lab_x2=np.ones(len(self.labels))+0.5        
+            self.lab_x3=np.ones(len(self.labels))+1.5        
+            self.lab_x4=np.ones(len(self.labels))+2.5
+
+            self.lab_curve1.setData(self.lab_x0,self.lab_x1) 
+            self.lab_curve2.setData(self.lab_x1,self.lab_x2)
+            self.lab_curve3.setData(self.lab_x2,self.lab_x3)
+            self.lab_curve4.setData(self.lab_x3,self.lab_x4)
+
+            self.pfill1=None
+            self.pfill1=pg.FillBetweenItem(self.lab_curve1,self.lab_curve2, brush = self.br1) 
+            self.pfill2=None
+            self.pfill2=pg.FillBetweenItem(self.lab_curve2,self.lab_curve3, brush = self.br2) 
+            self.pfill3=None
+            self.pfill3=pg.FillBetweenItem(self.lab_curve3,self.lab_curve4, brush = self.br3) 
+            
+            self.graphWidget_labels.addItem(self.pfill1)
+            self.graphWidget_labels.addItem(self.pfill2)
+            self.graphWidget_labels.addItem(self.pfill3)
+            """
+            #self.labels_graph=self.graphWidget_labels.plot(self.labels,pen=pg.mkPen(color=(0,0,255),width=4,))
+        
+            #self.lab_line1.setData(self.lab_x1,-0.5,(self.rgb1[0], self.rgb1[1], self.rgb1[2]))
+            #self.lab_line2.setData(self.lab_x2,0.5,(self.rgb2[0], self.rgb2[1], self.rgb2[2]))
+            #self.lab_line3.setData(self.lab_x3,1.5,(self.rgb3[0], self.rgb3[1], self.rgb3[2]))            
+        self.labels_graph.setData(self.labels)
+
+
+
+    def plot(self,x):
+        #CRAZY, but qt does not like cycles, so we do by hands
+        if(len(x)>0):
+            self.x1=x[0]
+            self.line1.setData(self.x1)
+        if(len(x)>1):
+            self.x2=x[1]
+            self.line2.setData(self.x2)
+        if(len(x)>2):
+            self.x3=x[3]
+            self.line3.setData(self.x3)
+        if(len(x)>3):
+            self.x4=x[4]
+            self.line4.setData(self.x4)
+        if(len(x)>4):
+            self.x5=x[4]
+            self.line5.setData(self.x5)
+        if(len(x)>5):
+            self.x3=x[5]
+            self.line6.setData(self.x6)
+        if(len(x)>6):
+            self.x7=x[6]
+            self.line7.setData(self.x7)
+        if(len(x)>7):
+            self.x8=x[7]
+            self.line8.setData(self.x8)
+
+    def hex_to_rgb(self,value):
+        h = value.lstrip('#')
+        return tuple(int(h[i:i+2], 16) for i in (0, 2 ,4))
+        """
+        diff=len(self.x)-len(x)  
+        if(diff>0):#(len(self.x)>len(x)):            
+            for k in range(0,diff):
+                del self.x[-1]
+                del self.pen[-1]
+                del self.line[-1]
+        elif(diff<0):
+            for k in range(0,np.abs(diff)):
+                self.x.append([])
+                self.pen.append(pg.mkPen(color=(255,0,0)))        
+                self.line.append(self.graphWidget.plot(self.x[-1],pen=self.pen[-1]))
+        else:
+            for k in range(0,len(x)):
+                self.x[k]=float(x[k])
+                self.line[k].setData(self.x[k])
+        """
+
+    def updateText(self,text):
+        self.label.setText("Measurement "+str(text))
+
+class RTPlotWidget_0(): #PySide6.QtWidgets.QWidget): #PySide6.QtWidgets.QGraphicsScene):
     
     def __init__(self,**kargs):
         

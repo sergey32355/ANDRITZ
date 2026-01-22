@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 ################################################################################
-## Form generated from reading UI file 'empa_guiiDMVOM.ui'
+## Form generated from reading UI file 'empa_guivJpYOI.ui'
 ##
 ## Created by: Qt User Interface Compiler version 6.9.0
 ##
@@ -426,6 +426,10 @@ class Ui_EmpaGUI(object):
         self.RealT_filse_folders_delete_files_checkbox.setObjectName(u"RealT_filse_folders_delete_files_checkbox")
         self.RealT_filse_folders_delete_files_checkbox.setGeometry(QRect(10, 20, 211, 20))
         self.RealT_filse_folders_delete_files_checkbox.setChecked(True)
+        self.RealT_show_one_channel_checkbox_2 = QCheckBox(self.tab_11)
+        self.RealT_show_one_channel_checkbox_2.setObjectName(u"RealT_show_one_channel_checkbox_2")
+        self.RealT_show_one_channel_checkbox_2.setGeometry(QRect(40, 150, 341, 20))
+        self.RealT_show_one_channel_checkbox_2.setChecked(True)
         self.Settings_Spectrograms_Define_Parameters_Tab.addTab(self.tab_11, "")
         self.tab_6 = QWidget()
         self.tab_6.setObjectName(u"tab_6")
@@ -668,7 +672,7 @@ class Ui_EmpaGUI(object):
 
         self.retranslateUi(EmpaGUI)
 
-        self.tabWidget.setCurrentIndex(1)
+        self.tabWidget.setCurrentIndex(2)
         self.load_data_plate_type_dropdown.setCurrentIndex(-1)
         self.real_time_source_dropdown_2.setCurrentIndex(1)
         self.tabWidget_2.setCurrentIndex(1)
@@ -678,7 +682,7 @@ class Ui_EmpaGUI(object):
         self.tabWidget_3.setCurrentIndex(0)
         self.classification_plot_choice_dropdown_3.setCurrentIndex(0)
         self.Settings_openfile_segmentation_mode_text.setCurrentIndex(0)
-        self.Settings_Spectrograms_Define_Parameters_Tab.setCurrentIndex(1)
+        self.Settings_Spectrograms_Define_Parameters_Tab.setCurrentIndex(0)
         self.REAL_T_trigger_channel_drop_box.setCurrentIndex(7)
         self.Color_list_drop_down_.setCurrentIndex(0)
         self.Show_results_color_scheme_drop_down_1.setCurrentIndex(0)
@@ -857,6 +861,7 @@ class Ui_EmpaGUI(object):
         self.REAL_Post_trig_durat_textbox_4.setText(QCoreApplication.translate("EmpaGUI", u"100", None))
         self.groupBox_16.setTitle(QCoreApplication.translate("EmpaGUI", u"Files/folders", None))
         self.RealT_filse_folders_delete_files_checkbox.setText(QCoreApplication.translate("EmpaGUI", u"Delete files after processing", None))
+        self.RealT_show_one_channel_checkbox_2.setText(QCoreApplication.translate("EmpaGUI", u"Show one channel in results (faster display)", None))
         self.Settings_Spectrograms_Define_Parameters_Tab.setTabText(self.Settings_Spectrograms_Define_Parameters_Tab.indexOf(self.tab_11), QCoreApplication.translate("EmpaGUI", u"Real time", None))
         self.groupBox_10.setTitle(QCoreApplication.translate("EmpaGUI", u"Processing results show", None))
         self.Model_ready_label_2.setText("")

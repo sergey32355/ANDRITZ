@@ -602,8 +602,8 @@ def OpenDataFromFolder(PATH="",
         
     plates=[]             
     #we open the classical binary format from SPECTRUM cards
-    if(len(arr_txt)!=0 and len(arr_bin)!=0):
-        for l in range(0,len(arr_txt)):
+    if(len(arr_txt)!=0 and len(arr_bin)!=0):        
+        for l in tqdm(range(len(arr_txt)),desc="Opening SPectrum *.bin format files"):
             #if(ONLY_SINGLE_FILE==False):
             #    path_txt=ONLY_SINGLE_FILE+"\\"+arr_txt[l]
             #    path_bin=ONLY_SINGLE_FILE+"\\"+arr_bin[l]    
@@ -631,15 +631,16 @@ def OpenDataFromFolder(PATH="",
                     del cur_plate.segments_names[-1]
                     
             plates.append(cur_plate)
-            print("")
-            print_progress_bar(l+1, len(arr_txt), "File opened (SPECTRUM *.bin)")    
+            #print("")
+            #print_progress_bar(l+1, len(arr_txt), "File opened (SPECTRUM *.bin)")    
 
     #csv format
     check=len(arr_csv)
     if(len(arr_csv)!=0) and (arr_csv[0]!=""):        
         cnt=0
         files_cnt=0
-        for l in arr_csv:
+        for lss in tqdm(range(0,len(arr_csv)),desc="Opening Precitec *.csv format files"):
+            l=arr_csv[lss]
             path_csv=PATH+"\\"+l
             #precitec format - multicolumn csv
             #try:
@@ -707,9 +708,9 @@ def OpenDataFromFolder(PATH="",
             
             #except: pass
             files_cnt+=1
-            print("")  
-            print_progress_bar(files_cnt, len(arr_csv), "File opened (Precitec *.csv)")
-    print("")            
+            #print("")  
+            #print_progress_bar(files_cnt, len(arr_csv), "File opened (Precitec *.csv)")
+    #print("")            
     return plates
 
     
@@ -1571,18 +1572,25 @@ class DataPreproc:
                 while(True): 
                     if(len(self.sign_2)<num_snipps):break                                                      
                     del self.sign_2[-1]
-                self.sign_3=torch.stack(self.sign_2, dim=0) 
-                #preprocessing
-                if(preproc_type=="None" or  preproc_type=="" or preproc_type==" "): pass
-                else: self.sign_3=self.DataPreprocessing(self.sign_3,preproc_type=preproc_type)
-                #assign further
-                if(self.sign_4 == torch.empty): self.sign_4 = self.sign_3 
-                else: self.sign_4 = torch.cat([self.sign_4,self.sign_3],dim=1)#stack((self.sign_4,self.sign_3),dim=1) 
+                if(self.sign_2 is None) or (len(self.sign_2)==0):
+                    continue
+                else:
+                    self.sign_3=torch.stack(self.sign_2, dim=0)  #THIS IS A NEW ADD ON, IN CASE REMOVE THE AFOREMENTIONED COPNDITIONS
+                    #preprocessing
+                    if(preproc_type=="None" or  preproc_type=="" or preproc_type==" "): pass
+                    else: self.sign_3=self.DataPreprocessing(self.sign_3,preproc_type=preproc_type)
+                    #assign further
+                    if(self.sign_4 == torch.empty): self.sign_4 = self.sign_3 
+                    else: self.sign_4 = torch.cat([self.sign_4,self.sign_3],dim=1)#stack((self.sign_4,self.sign_3),dim=1) 
         if(proc_time==True):
             end_t = time.time()
             print("Feat. extr. time(s): "+str(end_t - start_t))
         if(torch_tensor==True):
-            return self.sign_4.clone()
+            if(self.sign_4 is not None) and (self.sign_4 != torch.empty):#if tensor is not None
+                result_tensor=torch.clone(self.sign_4)
+                return result_tensor #self.sign_4.clone()
+            else:
+                return None
         else:
             if(self.sign_4.is_cuda):
                 return self.sign_4.cpu().numpy().copy()      
@@ -1655,7 +1663,7 @@ class DataPreproc:
                 return result
             if(preproc_type=="torch_FFT_rel"):
                 sum_=result.sum()
-                if(sum_[0]==0):sum_[0]=0.000001 
+                if(sum_==0):sum_=0.000001 
                 result=torch.div(result,sum_)
                 return result
         #mfcc spectrogram
@@ -1830,6 +1838,23 @@ def ReadSettings(window):
 
     chan_from_settings=window.ui.Channel_segment_plot.currentIndex()
     settings["chan_from_settings"] = chan_from_settings
+    
+    #tools
+    #check for best parameters - PAGE 2 in tools tab
+    Tools_best_params_search_folder_path_text_2 = window.ui.Tools_best_params_search_folder_path_text_2.text()
+    settings["Tools_best_params_search_folder_path_text_2"] = Tools_best_params_search_folder_path_text_2
+
+    Tools_best_params_search_snippet_size_start_text_3= window.ui.Tools_best_params_search_snippet_size_start_text_3.text()
+    settings["Tools_best_params_search_snippet_size_start_text_3"] = Tools_best_params_search_snippet_size_start_text_3
+
+    Tools_best_params_search_snippet_size_end_text_3= window.ui.Tools_best_params_search_snippet_size_end_text_3.text()
+    settings["Tools_best_params_search_snippet_size_end_text_3"] = Tools_best_params_search_snippet_size_end_text_3
+
+    Tools_best_params_search_snippet_size_step_text_3= window.ui.Tools_best_params_search_snippet_size_step_text_3.text()
+    settings["Tools_best_params_search_snippet_size_step_text_3"] = Tools_best_params_search_snippet_size_step_text_3
+
+    Tools_best_params_search_channels_list_text_3= window.ui.Tools_best_params_search_channels_list_text_3.text()
+    settings["Tools_best_params_search_channels_list_text_3"] = Tools_best_params_search_channels_list_text_3
 
     #algorithm
     algorithm=window.ui.classificationclassifier_dropdown.currentText()
@@ -1860,6 +1885,10 @@ def ReadSettings(window):
     settings["show_info"] = show_info    
     RealT_show_processed_signals_checkbox_3=window.ui.RealT_show_processed_signals_checkbox_3.isChecked()
     settings["RealT_show_processed_signals_checkbox_3"] = RealT_show_processed_signals_checkbox_3
+
+    RealT_show_one_channel_checkbox_2=window.ui.RealT_show_one_channel_checkbox_2.isChecked()
+    settings["RealT_show_one_channel_checkbox_2"] = RealT_show_one_channel_checkbox_2
+    
     only_single_shot=window.ui.RealT_show_only_single_shot_checkbox_4.isChecked()
     settings["only_single_shot"] = only_single_shot
 
@@ -2012,6 +2041,15 @@ def LoadInterfaceFromFile(window,path):
     window.ui.GUI_show_results_points_number_limit_textbox.setText(str(my_set["GUI_show_results_points_number_limit_textbox"])) 
     window.ui.GUI_show_results_points_number_limit_checkbox.setChecked(bool(my_set["GUI_show_results_points_number_limit_checkbox"]))
     window.ui.RealT_show_processed_signals_checkbox_3.setChecked(bool(my_set["RealT_show_processed_signals_checkbox_3"]))
+       
+    #settings - optimization of parameter tab
+    try:
+        window.ui.Tools_best_params_search_folder_path_text_2.setText(str(my_set["Tools_best_params_search_folder_path_text_2"]))
+        window.ui.Tools_best_params_search_snippet_size_start_text_3.setText(str(my_set["Tools_best_params_search_snippet_size_start_text_3"]))
+        window.ui.Tools_best_params_search_snippet_size_end_text_3.setText(str(my_set["Tools_best_params_search_snippet_size_end_text_3"]))
+        window.ui.Tools_best_params_search_snippet_size_step_text_3.setText(str(my_set["Tools_best_params_search_snippet_size_step_text_3"]))
+        window.ui.Tools_best_params_search_channels_list_text_3.setText(str(my_set["Tools_best_params_search_channels_list_text_3"]))
+    except:pass
 
     #settings trees classifier
     try:
@@ -2050,7 +2088,9 @@ def LoadInterfaceFromFile(window,path):
         window.ui.GUI_impose_delay_checkbox_2.setChecked(bool(my_set["GUI_impose_delay_checkbox_2"]))
         window.ui.GUI_impose_measurements_delay_value_textbox_2.setText(str(my_set["GUI_impose_measurements_delay_value_textbox_2"]))
         window.ui.RT_impose_delay_between_measurements_checkbox_3.setChecked(bool(my_set["RT_impose_delay_between_measurements_checkbox_3"]))
-        window.ui.RT_impose_delay_between_measurements_textbox_5.setText(str(my_set["RT_impose_delay_between_measurements_textbox_5"]))           
+        window.ui.RT_impose_delay_between_measurements_textbox_5.setText(str(my_set["RT_impose_delay_between_measurements_textbox_5"]))   
+        try: window.ui.RealT_show_one_channel_checkbox_2.setChecked(bool(my_set["RealT_show_one_channel_checkbox_2"])) 
+        except: pass
         #files folder
         window.ui.RealT_filse_folders_delete_files_checkbox.setChecked(bool(my_set["RealT_filse_folders_delete_files_checkbox"]))
         #GUI
