@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 
 ################################################################################
-## Form generated from reading UI file 'empa_guivJpYOI.ui'
+## Form generated from reading UI file 'empa_guiqkCsNd.ui'
 ##
-## Created by: Qt User Interface Compiler version 6.9.0
+## Created by: Qt User Interface Compiler version 6.10.2
 ##
 ## WARNING! All changes made in this file will be lost when recompiling UI file!
 ################################################################################
@@ -430,6 +430,15 @@ class Ui_EmpaGUI(object):
         self.RealT_show_one_channel_checkbox_2.setObjectName(u"RealT_show_one_channel_checkbox_2")
         self.RealT_show_one_channel_checkbox_2.setGeometry(QRect(40, 150, 341, 20))
         self.RealT_show_one_channel_checkbox_2.setChecked(True)
+        self.RT_show_all_chan_real_time_checkbox_4 = QCheckBox(self.tab_11)
+        self.RT_show_all_chan_real_time_checkbox_4.setObjectName(u"RT_show_all_chan_real_time_checkbox_4")
+        self.RT_show_all_chan_real_time_checkbox_4.setGeometry(QRect(40, 250, 131, 20))
+        self.RT_show_all_chan_with_offset_checkbox_5 = QCheckBox(self.tab_11)
+        self.RT_show_all_chan_with_offset_checkbox_5.setObjectName(u"RT_show_all_chan_with_offset_checkbox_5")
+        self.RT_show_all_chan_with_offset_checkbox_5.setGeometry(QRect(165, 251, 91, 20))
+        self.RT_show_channels_offset_textbox_6 = QLineEdit(self.tab_11)
+        self.RT_show_channels_offset_textbox_6.setObjectName(u"RT_show_channels_offset_textbox_6")
+        self.RT_show_channels_offset_textbox_6.setGeometry(QRect(250, 250, 71, 22))
         self.Settings_Spectrograms_Define_Parameters_Tab.addTab(self.tab_11, "")
         self.tab_6 = QWidget()
         self.tab_6.setObjectName(u"tab_6")
@@ -679,7 +688,7 @@ class Ui_EmpaGUI(object):
         self.classification_preproc_dropdown_4.setCurrentIndex(0)
         self.classificationclassifier_dropdown.setCurrentIndex(0)
         self.classification_preproc_dropdown_2.setCurrentIndex(0)
-        self.tabWidget_3.setCurrentIndex(0)
+        self.tabWidget_3.setCurrentIndex(2)
         self.classification_plot_choice_dropdown_3.setCurrentIndex(0)
         self.Settings_openfile_segmentation_mode_text.setCurrentIndex(0)
         self.Settings_Spectrograms_Define_Parameters_Tab.setCurrentIndex(0)
@@ -862,6 +871,9 @@ class Ui_EmpaGUI(object):
         self.groupBox_16.setTitle(QCoreApplication.translate("EmpaGUI", u"Files/folders", None))
         self.RealT_filse_folders_delete_files_checkbox.setText(QCoreApplication.translate("EmpaGUI", u"Delete files after processing", None))
         self.RealT_show_one_channel_checkbox_2.setText(QCoreApplication.translate("EmpaGUI", u"Show one channel in results (faster display)", None))
+        self.RT_show_all_chan_real_time_checkbox_4.setText(QCoreApplication.translate("EmpaGUI", u"Show all channels", None))
+        self.RT_show_all_chan_with_offset_checkbox_5.setText(QCoreApplication.translate("EmpaGUI", u"With offset", None))
+        self.RT_show_channels_offset_textbox_6.setText(QCoreApplication.translate("EmpaGUI", u"10", None))
         self.Settings_Spectrograms_Define_Parameters_Tab.setTabText(self.Settings_Spectrograms_Define_Parameters_Tab.indexOf(self.tab_11), QCoreApplication.translate("EmpaGUI", u"Real time", None))
         self.groupBox_10.setTitle(QCoreApplication.translate("EmpaGUI", u"Processing results show", None))
         self.Model_ready_label_2.setText("")

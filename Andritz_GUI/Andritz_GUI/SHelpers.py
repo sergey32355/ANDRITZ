@@ -1898,7 +1898,24 @@ def ReadSettings(window):
     RT_impose_delay_between_measurements_textbox_5= str(window.ui.RT_impose_delay_between_measurements_textbox_5.text())
     settings["RT_impose_delay_between_measurements_textbox_5"] = RT_impose_delay_between_measurements_textbox_5
 
-       
+    #if to show all signals or not
+    try:
+        #Spectrum card trigger channel
+        REAL_T_trigger_channel_drop_box=int(window.ui.REAL_T_trigger_channel_drop_box.currentIndex())
+        settings["REAL_T_trigger_channel_drop_box"] = REAL_T_trigger_channel_drop_box
+
+        #how to show the channels
+        RT_show_all_chan_real_time_checkbox_4=bool(window.ui.RT_show_all_chan_real_time_checkbox_4.isChecked())
+        settings["RT_show_all_chan_real_time_checkbox_4"] = RT_show_all_chan_real_time_checkbox_4
+
+        RT_show_all_chan_with_offset_checkbox_5=bool(window.ui.RT_show_all_chan_with_offset_checkbox_5.isChecked())
+        settings["RT_show_all_chan_with_offset_checkbox_5"] = RT_show_all_chan_with_offset_checkbox_5
+
+        RT_show_channels_offset_textbox_6=window.ui.RT_show_channels_offset_textbox_6.currentText()
+        settings["RT_show_channels_offset_textbox_6"] = RT_show_channels_offset_textbox_6
+    except:
+        pass
+
     #SPECTROGRAMS SHOW
     spectrogrym_type = window.ui.classification_preproc_dropdown_4.currentText()
     settings["spectrogrym_type"] = spectrogrym_type
@@ -2089,6 +2106,15 @@ def LoadInterfaceFromFile(window,path):
         window.ui.GUI_impose_measurements_delay_value_textbox_2.setText(str(my_set["GUI_impose_measurements_delay_value_textbox_2"]))
         window.ui.RT_impose_delay_between_measurements_checkbox_3.setChecked(bool(my_set["RT_impose_delay_between_measurements_checkbox_3"]))
         window.ui.RT_impose_delay_between_measurements_textbox_5.setText(str(my_set["RT_impose_delay_between_measurements_textbox_5"]))   
+
+        try:
+            window.ui.REAL_T_trigger_channel_drop_box.setText(str(my_set["REAL_T_trigger_channel_drop_box"]))             
+            window.ui.RT_show_all_chan_real_time_checkbox_4.setText(str(my_set["RT_show_all_chan_real_time_checkbox_4"]))   
+            window.ui.RT_show_all_chan_with_offset_checkbox_5.setChecked(bool(my_set["RT_show_all_chan_with_offset_checkbox_5"]))
+            window.ui.RT_show_channels_offset_textbox_6.setChecked(bool(my_set["RT_show_channels_offset_textbox_6"]))
+        except: pass
+
+
         try: window.ui.RealT_show_one_channel_checkbox_2.setChecked(bool(my_set["RealT_show_one_channel_checkbox_2"])) 
         except: pass
         #files folder

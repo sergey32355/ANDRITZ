@@ -2229,7 +2229,7 @@ class MainWindow(QMainWindow):
 
             # do a simple standard setup
             card.card_mode(spcm.SPC_REC_STD_SINGLE)       # single trigger standard mode
-            card.timeout(5 * units.s)                     # timeout 5 s
+            card.timeout(20 * units.s)                     # timeout 5 s
                     
             trigger = spcm.Trigger(card)
             trigger.or_mask(spcm.SPC_TMASK_NONE)       # trigger set to none #software
@@ -2263,7 +2263,7 @@ class MainWindow(QMainWindow):
             print("Pretrigger(ms): "+str(PRETRIG_DURATION))
             print("Pretrigger(samp.points): "+str(PRETRIG_DURATION*SAMPLING_RATE*1e3))
             print("Posttrigger(ms): "+str(POSTTRIG_DURATION))
-            print("Pretrigger(samp.points): "+str(POSTTRIG_DURATION*SAMPLING_RATE*1e3))            
+            print("Posttrigger(samp.points): "+str(POSTTRIG_DURATION*SAMPLING_RATE*1e3))            
             print("")
 
             self.RT_Frame_Counter=1
@@ -2273,13 +2273,19 @@ class MainWindow(QMainWindow):
                 try:
                     card.start(spcm.M2CMD_CARD_ENABLETRIGGER, spcm.M2CMD_CARD_WAITREADY)              
                 except:
+                    if(EXIT_RT_FLAG==True):
+                        print("Data acquisition is terminating...")
+                        return
+                    print("waiting...")
                     continue
 
                 if(EXIT_RT_FLAG==True):
                     print("Data acquisition is terminating...")
                     break      
 
-                data_transfer.start_buffer_transfer(spcm.M2CMD_DATA_STARTDMA, spcm.M2CMD_DATA_WAITDMA)                                                     
+                print("Data aquired...")
+                data_transfer.start_buffer_transfer(spcm.M2CMD_DATA_STARTDMA, spcm.M2CMD_DATA_WAITDMA)     
+                                                                                
                     
                 sign_empty=False
 
@@ -2524,7 +2530,7 @@ class MainWindow(QMainWindow):
                     #this is the main working stuff
 
                     #this is another trial
-                    """
+                    """                    
                     curMeas_num=self.RT_Frame_Counter 
                     Channels_In_Use=self.Channels_In_Use
 
@@ -2532,11 +2538,12 @@ class MainWindow(QMainWindow):
                     worker._display_complete.connect(self.DisplayResultsComplete) #PySide6.QtCore.SIGNAL('ResultsShown'), self.EndShowProcResultsThread)
 
                     self.show_proc_results_thread = threading.Thread (target=worker.run)#self.ShowProcResults_REAL_TIME,args=(plate,labels_in_segment))                    
-                    self.show_proc_results_thread.start()             
+                    self.show_proc_results_thread.start()                         
                     """
 
                     #https://stackoverflow.com/questions/16879971/example-of-the-right-way-to-use-qthread-in-pyqt     
-                    """                   
+                                       
+                    """
                     if(True):
                         proceed_to_show=self.EndShowProcResultsThread
                         if (proceed_to_show==False):                              
@@ -2554,6 +2561,7 @@ class MainWindow(QMainWindow):
                             self.EndShowProcResultsThread=True                        
                             show_proc_results_thread.start()
                     """  
+
                     display_time.append(0)
                     display_time.append(1)
                 else: 
@@ -2728,7 +2736,26 @@ class MainWindow(QMainWindow):
                     for p in range(0,len(segm_pos)): segm_pos[p]=int(segm_pos[p]/step)
                     #segm_pos = list([x / step for x in segm_pos])#segm_pos=segm_pos/step
             if(only_one_chan_to_she): break #for the moment we will use only one channel for displaying results
-        
+   
+
+
+        """
+        if(self.proc_settings.get("RT_show_all_chan_real_time_checkbox_4")==True):
+            if(self.proc_settings.get("RT_show_all_chan_with_offset_checkbox_5")==True):
+                offset_chan=int(self.proc_settings.get("RT_show_channels_offset_textbox_6")==True)
+                cur_lev=0
+                for l in range(0,len(full_sign)):
+                    full_sign[l]=full_sign[l]+cur_lev
+                    cur_lev=cur_lev+offset_chan
+        else:
+            tmp_sgns=full_sign[0]
+            full_sign=[]
+            full_sign.append(np.asarray(tmp_sgns))
+        """
+
+        print("XXXXXXXXXXX"+str(len(full_sign)))
+
+
         self.RT_fig_proc_results.plot(full_sign)
         if(mark_segm_borders): 
             self.RT_fig_proc_results.AddBars(segm_pos)
@@ -3173,7 +3200,7 @@ class MainWindow(QMainWindow):
                 
                 # do a simple standard setup
                 card.card_mode(spcm.SPC_REC_STD_SINGLE)     # single trigger standard mode
-                card.timeout(5 * units.s)                     # timeout 5 s
+                card.timeout(10 * units.s)                     # timeout 5 s
             
                 trigger = spcm.Trigger(card)
                 trigger.or_mask(spcm.SPC_TMASK_NONE)       # trigger set to none #software
@@ -3624,13 +3651,13 @@ class RTPlotWidget_1(PySide6.QtWidgets.QWidget):
         self.x8 =[]
                 
         self.pen1=pg.mkPen(color=(255,0,0))
-        self.pen2=pg.mkPen(color=(255,0,0))
-        self.pen3=pg.mkPen(color=(255,0,0))
-        self.pen4=pg.mkPen(color=(255,0,0))
-        self.pen5=pg.mkPen(color=(255,0,0))
-        self.pen6=pg.mkPen(color=(255,0,0))
-        self.pen7=pg.mkPen(color=(255,0,0))
-        self.pen8=pg.mkPen(color=(255,0,0))
+        self.pen2=pg.mkPen(color=(0,255,0))
+        self.pen3=pg.mkPen(color=(0,0,255))
+        self.pen4=pg.mkPen(color=(155,155,0))
+        self.pen5=pg.mkPen(color=(155,0,155))
+        self.pen6=pg.mkPen(color=(255,155,50))
+        self.pen7=pg.mkPen(color=(55,55,55))
+        self.pen8=pg.mkPen(color=(0,0,0))
                 
         self.line1=self.graphWidget.plot(self.x1,pen=self.pen1)
         self.line2=self.graphWidget.plot(self.x2,pen=self.pen2)
@@ -4006,7 +4033,6 @@ class RTPlotWidget_1(PySide6.QtWidgets.QWidget):
             #self.lab_line2.setData(self.lab_x2,0.5,(self.rgb2[0], self.rgb2[1], self.rgb2[2]))
             #self.lab_line3.setData(self.lab_x3,1.5,(self.rgb3[0], self.rgb3[1], self.rgb3[2]))            
         self.labels_graph.setData(self.labels)
-
 
 
     def plot(self,x):
