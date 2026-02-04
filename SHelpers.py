@@ -19,10 +19,11 @@ import logging
 import threading
 import sys
 import trace
+import json
 
 #additional libs
 import librosa
-
+import csv
 #classifiers
 from xgboost import XGBClassifier
 
@@ -38,6 +39,12 @@ import torch.nn as nn
 import torch.nn.functional as F
 from barbar import Bar
 from torch.autograd import Variable
+import torch.optim as optim
+from torchvision import datasets, transforms, utils
+
+from sklearn.manifold import TSNE
+from sklearn.metrics import roc_curve, auc
+from tqdm import tqdm
 
 
 SEGMENTS_MISSED_SEGMENT_NAME="noname_"
@@ -334,7 +341,73 @@ class SPlate:
         print("Time: start -  " + str(min(self.time))+" , end - "+str(max(self.time))+" , step -"+str(float(self.time[1])-float(self.time[0])))
         print("Segments num: "+ str(len(self.sigments_sign)))
         print("Segments names: "+ str(self.segments_names))              
-                
+
+    def get_segments_PRECITEC_TORCH(self):
+        device= torch.device('cuda' if torch.cuda.is_available() else 'cpu')        
+        indx = self.chans_names.index("Area")               
+        
+        cnt_area=0
+        cnt_segm=0
+        start=[]        
+        trigger=torch.tensor(self.raw_signals[indx]).to(device)
+        
+        for k in range(0,len(self.raw_signals[indx])):            
+            if(k==0):start.append(k)
+            if(trigger[k]!=trigger[k-1]):
+                start.append(k-1)
+                start.append(k)
+            start.append(len(self.raw_signals[indx]))
+                         
+        segments=[]
+        raw_sign_list_torch=[]
+        for l in range(0,len(self.raw_signals)):
+            segments.append([])
+            signs=torch.tensor(self.raw_signals).to(device)
+            raw_sign_list_torch.append(signs)
+            
+        for l in range(0,len(self.raw_signals)):
+            tmp_sign=[]
+            for p in range(0,len(start),2):
+                if(device=="cuda"):
+                    tmp_sign.append((raw_sign_list_torch[l][start[p]:start[p+1]]).cpu().numpy())
+                if(device=="cpu"):
+                    tmp_sign.append((raw_sign_list_torch[l][start[p]:start[p+1]]).numpy())
+            segments[l].append(tmp_sign)
+        return segments
+    
+    def get_segments_PRECITEC(self):
+        #device= torch.device('cuda' if torch.cuda.is_available() else 'cpu')        
+        indx = self.chans_names.index("Area")               
+        #unique=GetUniqueElements_List(self.raw_signals[indx])        
+        #for k in range(0,len(unique)): segments.append([])
+        cnt_area=0
+        cnt_segm=0
+        start=[]        
+        for k in range(0,len(self.raw_signals[indx])):
+            if(k==0):start.append(0)
+            else:
+                if(self.raw_signals[indx][k]!=self.raw_signals[indx][k-1]):
+                    start.append(k)
+        start.append(len(self.raw_signals[indx]))
+                         
+        segments=[]
+        tmp_sign=[]
+
+        for p in range(0,len(start)-1):        
+            segments.append([])
+            tmp_sign=[]
+            #print(len(self.raw_signals))
+            for lks in range(0,len(self.raw_signals)):    
+                if((start[p+1]-start[p])>0):
+                    #tmp_sign.append(self.raw_signals[lks][start[p]:start[p+1]])
+                    segments[p].append(self.raw_signals[lks][start[p]:start[p+1]])
+            #print(len(tmp_sign))
+        self.sigments_sign=[]
+        self.sigments_sign=segments        
+        self.sigments_labels=[]
+        if(len(segments)!=0):
+            for ip in range(0,len(segments)):self.sigments_labels.append([])
+    
     def get_segments(self,ref_chan_name="",threshold="automatic"):
         indx_trig=-1
         if(isinstance(ref_chan_name,str)):
@@ -424,7 +497,7 @@ class SPlate:
         labels_list=[]
         for l in range(0,l_sgm):
             #self.sigments_labels[segment_indx].append(list([start_el,end_el,label]))
-            cur_l=len(self.sigments_labels[l])
+            cur_l = len(self.sigments_labels[l])
             for pp in range(0,cur_l):
                 labels_list.append(self.sigments_labels[l][pp][2])
         #unique_l=list(set(labels_list))
@@ -446,11 +519,13 @@ def OpenDataFromFolder(PATH="",
                        ONLY_SINGLE_FILE=False,
                        SINGLE_FILE_PATH_BIN="",
                        SINGLE_FILE_PATH_TXT="",
+                       SINGLE_FILE_PATH_CSV="",
                       ):
 
     #print(SEGMENTATION_SEGMENTS_NAMES_LIST)            
-    arr_txt=[]
-    arr_bin=[]
+    arr_txt=[]#spectrum files
+    arr_bin=[]#spectreum files
+    arr_csv=[]
     if(ONLY_SINGLE_FILE==False):        
         arr = next(os.walk(PATH))[2]
         for k in arr:
@@ -462,41 +537,122 @@ def OpenDataFromFolder(PATH="",
                     if((l!=k) and (file_extension_1==".bin") and (filename_1 in filename)):
                         arr_bin.append(l)
                         break
-    else:        
+            if(file_extension==".csv"):
+                arr_csv.append(k)                
+    else:   
         arr_txt.append(SINGLE_FILE_PATH_TXT)
         arr_bin.append(SINGLE_FILE_PATH_BIN)
+        arr_csv.append(SINGLE_FILE_PATH_CSV)
         
     plates=[]             
-    for l in range(0,len(arr_txt)):
-        if(ONLY_SINGLE_FILE==False):
-            path_txt=PATH+"\\"+arr_txt[l]
-            path_bin=PATH+"\\"+arr_bin[l]    
-        else:
-            path_txt=arr_txt[l]
-            path_bin=arr_bin[l]
-        df,d_chan,samp_r= read_bin_data(path_txt,path_bin)
-        cur_plate=SPlate(plate_name=arr_bin[l])
-        cur_plate.sr=samp_r
-        cur_plate.segments_names = SEGMENTATION_SEGMENTS_NAMES_LIST
-        cur_plate.get_data_from_df(df)
-        cur_plate.get_segments(ref_chan_name=SEGMENTATION_REF_CHAN_NAME,threshold=SEGMENTATION_THRESHOLD)
-        if(cur_plate.segments_names == []):
-            for q in range(0,len(cur_plate.sigments_sign)):
-                cur_plate.segments_names.append(SEGMENTS_MISSED_SEGMENT_NAME+str(q))
-        elif(len(cur_plate.segments_names)<len(cur_plate.sigments_sign)):
-            num_to_add=len(cur_plate.sigments_sign) - len(cur_plate.segments_names)
-            for mm in range(0,num_to_add):
-                cur_plate.segments_names.append(SEGMENTS_MISSED_SEGMENT_NAME+str(mm))
-        elif(len(cur_plate.segments_names)>len(cur_plate.sigments_sign)):
-            num_to_remove = len(cur_plate.segments_names) - len(cur_plate.sigments_sign)
-            for k in range(0,num_to_remove):
-                del cur_plate.segments_names[-1]
+    #we open the classical binary format from SPECTRUM cards
+    if(len(arr_txt)!=0 and len(arr_bin)!=0):
+        for l in range(0,len(arr_txt)):
+            if(ONLY_SINGLE_FILE==False):
+                path_txt=PATH+"\\"+arr_txt[l]
+                path_bin=PATH+"\\"+arr_bin[l]    
+            else:
+                path_txt=arr_txt[l]
+                path_bin=arr_bin[l]
+            df,d_chan,samp_r= read_bin_data(path_txt,path_bin)
+            cur_plate=SPlate(plate_name=arr_bin[l])
+            cur_plate.sr=samp_r
+            cur_plate.segments_names = SEGMENTATION_SEGMENTS_NAMES_LIST
+            cur_plate.get_data_from_df(df)
+            cur_plate.get_segments(ref_chan_name=SEGMENTATION_REF_CHAN_NAME,threshold=SEGMENTATION_THRESHOLD)
+            if(cur_plate.segments_names == []):
+                for q in range(0,len(cur_plate.sigments_sign)):
+                    cur_plate.segments_names.append(SEGMENTS_MISSED_SEGMENT_NAME+str(q))
+            elif(len(cur_plate.segments_names)<len(cur_plate.sigments_sign)):
+                num_to_add=len(cur_plate.sigments_sign) - len(cur_plate.segments_names)
+                for mm in range(0,num_to_add):
+                    cur_plate.segments_names.append(SEGMENTS_MISSED_SEGMENT_NAME+str(len(cur_plate.sigments_sign)+mm))
+            elif(len(cur_plate.segments_names)>len(cur_plate.sigments_sign)):
+                num_to_remove = len(cur_plate.segments_names) - len(cur_plate.sigments_sign)
+                for k in range(0,num_to_remove):
+                    del cur_plate.segments_names[-1]
+                    
+            plates.append(cur_plate)
+            print_progress_bar(l+1, len(arr_txt), "Opening files (SPECTRUM *.bin)")
+
+    #csv format
+    
+    if(len(arr_csv)!=0):        
+        cnt=0
+        files_cnt=0
+        for l in arr_csv:
+            path_csv=PATH+"\\"+l
+            #precitec format - multicolumn csv
+            #try:
+            with open(path_csv, mode ='r') as file:
+                cur_plate=SPlate(plate_name=l)
+                csvFile = csv.reader(file)
+                cnt=0
                 
-        plates.append(cur_plate)
-        print_progress_bar(l+1, len(arr_txt), "Opening files")
-        
+                time=[]
+                signals=[]
+                
+                for line in csvFile:                    
+                    cnt+=1
+                    if(cnt==3):                        
+                        spl_str=line[0].split(":")                        
+                        sr=-1
+                        try: sr=int(spl_str[1].split(" ")[1])
+                        except: pass
+                        if(spl_str[1].split(" ")[2]=="kHz"):
+                            sr=sr*1000
+                        if(spl_str[1].split(" ")[2]=="MHz"):
+                            sr=sr*1000000
+                        cur_plate.sr=sr
+                    if(cnt==10):
+                        #headers
+                        str_columns=line[0].split(";")
+                        cur_plate.chans_names=[]
+                        for lp in range(2,len(str_columns)):
+                            signals.append([])
+                            cur_plate.chans_names.append(str_columns[lp])                        
+                    if(cnt>10):
+                        str_line=line[0].split(";")
+                        sgn_count=0
+                        for gh in range(0,len(str_line)):
+                            if(gh==0):pass
+                            elif(gh==1): time.append(float(str_line[gh]))
+                            else:
+                                signals[sgn_count].append(float(str_line[gh]))
+                                sgn_count+=1
+               
+                cur_plate.time=[]
+                cur_plate.time=time
+                cur_plate.raw_signals=[]
+                cur_plate.raw_signals=signals
+                cur_plate.get_segments_PRECITEC()#cur_plate.get_segments_PRECITEC()
+                cur_plate.segments_names = SEGMENTATION_SEGMENTS_NAMES_LIST
+                
+                if(len(cur_plate.sigments_sign)!=0):
+                    
+                    segm_num=len(cur_plate.sigments_sign)#we assume the number of segments in all channels is the same (as originated from trigger channel
+                    #print(segm_num)
+                    if(cur_plate.segments_names == []):
+                        for q in range(0,segm_num):
+                            cur_plate.segments_names.append(SEGMENTS_MISSED_SEGMENT_NAME+str(q))
+                    elif(len(cur_plate.segments_names)<len(cur_plate.sigments_sign)):
+                        num_to_add=segm_num - len(cur_plate.segments_names)
+                        for mm in range(0,num_to_add):
+                            cur_plate.segments_names.append(SEGMENTS_MISSED_SEGMENT_NAME+str(len(cur_plate.sigments_sign)+mm))
+                    elif(len(cur_plate.segments_names)>len(cur_plate.sigments_sign)):
+                        num_to_remove = len(cur_plate.segments_names) - segm_num
+                        for k in range(0,num_to_remove):
+                            del cur_plate.segments_names[-1]
+                    
+                plates.append(cur_plate)
+            
+            #except: pass
+            files_cnt+=1
+            print_progress_bar(files_cnt, len(arr_csv), "Opening files (*.csv)")
+    print("")            
     return plates
 
+    
 #find plates in list
 def FindPlateInArray(plates = [],plate_name="",chan_name="",segm_name=""):       
     
@@ -610,7 +766,12 @@ def ShowAllSingleSegmentsWithLabels(fig_id, plate,colors_code=None,indx_chan=0,a
 #ShowAllSingleSegmentsWithLabels("ssdfsfsdf", PLATES_ARRAY[0],colors_code=cc_dd,indx_chan=0,aplpha=0.1)
 
 #show signals and labelling in the figure
-def ShowSingleSegmentWithLabels(fig_id, plate,indx_segment=0,colors_code=None,indx_chan=0,aplpha=0.1):
+def ShowSingleSegmentWithLabels(fig_id, plate,
+                                indx_segment=0,
+                                colors_code=None,
+                                indx_chan=0,
+                                show_labels=True,
+                                aplpha=0.1):
     chan_num=0    
     if isinstance(indx_chan, list)==True:    chan_num=indx_chan
     if isinstance(indx_chan, np.ndarray)==True:chan_num=list(indx_chan)        
@@ -633,7 +794,7 @@ def ShowSingleSegmentWithLabels(fig_id, plate,indx_segment=0,colors_code=None,in
     
     for i in range(0,len(chan_num)):
         plt.plot(plate.sigments_sign[indx_segment][chan_num[i]])
-        if(plate.sigments_labels[indx_segment]!=[]):
+        if(plate.sigments_labels[indx_segment]!=[]) and (show_labels==True):
             for k in plate.sigments_labels[indx_segment]:     
                 start=k[0]
                 end=k[1]
@@ -1349,8 +1510,67 @@ def ReadSettings(window):
     settings["autoencoder_torch_learn_rate"] = autoencoder_torch_learn_rate
     autoencoder_bin_number=window.ui.Autoencoderbins_text_input.text()
     settings["autoencoder_bin_num"] = autoencoder_bin_number
-        
+    #resnet specific settings
+    Autoencoder_ResNet_weight_decay_input_text=window.ui.Autoencoder_ResNet_weight_decay_input_text.text()
+    settings["Autoencoder_ResNet_weight_decay_input_text"] = Autoencoder_ResNet_weight_decay_input_text
     return settings
+
+#*********************************************************************************************************************
+#*********************************************************************************************************************
+#***************************************GUI***************************************************************************
+
+#check on start if to load defaults:
+def CheckOnStartToLoadGUI(window,path):
+    my_set={}
+    my_set = json.load(open( path ))
+    to_load = bool(my_set["SETTINGS_VIZUALIZATION_load_default_GUI"])
+    if(to_load==True):
+        LoadInterfaceFromFile(window,path)
+
+#load interface 
+def LoadInterfaceFromFile(window,path):
+    #my_set = set(open(path).read().split())
+    my_set={}
+    my_set = json.load( open( path ) )
+    #first page - MAIN   
+    window.ui.load_data_path.setText(str(my_set["MAIN_signals_folder"]))
+    window.ui.load_data_plate_type_dropdown.setCurrentIndex(int(my_set["MAIN_plate_layout_dropbox_selected_item"]))
+    window.ui.real_time_source_dropdown_2.setCurrentIndex(int(my_set["MAIN_real_time_source_dropdown_2"]))
+    window.ui.classification_snippet_size_text.setText(str(my_set["MAIN_classification_snippet_size_text"]))
+    window.ui.classification_preproc_dropdown.setCurrentIndex(int(my_set["MAIN_classification_preproc_dropdown"]))
+
+    #settings - Visualization page
+    window.ui.GUI_load_default_on_start.setChecked(bool(my_set["SETTINGS_VIZUALIZATION_load_default_GUI"]))    
+
+#save interface
+def SaveInterfaceIntoFile(window,path):
+    gui={}
+
+    #settings - Visualization page
+    SETTINGS_VIZUALIZATION_load_default_GUI=window.ui.GUI_load_default_on_start.isChecked()
+    gui["SETTINGS_VIZUALIZATION_load_default_GUI"]=SETTINGS_VIZUALIZATION_load_default_GUI
+    
+    #first page - MAIN
+    MAIN_signals_folder=window.ui.load_data_path.text()
+    gui["MAIN_signals_folder"]=MAIN_signals_folder
+    MAIN_plate_layout_dropbox_selected_item=window.ui.load_data_plate_type_dropdown.currentIndex()
+    gui["MAIN_plate_layout_dropbox_selected_item"]=MAIN_plate_layout_dropbox_selected_item
+    MAIN_real_time_source_dropdown_2=window.ui.real_time_source_dropdown_2.currentIndex()
+    gui["MAIN_real_time_source_dropdown_2"] = MAIN_real_time_source_dropdown_2
+    MAIN_classification_snippet_size_text=str(window.ui.classification_snippet_size_text.text())
+    gui["MAIN_classification_snippet_size_text"]=MAIN_classification_snippet_size_text
+    MAIN_classification_preproc_dropdown=window.ui.classification_preproc_dropdown.currentIndex()
+    gui["MAIN_classification_preproc_dropdown"]=MAIN_classification_preproc_dropdown
+
+    #https://stackoverflow.com/questions/19201290/how-to-save-a-dictionary-to-a-file
+    json.dump( gui, open( path, 'w' ) )
+    
+    #https://blog.finxter.com/5-best-ways-to-write-a-set-to-a-file-in-python/
+    """
+    with open(path, 'w') as file:
+            for gui_elements in gui:
+                file.write(f"{gui_elements}\n")
+    """
 
 #setings for display and graphics
 def ReadGraphSettings(window):
@@ -2297,9 +2517,341 @@ def model_run(model,args,anomaly_dataloader,train_phi,train_mu,train_cov):
 
 #****************************************************************************************
 #****************************************************************************************
-#   DEEP GP
+#CNN AUTO encoder for 498 sampling points as input
+
+#CNN layers output
+def CNNOutput(W,K,S,P):
+    #W is the input volume - in your case 128
+    #K is the Kernel size - in your case 5
+    #S is the stride - which you have not provided.    
+    #P is the padding - in your case 0 i believe    
+    return (W-K+2*P)/S+1
+
+class CNNAutoencoder_Shallow_498sp_1(nn.Module):
+    def __init__(self):
+        super(CNNAutoencoder_Shallow_498sp_1, self).__init__()
+        # Encoder (Convolutional Layers) : Compressed into low-dimensional vectors.
+        self.encoder = nn.Sequential(
+            nn.Conv1d(1, 64, kernel_size=6, stride=2, padding=1),  # [batch, 32, 14, 14]
+            nn.ReLU(True),
+            nn.Conv1d(64, 128, kernel_size=6, stride=2, padding=1),  # [batch, 64, 7, 7]
+            nn.ReLU(True),
+            nn.Conv1d(128, 256, kernel_size=3,stride=2, padding=1),  # [batch, 128, 1, 1]                        
+        )
+        # Decoder (Transpose Convolutional Layers) : Reconstruct low-dimensional vectors to original image dimensions.
+        self.decoder = nn.Sequential(                       
+            nn.ConvTranspose1d(256,128, kernel_size=3,stride=2, padding=1,output_padding=0),  # [batch, 64, 7, 7]
+            nn.ReLU(True),
+            nn.ConvTranspose1d(128,64, kernel_size=6, stride=2, padding=1,output_padding=0),  # [batch, 64, 7, 7]
+            nn.ReLU(True),
+            nn.ConvTranspose1d(64, 1, kernel_size=6, stride=2, padding=1, output_padding=0),  # [batch, 32, 14, 14]
+            nn.ReLU(True),            
+        )
+
+    def forward(self, x):
+        x = self.encoder(x)
+        x = self.decoder(x)
+        return x
+
+#   AE- CNN-RESNET-shallow/deep
+#https://github.com/Navy10021/MDAutoEncoder/blob/main/notebooks/MDAutoEncoder.ipynb
+# CNN based Auto-Encoder model
+
+class CNNAutoencoder_Shallow(nn.Module):
+    def __init__(self,input_size=32):
+        super(CNNAutoencoder_Shallow, self).__init__()
+        # Encoder (Convolutional Layers) : Compressed into low-dimensional vectors.
+        self.encoder = nn.Sequential(
+            nn.Conv1d(1, input_size, kernel_size=3, stride=2, padding=1),  # [batch, 32, 14, 14]
+            nn.ReLU(True),
+            nn.Conv1d(32, 64, kernel_size=3, stride=2, padding=1),  # [batch, 64, 7, 7]
+            nn.ReLU(True),
+            nn.Conv1d(64, 128, kernel_size=7)  # [batch, 128, 1, 1]
+        )
+        # Decoder (Transpose Convolutional Layers) : Reconstruct low-dimensional vectors to original image dimensions.
+        self.decoder = nn.Sequential(
+            nn.ConvTranspose1d(128, 64, kernel_size=7),  # [batch, 64, 7, 7]
+            nn.ReLU(True),
+            nn.ConvTranspose1d(64, 32, kernel_size=3, stride=2, padding=1, output_padding=1),  # [batch, 32, 14, 14]
+            nn.ReLU(True),
+            nn.ConvTranspose1d(input_size, 1, kernel_size=3, stride=2, padding=1, output_padding=1),  # [batch, 1, 28, 28]
+            nn.Tanh()
+        )
+
+    def forward(self, x):
+        x = self.encoder(x)
+        x = self.decoder(x)
+        return x
 
 
+def TrainAE_1(feat,
+              labels,
+              AE_type="CNN_shallow",
+              lr=0.001,
+              num_epochs=10,
+              visualize=True,
+             ):
+    
+    norm,norm_l,non_norm,non_norm_l = SeparateFeat_Norm_Anom(feat,labels)
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    #train
+    norm = torch.Tensor(np.asarray(norm)).to(device) 
+    norm_l = torch.Tensor(np.asarray(norm_l)).to(device) 
+    norm_dataset = torch.utils.data.TensorDataset(norm,norm_l)
+    train_loader = torch.utils.data.DataLoader(norm_dataset)
+    
+    if(len(norm.shape)<=2): 
+        norm=norm[:,None,:]
+        print("Features shape is corrected. Cur. shape - "+str(norm.shape))
+    
+    #test
+    non_norm = torch.Tensor(np.asarray(non_norm)).to(device) 
+    non_norm_l = torch.Tensor(np.asarray(non_norm_l)).to(device) 
+    non_norm_dataset = torch.utils.data.TensorDataset(non_norm,non_norm_l)
+    test_loader = torch.utils.data.DataLoader(non_norm_dataset)
+
+    if(len(norm.shape)<=2): 
+        non_norm=non_norm[:,None,:]
+        print("Features shape is corrected. Cur. shape - "+str(non_norm.shape))
+            
+    #https://github.com/Navy10021/MDAutoEncoder/blob/main/notebooks/MDAutoEncoder.ipynb    
+    # model 1 : CNN based model
+    model=None
+    if(AE_type=="CNN_shallow"):
+        model = CNNAutoencoder_Shallow_498sp_1().to(device)#CNNAutoencoder_Shallow().to(device) #CNNAutoencoder_Shallow_500sp().to(device) #CNNAutoencoder_Shallow().to(device)
+    criterion = nn.MSELoss()
+    optimizer = optim.Adam(model.parameters(), lr=lr)
+    num_epochs = num_epochs
+
+    # Training
+    train_losses = []
+    for epoch in range(num_epochs):
+        epoch_loss = 0
+    
+        with tqdm(total=len(train_loader), desc=f'Epoch {epoch + 1}/{num_epochs}', unit='batch') as pbar:
+            for data, _ in train_loader:
+                data = data.to(device)
+                optimizer.zero_grad()
+                output = model(data)
+                loss = criterion(output, data)
+                loss.backward()
+                optimizer.step()
+                epoch_loss += loss.item()
+                pbar.set_postfix(loss=loss.item())
+                pbar.update(1)
+    
+        train_losses.append(epoch_loss / len(train_loader))
+
+    if(visualize==True):
+        # Plotting the training loss curve
+        plt.figure(figsize=(10, 6))
+        plt.plot(range(1, num_epochs + 1), train_losses, label='Training Loss')
+        plt.xlabel('Epoch')
+        plt.ylabel('Loss')
+        plt.title('Training Loss Curve')
+        plt.legend()
+        plt.grid(True)
+        plt.show()
+        
+    return model
+
+#****************************************************************************************
+#****************************************************************************************
+#   RESNET autoencoder
+def train_val_split(dataset, val_ratio=0.1):
+    """
+    Splits `dataset` into a training set and a validation set, by the given ratio `val_ratio`.
+    """
+    
+    train_size = int((1 - val_ratio) * len(dataset))
+    val_size = len(dataset) - train_size
+    train_set, val_set = random_split(dataset, [train_size, val_size])
+    return train_set, val_set
+
+def to_img(x):
+    """
+    Denormalises Tensor `x` (normalised from -1 to 1) to image format (from 0 to 1).
+    """
+    
+    x = 0.5 * (x + 1)
+    x = x.clamp(0, 1)
+    return x
+
+class ResBlock(nn.Module):
+    """
+    A two-convolutional layer residual block.
+    """
+    
+    def __init__(self, c_in, c_out, k, s=1, p=1, mode='encode'):
+        assert mode in ['encode', 'decode'], "Mode must be either 'encode' or 'decode'."
+        super(ResBlock, self).__init__()
+        if mode == 'encode':
+            self.conv1 = nn.Conv1d(c_in, c_out, k, s, p)
+            self.conv2 = nn.Conv1d(c_out, c_out, 3, 1, 1)
+        elif mode == 'decode':
+            self.conv1 = nn.ConvTranspose1d(c_in, c_out, k, s, p)
+            self.conv2 = nn.ConvTranspose1d(c_out, c_out, 3, 1, 1)
+        self.relu = nn.ReLU()
+        self.BN = nn.BatchNorm1d(c_out)
+        self.resize = s > 1 or (s == 1 and p == 0) or c_out != c_in
+    
+    def forward(self, x):
+        conv1 = self.BN(self.conv1(x))
+        relu = self.relu(conv1)
+        conv2 = self.BN(self.conv2(relu))
+        if self.resize:
+            x = self.BN(self.conv1(x))
+        return self.relu(x + conv2)
+
+class Encoder(nn.Module):
+    """
+    Encoder class, mainly consisting of three residual blocks.
+    """
+    
+    def __init__(self):
+        super(Encoder, self).__init__()
+        self.init_conv = nn.Conv1d(1, 16, 3, 1, 1) # 16 32 32
+        self.BN = nn.BatchNorm1d(16)
+        self.rb1 = ResBlock(16, 16, 3, 2, 1, 'encode') # 16 16 16
+        self.rb2 = ResBlock(16, 32, 3, 1, 1, 'encode') # 32 16 16
+        self.rb3 = ResBlock(32, 32, 3, 2, 1, 'encode') # 32 8 8
+        self.rb4 = ResBlock(32, 48, 3, 1, 1, 'encode') # 48 8 8
+        self.rb5 = ResBlock(48, 48, 3, 2, 1, 'encode') # 48 4 4
+        self.rb6 = ResBlock(48, 64, 3, 2, 1, 'encode') # 64 2 2
+        self.relu = nn.ReLU()
+    
+    def forward(self, inputs):
+        init_conv = self.relu(self.BN(self.init_conv(inputs)))
+        rb1 = self.rb1(init_conv)
+        rb2 = self.rb2(rb1)
+        rb3 = self.rb3(rb2)
+        rb4 = self.rb4(rb3)
+        rb5 = self.rb5(rb4)
+        rb6 = self.rb6(rb5)
+        return rb6
+
+class Decoder(nn.Module):
+    """
+    Decoder class, mainly consisting of two residual blocks.
+    """
+    
+    def __init__(self):
+        super(Decoder, self).__init__()
+        self.rb1 = ResBlock(64, 48, 2, 2, 0, 'decode') # 48 4 4
+        self.rb2 = ResBlock(48, 48, 2, 2, 0, 'decode') # 48 8 8
+        self.rb3 = ResBlock(48, 32, 3, 1, 1, 'decode') # 32 8 8
+        self.rb4 = ResBlock(32, 32, 2, 2, 0, 'decode') # 32 16 16
+        self.rb5 = ResBlock(32, 16, 3, 1, 1, 'decode') # 16 16 16
+        self.rb6 = ResBlock(16, 16, 2, 2, 0, 'decode') # 16 32 32
+        self.out_conv = nn.ConvTranspose1d(16, 1, 3, 1, 1) # 3 32 32
+        self.tanh = nn.Tanh()
+        
+    def forward(self, inputs):
+        rb1 = self.rb1(inputs)
+        rb2 = self.rb2(rb1)
+        rb3 = self.rb3(rb2)
+        rb4 = self.rb4(rb3)
+        rb5 = self.rb5(rb4)
+        rb6 = self.rb6(rb5)
+        out_conv = self.out_conv(rb6)
+        output = self.tanh(out_conv)
+        return output
+
+class Autoencoder(nn.Module):
+    """
+    Autoencoder class, combines encoder and decoder model.
+    """
+    
+    def __init__(self):
+        super(Autoencoder, self).__init__()
+        self.encoder = Encoder()
+        self.decoder = Decoder()
+    
+    @property
+    def num_params(self):
+        model_parameters = filter(lambda p: p.requires_grad, self.parameters())
+        num_p = sum([np.prod(p.size()) for p in model_parameters])
+        return num_p
+    
+    def forward(self, inputs):
+        encoded = self.encoder(inputs)
+        decoded = self.decoder(encoded)
+        return decoded
+
+def Train_ResNetAE(feat,labels,
+                   init_lr=0.00005,
+                   batch_size=30,
+                   weight_decay=0.01,
+                   num_epochs = 100,
+                   visualize=True 
+                  ):
+
+    norm_f,norm_l,non_norm_f,non_norm_l = SeparateFeat_Norm_Anom(feat,labels)
+    
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')    
+    norm=torch.tensor(norm_f,dtype=torch.float32).to(device)
+    non_norm=torch.tensor(non_norm_f,dtype=torch.float32).to(device)
+    
+    if(len(norm.shape) <= 2):
+        norm=norm[:,None,:]
+        print("Train features are adjsuted to shape: "+str(norm.shape))
+    
+    if(len(non_norm.shape) <= 2) and (non_norm.shape[0]!=0):
+        non_norm=non_norm[:,None,:]
+        print("Test features are adjsuted to shape: "+str(non_norm.shape))
+        
+    norm_dataset = torch.utils.data.TensorDataset(norm,torch.tensor(norm_l,dtype=torch.float32).to(device))
+    train_loader = torch.utils.data.DataLoader(norm_dataset,batch_size=batch_size)
+    non_norm_dataset = torch.utils.data.TensorDataset(non_norm,torch.tensor(non_norm_l,dtype=torch.float32).to(device))
+    test_loader = torch.utils.data.DataLoader(non_norm_dataset,batch_size=batch_size)
+    
+    # Instantiate a network model
+    ae = Autoencoder().to(device)
+    # Define optimizer
+    optimizer = optim.SGD(ae.parameters(), lr=init_lr, momentum=0.9, weight_decay=weight_decay)
+    scheduler = optim.lr_scheduler.StepLR(optimizer, 60, 0.1)
+    
+    loss_hist=[]
+    
+    for epoch in range(num_epochs):
+      epoch_loss = 0
+      # Train the model
+      #with tqdm(total=len(train_loader), desc=f'Epoch {epoch + 1}/{num_epochs}', unit='batch') as pbar:        
+      for data, _ in Bar(train_loader): #for i, batch in enumerate(train_loader):
+                images = data.to(device)            
+                # Zero all gradients
+                optimizer.zero_grad()            
+                # Calculating the loss
+                preds = ae(images)
+                loss = F.mse_loss(preds, images)            
+                """
+                if data % 10 == 0:
+                    with torch.no_grad():
+                        val_images, _ = next(iter(train_loader))
+                        val_preds = ae(val_images)
+                        val_loss = F.mse_loss(val_preds, val_images)
+                        m.track_loss(val_loss, val_images.size(0), mode='val')
+                    #print('Epoch {0}, iteration {1}: train loss {2}, val loss {3}'.format(epoch+1,i*hparams.batch_size,round(loss.item(), 6),round(val_loss.item(), 6)))
+                """
+                epoch_loss += loss.item()
+                # Backpropagate
+                loss.backward()
+                # Update the weights
+                optimizer.step()            
+                #m.track_loss(loss, images.size(0), mode='train')        
+      loss_hist.append(epoch_loss / len(train_loader))
+      print('Training ResNet AutoEncoder... Epoch: {}, Loss: {:.3f}'.format(epoch, epoch_loss))  
+    
+    if(visualize==True):
+        plt.figure(figsize=(10, 6))
+        plt.plot(range(1, num_epochs + 1), loss_hist, label='Training Loss')
+        plt.xlabel('Epoch')
+        plt.ylabel('Loss')
+        plt.title('Training Loss Curve')
+        plt.legend()
+        plt.grid(True)
+        plt.show()       
+    return ae,loss_hist
     
 #****************************************************************************************
 #****************************************************************************************
@@ -2327,6 +2879,7 @@ class S_Classif:
         self.intern_labels=intern_labels    
         self.categ_names=[]
         print("Classifier of type assigned: "+str(type(self.classifier)))
+        
     def np_predict(self,feat): #input is numpy array               
         cls_type=type(self.classifier)        
         shp=np.shape(feat)
@@ -2384,7 +2937,29 @@ class S_Classif:
                         break
                     else: ind+=1
                 labs.append(int(ind))
+
+        if( str(cls_type) == 'SHelpers.CNNAutoencoder_Shallow_498sp_1'): #class 'SHelpers.CNNAutoencoder_Shallow_498sp_1'
+            device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+            x = torch.Tensor(feat).to(device) 
+            y = torch.zeros(x.shape[0]).to(device) 
             
+            threshold_factor=self.tocrh_autoencoder_threshold_factor
+            proximity=3 
+            
+            non_norm_torch=torch.tensor(non_norm,dtype=torch.float32).to(device)
+            non_norm_torch=non_norm_torch[:,None,:]
+            preds=self.model.forward(non_norm_torch)
+            losses = torch.mean((preds - non_norm_torch)**2, dim=1)
+            labs=[]            
+            threshold =losses.mean() + factor * losses.std()
+            anomalies = losses > threshold
+            labs=[]
+            lk=int(anomalies.shape[1]/proximity)
+            for l in range(0,anomalies.shape[0]):
+                count=torch.sum(anomalies[l]==True)
+                if(count>lk):labs.append(1)
+                else: labs.append(0)
+                        
         return labs
         
     def getClassifType(self):
