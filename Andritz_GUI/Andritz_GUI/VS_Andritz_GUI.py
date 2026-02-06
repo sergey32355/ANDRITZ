@@ -945,7 +945,7 @@ class MainWindow(QMainWindow):
             #https://github.com/google/neural-tangents
             pass
 
-        if(self.proc_settings.get("algorithm")=="GHKern"):
+        if(self.proc_settings.get("algorithm")=="DeepKern"):
             #https://github.com/paulinebourigault/GHKernelAnomalyDetect
             pass        
 
@@ -2711,9 +2711,13 @@ class MainWindow(QMainWindow):
         
         points_num_limit_check=bool(self.proc_settings.get("GUI_show_results_points_number_limit_checkbox"))
         points_num_limit=int(self.proc_settings.get("GUI_show_results_points_number_limit_textbox"))
-        only_one_chan_to_she=bool(self.proc_settings.get("RealT_show_processed_signals_checkbox_3"))
+        #only_one_chan_to_she=bool(self.proc_settings.get("RealT_show_processed_signals_checkbox_3"))
         mark_segm_borders=bool(self.proc_settings.get("GUI_mark_segments_checkbox"))
-
+        #number of channels to show
+        chans_to_show = int(self.proc_settings.get("RT_channels_to_show_combo")) # window.ui.RT_channels_to_show_combo.setCurrentIndex(int(my_set["RT_channels_to_show_combo"]))
+        use_offset_flag = bool(self.proc_settings.get("RT_offset_signals_show_checkbox"))
+        offset_value= int(self.proc_settings.get("RT_show_channels_offset_textbox_6"))
+        
         full_sign=[]   
         segm_pos=[]
         cur_segm_pos=0
@@ -2735,27 +2739,26 @@ class MainWindow(QMainWindow):
                 if(mark_segm_borders):
                     for p in range(0,len(segm_pos)): segm_pos[p]=int(segm_pos[p]/step)
                     #segm_pos = list([x / step for x in segm_pos])#segm_pos=segm_pos/step
-            if(only_one_chan_to_she): break #for the moment we will use only one channel for displaying results
+            
    
-
-
-        """
-        if(self.proc_settings.get("RT_show_all_chan_real_time_checkbox_4")==True):
-            if(self.proc_settings.get("RT_show_all_chan_with_offset_checkbox_5")==True):
-                offset_chan=int(self.proc_settings.get("RT_show_channels_offset_textbox_6")==True)
-                cur_lev=0
-                for l in range(0,len(full_sign)):
-                    full_sign[l]=full_sign[l]+cur_lev
-                    cur_lev=cur_lev+offset_chan
-        else:
-            tmp_sgns=full_sign[0]
-            full_sign=[]
-            full_sign.append(np.asarray(tmp_sgns))
-        """
-
-        print("XXXXXXXXXXX"+str(len(full_sign)))
-
-
+        if(chans_to_show==0):#only selected
+            new_list=[]
+            for p in range(0,self.Channels_In_Use):
+                new_list.append(np.asarray(full_sign[self.Channels_In_Use[p]]))
+            full_sign=new_list
+            new_list=[]
+        if(chans_to_show==1):#all
+            pass
+        if(chans_to_show==2):#user specified
+            try: 
+                chan_num=int(self.proc_settings.get("RT_single_chan_to_show_textbox"))
+                kl_arr=np.asarray(full_sign[chan_num])
+                full_sign=[]
+                full_sign.append(kl_arr)
+            except: 
+                chan_num=-1
+                print("Error in user input. Single channel to use is indictaed wrongly")            
+       
         self.RT_fig_proc_results.plot(full_sign)
         if(mark_segm_borders): 
             self.RT_fig_proc_results.AddBars(segm_pos)

@@ -319,7 +319,7 @@
        </rect>
       </property>
       <property name="currentIndex">
-       <number>1</number>
+       <number>0</number>
       </property>
       <widget class="QWidget" name="tab_4">
        <attribute name="title">
@@ -588,7 +588,7 @@
            </rect>
           </property>
           <property name="currentIndex">
-           <number>0</number>
+           <number>-1</number>
           </property>
           <property name="placeholderText">
            <string>XGBoost</string>
@@ -640,7 +640,7 @@
           </item>
           <item>
            <property name="text">
-            <string>GHKern</string>
+            <string>DeepKern</string>
            </property>
           </item>
          </widget>
@@ -767,7 +767,7 @@
           </rect>
          </property>
          <property name="currentIndex">
-          <number>2</number>
+          <number>0</number>
          </property>
          <widget class="QWidget" name="tab_12">
           <attribute name="title">
@@ -1412,8 +1412,8 @@
        <widget class="QCheckBox" name="RealT_show_info_checkbox">
         <property name="geometry">
          <rect>
-          <x>40</x>
-          <y>170</y>
+          <x>1</x>
+          <y>152</y>
           <width>79</width>
           <height>20</height>
          </rect>
@@ -1428,21 +1428,21 @@
        <widget class="QCheckBox" name="RealT_show_processed_signals_checkbox_3">
         <property name="geometry">
          <rect>
-          <x>40</x>
-          <y>190</y>
+          <x>1</x>
+          <y>170</y>
           <width>161</width>
           <height>20</height>
          </rect>
         </property>
         <property name="text">
-         <string>Show processed signals</string>
+         <string>Show results</string>
         </property>
        </widget>
        <widget class="QCheckBox" name="RealT_show_only_single_shot_checkbox_4">
         <property name="geometry">
          <rect>
-          <x>40</x>
-          <y>210</y>
+          <x>1</x>
+          <y>188</y>
           <width>161</width>
           <height>20</height>
          </rect>
@@ -1454,8 +1454,8 @@
        <widget class="QCheckBox" name="RT_impose_delay_between_measurements_checkbox_3">
         <property name="geometry">
          <rect>
-          <x>40</x>
-          <y>230</y>
+          <x>1</x>
+          <y>206</y>
           <width>301</width>
           <height>20</height>
          </rect>
@@ -1467,8 +1467,8 @@
        <widget class="QLineEdit" name="RT_impose_delay_between_measurements_textbox_5">
         <property name="geometry">
          <rect>
-          <x>330</x>
-          <y>230</y>
+          <x>293</x>
+          <y>205</y>
           <width>71</width>
           <height>22</height>
          </rect>
@@ -1697,7 +1697,7 @@
          <rect>
           <x>0</x>
           <y>100</y>
-          <width>411</width>
+          <width>181</width>
           <height>51</height>
          </rect>
         </property>
@@ -1721,59 +1721,81 @@
          </property>
         </widget>
        </widget>
-       <widget class="QCheckBox" name="RealT_show_one_channel_checkbox_2">
+       <widget class="QCheckBox" name="RT_offset_signals_show_checkbox">
         <property name="geometry">
          <rect>
-          <x>40</x>
-          <y>150</y>
-          <width>341</width>
+          <x>180</x>
+          <y>136</y>
+          <width>121</width>
           <height>20</height>
          </rect>
         </property>
         <property name="text">
-         <string>Show one channel in results (faster display)</string>
-        </property>
-        <property name="checked">
-         <bool>true</bool>
-        </property>
-       </widget>
-       <widget class="QCheckBox" name="RT_show_all_chan_real_time_checkbox_4">
-        <property name="geometry">
-         <rect>
-          <x>40</x>
-          <y>250</y>
-          <width>131</width>
-          <height>20</height>
-         </rect>
-        </property>
-        <property name="text">
-         <string>Show all channels</string>
-        </property>
-       </widget>
-       <widget class="QCheckBox" name="RT_show_all_chan_with_offset_checkbox_5">
-        <property name="geometry">
-         <rect>
-          <x>165</x>
-          <y>251</y>
-          <width>91</width>
-          <height>20</height>
-         </rect>
-        </property>
-        <property name="text">
-         <string>With offset</string>
+         <string>With offset (mV)</string>
         </property>
        </widget>
        <widget class="QLineEdit" name="RT_show_channels_offset_textbox_6">
         <property name="geometry">
          <rect>
-          <x>250</x>
-          <y>250</y>
-          <width>71</width>
+          <x>293</x>
+          <y>135</y>
+          <width>111</width>
           <height>22</height>
          </rect>
         </property>
         <property name="text">
          <string>10</string>
+        </property>
+       </widget>
+       <widget class="QComboBox" name="RT_channels_to_show_combo">
+        <property name="geometry">
+         <rect>
+          <x>180</x>
+          <y>114</y>
+          <width>121</width>
+          <height>24</height>
+         </rect>
+        </property>
+        <item>
+         <property name="text">
+          <string>only_selected</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>all</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>one-&gt;</string>
+         </property>
+        </item>
+       </widget>
+       <widget class="QLabel" name="Segmentlabel14_5">
+        <property name="geometry">
+         <rect>
+          <x>184</x>
+          <y>100</y>
+          <width>121</width>
+          <height>16</height>
+         </rect>
+        </property>
+        <property name="text">
+         <string>Display channels:</string>
+        </property>
+       </widget>
+       <widget class="QLineEdit" name="RT_single_chan_to_show_textbox">
+        <property name="geometry">
+         <rect>
+          <x>300</x>
+          <y>114</y>
+          <width>101</width>
+          <height>22</height>
+         </rect>
+        </property>
+        <property name="text">
+         <string>0</string>
         </property>
        </widget>
       </widget>

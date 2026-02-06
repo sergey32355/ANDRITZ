@@ -24,6 +24,7 @@ import trace
 import json
 import warnings
 import pyqtgraph as pg
+import gpytorch
 
 #additional libs
 import librosa
@@ -1885,10 +1886,7 @@ def ReadSettings(window):
     settings["show_info"] = show_info    
     RealT_show_processed_signals_checkbox_3=window.ui.RealT_show_processed_signals_checkbox_3.isChecked()
     settings["RealT_show_processed_signals_checkbox_3"] = RealT_show_processed_signals_checkbox_3
-
-    RealT_show_one_channel_checkbox_2=window.ui.RealT_show_one_channel_checkbox_2.isChecked()
-    settings["RealT_show_one_channel_checkbox_2"] = RealT_show_one_channel_checkbox_2
-    
+            
     only_single_shot=window.ui.RealT_show_only_single_shot_checkbox_4.isChecked()
     settings["only_single_shot"] = only_single_shot
 
@@ -1900,21 +1898,24 @@ def ReadSettings(window):
 
     #if to show all signals or not
     try:
-        #Spectrum card trigger channel
+        #Spectrum card 
         REAL_T_trigger_channel_drop_box=int(window.ui.REAL_T_trigger_channel_drop_box.currentIndex())
         settings["REAL_T_trigger_channel_drop_box"] = REAL_T_trigger_channel_drop_box
+                
+        RT_offset_signals_show_checkbox=bool(window.ui.RT_offset_signals_show_checkbox.isChecked())
+        settings["RT_offset_signals_show_checkbox"] = RT_offset_signals_show_checkbox
 
-        #how to show the channels
-        RT_show_all_chan_real_time_checkbox_4=bool(window.ui.RT_show_all_chan_real_time_checkbox_4.isChecked())
-        settings["RT_show_all_chan_real_time_checkbox_4"] = RT_show_all_chan_real_time_checkbox_4
+        RT_channels_to_show_combo=int(window.ui.RT_channels_to_show_combo.currentIndex())
+        settings["RT_channels_to_show_combo"] = RT_channels_to_show_combo
 
-        RT_show_all_chan_with_offset_checkbox_5=bool(window.ui.RT_show_all_chan_with_offset_checkbox_5.isChecked())
-        settings["RT_show_all_chan_with_offset_checkbox_5"] = RT_show_all_chan_with_offset_checkbox_5
-
-        RT_show_channels_offset_textbox_6=window.ui.RT_show_channels_offset_textbox_6.currentText()
+        RT_show_channels_offset_textbox_6=window.ui.RT_show_channels_offset_textbox_6.text()
         settings["RT_show_channels_offset_textbox_6"] = RT_show_channels_offset_textbox_6
-    except:
-        pass
+
+        RT_single_chan_to_show_textbox=window.ui.RT_single_chan_to_show_textbox.text()
+        settings["RT_single_chan_to_show_textbox"] = RT_single_chan_to_show_textbox
+
+    except Exception as es:
+        print("Exception: "+str(es))
 
     #SPECTROGRAMS SHOW
     spectrogrym_type = window.ui.classification_preproc_dropdown_4.currentText()
@@ -2105,18 +2106,14 @@ def LoadInterfaceFromFile(window,path):
         window.ui.GUI_impose_delay_checkbox_2.setChecked(bool(my_set["GUI_impose_delay_checkbox_2"]))
         window.ui.GUI_impose_measurements_delay_value_textbox_2.setText(str(my_set["GUI_impose_measurements_delay_value_textbox_2"]))
         window.ui.RT_impose_delay_between_measurements_checkbox_3.setChecked(bool(my_set["RT_impose_delay_between_measurements_checkbox_3"]))
-        window.ui.RT_impose_delay_between_measurements_textbox_5.setText(str(my_set["RT_impose_delay_between_measurements_textbox_5"]))   
-
-        try:
-            window.ui.REAL_T_trigger_channel_drop_box.setText(str(my_set["REAL_T_trigger_channel_drop_box"]))             
-            window.ui.RT_show_all_chan_real_time_checkbox_4.setText(str(my_set["RT_show_all_chan_real_time_checkbox_4"]))   
-            window.ui.RT_show_all_chan_with_offset_checkbox_5.setChecked(bool(my_set["RT_show_all_chan_with_offset_checkbox_5"]))
-            window.ui.RT_show_channels_offset_textbox_6.setChecked(bool(my_set["RT_show_channels_offset_textbox_6"]))
-        except: pass
-
-
-        try: window.ui.RealT_show_one_channel_checkbox_2.setChecked(bool(my_set["RealT_show_one_channel_checkbox_2"])) 
-        except: pass
+        window.ui.RT_impose_delay_between_measurements_textbox_5.setText(str(my_set["RT_impose_delay_between_measurements_textbox_5"]))
+        #how to show the cahnnels         
+        
+        window.ui.RT_channels_to_show_combo.setCurrentIndex(int(my_set["RT_channels_to_show_combo"]))
+        window.ui.RT_offset_signals_show_checkbox.setChecked(bool(my_set["RT_offset_signals_show_checkbox"]))
+        window.ui.RT_show_channels_offset_textbox_6.setText(str(my_set["RT_show_channels_offset_textbox_6"]))
+        window.ui.RT_single_chan_to_show_textbox.setText(str(my_set["RT_single_chan_to_show_textbox"]))        
+        
         #files folder
         window.ui.RealT_filse_folders_delete_files_checkbox.setChecked(bool(my_set["RealT_filse_folders_delete_files_checkbox"]))
         #GUI
@@ -3460,7 +3457,113 @@ def Train_ResNetAE(feat,labels,
         plt.grid(True)
         plt.show()       
     return ae,loss_hist
+
+#****************************************************************************************
+#****************************************************************************************
+#DEEP KERNEL LEARNING
+#https://docs.gpytorch.ai/en/stable/examples/06_PyTorch_NN_Integration_DKL/KISSGP_Deep_Kernel_Regression_CUDA.html
+
+class LargeFeatureExtractor(torch.nn.Sequential):
+    def __init__(self,data_dim=0):
+        super(LargeFeatureExtractor, self).__init__()
+        self.add_module('linear1', torch.nn.Linear(data_dim, 1000))
+        self.add_module('relu1', torch.nn.ReLU())
+        self.add_module('linear2', torch.nn.Linear(1000, 500))
+        self.add_module('relu2', torch.nn.ReLU())
+        self.add_module('linear3', torch.nn.Linear(500, 50))
+        self.add_module('relu3', torch.nn.ReLU())
+        self.add_module('linear4', torch.nn.Linear(50, 2))
+
+class GPRegressionModel(gpytorch.models.ExactGP):
+        def __init__(self, train_x, train_y, likelihood):
+            super(GPRegressionModel, self).__init__(train_x, train_y, likelihood)
+            self.mean_module = gpytorch.means.ConstantMean()
+            self.covar_module = gpytorch.kernels.GridInterpolationKernel(
+                gpytorch.kernels.ScaleKernel(gpytorch.kernels.RBFKernel(ard_num_dims=2)),
+                num_dims=2, grid_size=100
+            )
+            self.feature_extractor = feature_extractor
+
+            # This module will scale the NN features so that they're nice values
+            self.scale_to_bounds = gpytorch.utils.grid.ScaleToBounds(-1., 1.)
+
+        def forward(self, x):
+            # We're first putting our data through a deep net (feature extractor)
+            projected_x = self.feature_extractor(x)
+            projected_x = self.scale_to_bounds(projected_x)  # Make the NN values "nice"
+
+            mean_x = self.mean_module(projected_x)
+            covar_x = self.covar_module(projected_x)
+            return gpytorch.distributions.MultivariateNormal(mean_x, covar_x)
+
+class DeepK1():
+    def __init__(self,feat=torch.empty,labs=torch.empty,training_iterations=100):
+        
+        self.likelihood = gpytorch.likelihoods.GaussianLikelihood()
+        self.model = GPRegressionModel(feat, labs, self.likelihood)
+        if torch.cuda.is_available():
+            self.model = self.model.cuda()
+            self.likelihood = self.likelihood.cuda()
+        self.training_iterations = training_iterations
+        self.feature_extractor = LargeFeatureExtractor()
+
+    def fit(self,norm_x,norm_y):
+        # Find optimal model hyperparameters
+        self.norm_x=norm_x
+        self.norm_y=norm_y
+        
+        self.model.train()
+        self.likelihood.train()
+        # Use the adam optimizer
+        self.optimizer = torch.optim.Adam([
+            {'params': self.model.feature_extractor.parameters()},
+            {'params': self.model.covar_module.parameters()},
+            {'params': self.model.mean_module.parameters()},
+            {'params': self.model.likelihood.parameters()},
+        ], lr=0.01)
+        # "Loss" for GPs - the marginal log likelihood
+        self.mll = gpytorch.mlls.ExactMarginalLogLikelihood(self.likelihood, self.model)
+        def train():
+            iterator = tqdm(range(self.training_iterations))#tqdm.notebook.tqdm(range(training_iterations))
+            for i in iterator:
+                # Zero backprop gradients
+                self.optimizer.zero_grad()
+                # Get output from model
+                output = self.model(norm_x)
+                # Calc loss and backprop derivatives
+                loss = -self.mll(output, norm_y)
+                loss.backward()
+                iterator.set_postfix(loss=loss.item())
+                self.optimizer.step()
+        #%time train()
+
+    def eval(self,feat,labs):
+        self.model.eval()
+        self.likelihood.eval()
+        with torch.no_grad(), gpytorch.settings.use_toeplitz(False), gpytorch.settings.fast_pred_var():
+            preds = self.model(feat)
+        if(labs != torch.empty):
+            print('Test MAE: {}'.format(torch.mean(torch.abs(preds.mean - labs))))
+        return preds
+
+def TrainDeepKernel(feat,lab):
+   
+    shp=np.shape(feat)
+    data_dim=shp[1]
+    feature_extractor = LargeFeatureExtractor(data_dim=data_dim)
     
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    norm_x = torch.Tensor(feat).to(device) 
+    norm_y = torch.Tensor(lab).to(device) 
+    norm_dataset = torch.utils.data.TensorDataset(norm_x,norm_y)
+    train_loader  = torch.utils.data.DataLoader(norm_dataset)
+
+    deepK=DeepK1(norm_x,norm_y)
+    deepK.fit(norm_x,norm_y)
+    deepK.eval(norm_x,norm_y)
+    return deepK
+
+
 #****************************************************************************************
 #****************************************************************************************
 #   CLASSIFIER OBJECT
@@ -3569,7 +3672,14 @@ class S_Classif:
                 count=torch.sum(anomalies[l]==True)
                 if(count>lk):labs.append(1)
                 else: labs.append(0)
-                        
+
+        if( str(cls_type) == 'SHelpers.DeepK1') or str(cls_type) ==("<class 'SHelpers.DeepK1'>"): 
+            device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+            norm_x = torch.Tensor(feat).to(device) 
+            norm_y = torch.empty
+            
+            labs=self.classifier.eval(norm_x)                   
+            
         return labs
         
     def getClassifType(self):
