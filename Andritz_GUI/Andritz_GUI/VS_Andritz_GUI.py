@@ -2758,6 +2758,12 @@ class MainWindow(QMainWindow):
             except: 
                 chan_num=-1
                 print("Error in user input. Single channel to use is indictaed wrongly")            
+
+        if(use_offset_flag==True) and (len(full_sign>1)):
+            offset_curr=0
+            for k in range(0,len(full_sign)):
+                full_sign[k]=full_sign[k]+offset_curr
+                offset_curr=offset_curr+offset_value
        
         self.RT_fig_proc_results.plot(full_sign)
         if(mark_segm_borders): 
