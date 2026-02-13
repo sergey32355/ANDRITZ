@@ -2959,7 +2959,9 @@ class S_Classif:
                 count=torch.sum(anomalies[l]==True)
                 if(count>lk):labs.append(1)
                 else: labs.append(0)
-                        
+        #NICOLA adds classifiers here
+        #if(str(cls_type)==):
+            #bla bla bla
         return labs
         
     def getClassifType(self):
