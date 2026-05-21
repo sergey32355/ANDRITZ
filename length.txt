@@ -1,0 +1,9 @@
+LWM 250 kHz, 500 mm/s:
+
+500 S/mm
+
+
+
+Empa 1 MHz, 500 mm/s:
+
+2000 S/mm
