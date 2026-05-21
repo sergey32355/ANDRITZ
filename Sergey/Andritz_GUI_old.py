@@ -1,8 +1,14 @@
+<<<<<<< HEAD:Sergey/Andritz_GUI_old.py
 # QThread, QFileDialog
 
 # import array
 # from re import X
 # from turtle import color, width
+=======
+import array
+from re import X
+from turtle import color, width
+>>>>>>> 2f193aacf2187cf0b7ac99e9ac52cf277a9c0345:Andritz_GUI/Andritz_GUI/VS_Andritz_GUI.py
 import numpy as np
 import os
 # from os import walk
@@ -1821,8 +1827,7 @@ class MainWindow(QMainWindow):
         print("")
         print("Real time started. Waiting for signals...")
 
-    #****************************************************************************************************************************
-    #*******************************TRACKING SPECTRUM CARD***********************************************************************
+#*******************************TRACKING SPECTRUM CARD***********************************************************************
 
     def Spectrum_card_tracking(self):
 
@@ -1830,7 +1835,11 @@ class MainWindow(QMainWindow):
         The function sets up the card, configures the channels, triggers, and clock, and then continuously waits for triggers to acquire data.
         When data is acquired, it processes the signals and can optionally display them in real time."""
 
+<<<<<<< HEAD:Sergey/Andritz_GUI_old.py
         # Goal: wait for the trigger, then record it for a fixed amount of time, and repeat for the number of times indicated.
+=======
+        # Goal: wait for the trigger, then record it for a fixed amount of time, and self.RT_Frame_Counter for the number of times indicated.
+>>>>>>> 2f193aacf2187cf0b7ac99e9ac52cf277a9c0345:Andritz_GUI/Andritz_GUI/VS_Andritz_GUI.py
         # If the waiting time gets exceeded, or if RT is canceled, the card should be re-set-up properly, not disconnected.
 
         import SHelpers as shlp
@@ -1843,28 +1852,26 @@ class MainWindow(QMainWindow):
         PRETRIG_DURATION=float(self.proc_settings.get("pre_trigger_duration"))
         POSTTRIG_DURATION=float(self.proc_settings.get("post_trigger_duration"))
         TRIG_CHAN_NUM=int(self.proc_settings.get("trig_chan_num"))
-        CHAN_NAMES=["chan_0","chan_1","chan_2","chan_3","chan_4","chan_5","chan_6","chan_7"]
-
-        delay_between_meas_flag=bool(self.proc_settings.get("RT_impose_delay_between_measurements_checkbox_3"))
-        delay_between_meas_value=int(self.proc_settings.get("RT_impose_delay_between_measurements_textbox_5"))        
-
-        signals=[]
-        for i in range(0,8):
-            signals.append(np.array([]))
+        CHAN_NAMES=["chan_0","chan_1","chan_2","chan_3"]        
                     
         t = threading.current_thread()
 
-        card:spcm.Card
+        card : spcm.Card
+
+        # if you want to open the first card of a specific type
         with spcm.Card(card_type=spcm.SPCM_TYPE_AI) as card:
             
-            #https://github.com/SpectrumInstrumentation/spcm/blob/master/src/examples/01_acquisition/01_acq_single.py
-            #https://github.com/SpectrumInstrumentation/spcm/blob/master/src/examples/01_acquisition/02_acq_single_2ch.py
+            card.card_mode(spcm.SPC_REC_STD_SINGLE)
 
-            # do a simple standard setup
-            card.card_mode(spcm.SPC_REC_STD_SINGLE)       # single trigger standard mode
-            card.timeout(20 * units.s)                     # timeout 5 s
-                    
+            # setup channels
+            channels = spcm.Channels(card, card_enable=spcm.CHANNEL0 | spcm.CHANNEL1 | spcm.CHANNEL2 | spcm.CHANNEL3)
+            channels.amp(AMPLITUDE * units.mV)
+            # channels.offset(0 * units.mV)
+            # channels.termination(1)
+
+            # setup channel trigger
             trigger = spcm.Trigger(card)
+<<<<<<< HEAD:Sergey/Andritz_GUI_old.py
             trigger.or_mask(spcm.SPC_TMASK_NONE)       # trigger set to none #software
             trigger.and_mask(spcm.SPC_TMASK_NONE)      # no AND mask
 
@@ -1888,6 +1895,18 @@ class MainWindow(QMainWindow):
                         
             data_transfer = spcm.DataTransfer(card)
             data_transfer.duration((PRETRIG_DURATION+POSTTRIG_DURATION)*units.ms, post_trigger_duration=POSTTRIG_DURATION*units.ms)
+=======
+            trigger.or_mask(spcm.SPC_TMASK_NONE)
+            trigger.and_mask(spcm.SPC_TMASK_NONE)
+            trigger.ch_or_mask0(channels[TRIG_CHAN_NUM].ch_mask())
+            trigger.ch_mode(channels[TRIG_CHAN_NUM], spcm.SPC_TM_HIGH)
+            trigger.ch_level0(channels[TRIG_CHAN_NUM], TRIGGER_LEVEL * units.mV, return_unit=units.mV)
+
+            # setup clock
+            clock = spcm.Clock(card)
+            clock.mode(spcm.SPC_CM_INTPLL)
+            clock.sample_rate(SAMPLING_RATE * units.MHz)
+>>>>>>> 2f193aacf2187cf0b7ac99e9ac52cf277a9c0345:Andritz_GUI/Andritz_GUI/VS_Andritz_GUI.py
 
             print("")
             print("DAQ card info:")            
@@ -1903,10 +1922,13 @@ class MainWindow(QMainWindow):
             print("Posttrigger(samp.points): "+str(POSTTRIG_DURATION*SAMPLING_RATE*1e3))            
             print("")
 
-            self.RT_Frame_Counter=1
+            self.RT_Frame_Counter=0
 
             while(getattr(t, "do_run", True)):
+                    
+                self.RT_Frame_Counter+=1
 
+<<<<<<< HEAD:Sergey/Andritz_GUI_old.py
                 card.start(spcm.M2CMD_CARD_ENABLETRIGGER, spcm.M2CMD_CARD_WAITREADY)              
                 # except:
                 #     if(EXIT_RT_FLAG==True):
@@ -1923,9 +1945,46 @@ class MainWindow(QMainWindow):
                 data_transfer.start_buffer_transfer(spcm.M2CMD_DATA_STARTDMA, spcm.M2CMD_DATA_WAITDMA)     
                                                                                 
                 sign_empty=False
+=======
+                if self.RT_Frame_Counter > 10:
+                    EXIT_RT_FLAG = True
+
+                if(EXIT_RT_FLAG==True):
+                    print("Exiting data acquisition")
+                    break 
+
+                # define the data buffer
+                data_transfer = spcm.DataTransfer(card)
+                data_transfer.duration((PRETRIG_DURATION+POSTTRIG_DURATION)*units.ms, post_trigger_duration=POSTTRIG_DURATION*units.ms)
+                
+                # start card and wait until recording is finished
+                print(f"Preparing DAQ card for acquisition {self.RT_Frame_Counter}")
+                card.start(spcm.M2CMD_CARD_ENABLETRIGGER, spcm.M2CMD_CARD_WAITREADY)
+
+                # start DMA transfer and wait until the data is transferred
+                print(f"Starting data acquisition {self.RT_Frame_Counter}: waiting for trigger...")
+                data_transfer.start_buffer_transfer(spcm.M2CMD_DATA_STARTDMA, spcm.M2CMD_DATA_WAITDMA)
+                print(f"Finalizing data acquisition {self.RT_Frame_Counter}")
+
+                # acquire and save data and metadata
+                data = {}
+                metadata = {
+                    'sample_rate': clock.sample_rate(),
+                }
+>>>>>>> 2f193aacf2187cf0b7ac99e9ac52cf277a9c0345:Andritz_GUI/Andritz_GUI/VS_Andritz_GUI.py
 
                 with warnings.catch_warnings():
+                    warnings.filterwarnings("ignore")#, category=DeprecationWarning, UnitStrippedWarning)
+                    for i in range(4):
+                        channel_data = np.array(channels[i].convert_data(data_transfer.buffer[channels[i], :], units.V))
+                        data[f'channel {i}'] = channel_data
+                
+                with open(f"data/data_{self.RT_Frame_Counter}.pkl", "wb") as file:
+                    pickle.dump(data, file)
+                    file.flush()
+                    os.fsync(file.fileno())
 
+<<<<<<< HEAD:Sergey/Andritz_GUI_old.py
                     warnings.filterwarnings("ignore")#, category=DeprecationWarning)
                     for i in range(0,8):
                         signals[i]=channels[i].convert_data(data_transfer.buffer[channels[i], :], units.V)
@@ -1938,19 +1997,37 @@ class MainWindow(QMainWindow):
                 print("********************************************************************")
                 print("***********************MEASUREMENT "+str(self.RT_Frame_Counter)+"********************")        
                 self.RT_Frame_Counter=self.RT_Frame_Counter+1
+=======
+                with open(f"data/metadata_{self.RT_Frame_Counter}.pkl", "wb") as file:
+                    pickle.dump(metadata, file)
+                    file.flush()
+                    os.fsync(file.fileno())
+
+                print(f"Data acquisition {self.RT_Frame_Counter} completed")
+>>>>>>> 2f193aacf2187cf0b7ac99e9ac52cf277a9c0345:Andritz_GUI/Andritz_GUI/VS_Andritz_GUI.py
                                 
                 try:
                     rt_plate=shlp.SPlate()
-                    rt_plate.raw_signals=signals
+                    print("hi1")
+                    rt_plate.raw_signals=list(data.values())
+                    print("hi2")
                     rt_plate.chans_names=CHAN_NAMES
-                    rt_plate.time=np.arange(0,len(signals[0]))*(1.0/(SAMPLING_RATE*1e6))
+                    print("hi3")
+                    rt_plate.time=np.arange(0,len(data[f'channel {0}']))*(1.0/(SAMPLING_RATE*1e6))
+                    print("hi4")
                     rt_plate.get_segments(ref_chan_name=TRIG_CHAN_NUM,threshold="automatic")#TRIGGER_LEVEL)
+<<<<<<< HEAD:Sergey/Andritz_GUI_old.py
+=======
+                    print("hi5")
+>>>>>>> 2f193aacf2187cf0b7ac99e9ac52cf277a9c0345:Andritz_GUI/Andritz_GUI/VS_Andritz_GUI.py
                     if(rt_plate.segments_sign==[]): 
                         print("No segments were detected...")                        
                     else: self.Process_RT_Data(rt_plate)
+                    print("hi6")
                 except Exception as ex:
-                    print("Impossible to process data. Exception raised: "+str(ex))
+                    print("Impossible to process data. Exception raised: "+str(ex))             
 
+<<<<<<< HEAD:Sergey/Andritz_GUI_old.py
                 print("********************************************************************")
                 print("")
                 print("")
@@ -1968,6 +2045,11 @@ class MainWindow(QMainWindow):
             card.stop() # Stops the current run of the card. If the card is not running this command has no effect.
             card.reset() # A software and hardware reset is done for the board. All settings are set to the default values. The data in the board’s on-board memory will be no longer valid. Any output signals like trigger or clock output will be disabled.
             card.close() # Closes the connection to the card using a handle
+=======
+            # card.stop() # Stops the current run of the card. If the card is not running this command has no effect.
+            # card.reset() # A software and hardware reset is done for the board. All settings are set to the default values. The data in the board’s on-board memory will be no longer valid. Any output signals like trigger or clock output will be disabled.
+            # card.close() # Closes the connection to the card using a handle
+>>>>>>> 2f193aacf2187cf0b7ac99e9ac52cf277a9c0345:Andritz_GUI/Andritz_GUI/VS_Andritz_GUI.py
             self.Real_Time_Stop_Click()
 
     #****************************************************************************************************************************

@@ -1,26 +1,26 @@
-# from ast import Try
-# from turtle import width
+from ast import Try
+from turtle import width
 import numpy as np
 import pandas as pd
 import os
-# from os import walk
+from os import walk
 import sys
-# from time import sleep
-# import traceback
-# import joblib
-# import matplotlib
+from time import sleep
+import traceback
+import joblib
+import matplotlib
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
-# from matplotlib.figure import Figure
+from matplotlib.figure import Figure
 import time
-# from sklearn import preprocessing
+from sklearn import preprocessing
 from sklearn.ensemble import IsolationForest
 from sklearn.cluster import DBSCAN
 from sklearn.svm import OneClassSVM
-# import logging
+import logging
 import threading
-# import sys
-# import trace
+import sys
+import trace
 import json
 import warnings
 import pyqtgraph as pg
@@ -36,21 +36,21 @@ import torch
 import torchaudio
 from torch import nn
 import torchaudio.functional as F
-# import torchaudio.transforms as T
+import torchaudio.transforms as T
 #this is needed for Autoencoder_1
-# from torch.utils.data import DataLoader
-# import pickle as pl
-# import torch.nn as nn
+from torch.utils.data import DataLoader
+import pickle as pl
+import torch.nn as nn
 import torch.nn.functional as F
 from barbar import Bar
 from torch.autograd import Variable
 import torch.optim as optim
-# from torchvision import datasets, transforms, utils
+from torchvision import datasets, transforms, utils
 
-# from sklearn.manifold import TSNE
-# from sklearn.metrics import roc_curve, auc
+from sklearn.manifold import TSNE
+from sklearn.metrics import roc_curve, auc
 from tqdm import tqdm
-from PySide6.QtWidgets import QMainWindow
+from   PySide6.QtWidgets import QMainWindow
 import PySide6
 
 
@@ -60,9 +60,6 @@ LABEL_DEFAULT_NAME="Label_"
 #general purpose functions
 
 def OpenfeatFromPickle(PATH):
-    """
-    This function is used to open features from pickle file. The file should be in the format of a dataframe with the first column being the plate name, 
-    the second column being the segment name, and the rest of the columns being the features. The function returns a list of plate names and a list of features for each plate."""
     df=pd.read_pickle(PATH)
     cols=df.columns
     cols = list(cols[2:len(cols)])
@@ -349,21 +346,15 @@ def plot_fbank(fbank, title=None):
 
 class SPlate:
 
-    """
-    This class is used to store the data of a plate. The plate is a collection of signals that are recorded at the same time.
-    The plate can be segmented into different segments, and each segment can be assigned a label.
-    The plate can be used for supervised classification, where the labels are used as ground truth for training a model.
-    The plate can also be used for unsupervised classification, where the segments are clustered based on their similarity."""
-
     def __init__(self,plate_name=""):
         self.name=plate_name
         self.raw_signals=[]
         self.time=[]
         self.chans_names=[]
         self.segments_names=[]                                     #names of the segments
-        self.segments_sign=[]                                     #signals for each signal
-        self.segments_start_t=[]    #start time of each segment
-        self.segments_labels=[]     #we store the labelling results in segments for supervised classwification, format - [start el,end el,label]
+        self.sigments_sign=[]                                     #signals for each signal
+        self.sigments_start_t=[]    #start time of each segment
+        self.sigments_labels=[]     #we store the labelling results in segments for supervised classwification, format - [start el,end el,label]
         self.delta_t=0
         self.snipp_l=[]                                                     #snippets length (i.e. number of sampling points)
         self.sr=[] 
@@ -386,15 +377,10 @@ class SPlate:
         print("Channels names.: " + str(self.chans_names))        
         print("Raw sign. num.: " + str(len(self.raw_signals)))
         print("Time: start -  " + str(min(self.time))+" , end - "+str(max(self.time))+" , step -"+str(float(self.time[1])-float(self.time[0])))
-        print("Segments num: "+ str(len(self.segments_sign)))
+        print("Segments num: "+ str(len(self.sigments_sign)))
         print("Segments names: "+ str(self.segments_names))              
 
     def get_segments_PRECITEC_TORCH(self):
-        """
-        This function is used to segment the signals based on the trigger channel. The trigger channel is used to determine the start and end of each segment.
-        The segments are stored in the segments_sign attribute of the plate.
-        The segments are stored in a list of lists, where each inner list contains the signals for each channel for that segment.
-        This function is optimized for large datasets using PyTorch tensors and GPU acceleration if available."""
 
         device= torch.device('cuda' if torch.cuda.is_available() else 'cpu')        
         indx = self.chans_names.index("Area")               
@@ -455,11 +441,11 @@ class SPlate:
                     #tmp_sign.append(self.raw_signals[lks][start[p]:start[p+1]])
                     segments[p].append(self.raw_signals[lks][start[p]:start[p+1]])
             #print(len(tmp_sign))
-        self.segments_sign=[]
-        self.segments_sign=segments        
-        self.segments_labels=[]
+        self.sigments_sign=[]
+        self.sigments_sign=segments        
+        self.sigments_labels=[]
         if(len(segments)!=0):
-            for ip in range(0,len(segments)):self.segments_labels.append([])
+            for ip in range(0,len(segments)):self.sigments_labels.append([])
     
     def get_segments(self,ref_chan_name="",threshold="automatic"):
         indx_trig=-1
@@ -468,7 +454,7 @@ class SPlate:
         if(isinstance(ref_chan_name,int)):
             indx_trig=ref_chan_name
         ref_sign=np.asarray(self.raw_signals[indx_trig])
-        self.segments_sign=[]        
+        self.sigments_sign=[]        
         ref_threshold=-1
         if isinstance(threshold,str):
             """
@@ -513,13 +499,13 @@ class SPlate:
                 else:
                     segment=self.raw_signals[k][raising_edge[l]:-1]                
                 segm_extr[l].append(segment) 
-            self.segments_labels.append([])            
-            self.segments_start_t.append(self.time[raising_edge[l]])        
-        self.segments_sign=segm_extr
+            self.sigments_labels.append([])            
+            self.sigments_start_t.append(self.time[raising_edge[l]])        
+        self.sigments_sign=segm_extr
 
     #assign the lebel to selected segment pattern
     def AssignLabelToSegmentPattern(self,segment_indx=0,label=LABEL_DEFAULT_NAME,start_el=0,end_el=2):
-        if(segment_indx>len(self.segments_sign)):
+        if(segment_indx>len(self.sigments_sign)):
             print("")
             print("Assigning label to segment pattern failed. Segment index is greater then the number of segments of the plate.")
             return
@@ -527,7 +513,7 @@ class SPlate:
             print("Assigning label to segment pattern failed. Label tag is empty - fill and repeat operation.")
             return            
         try:            
-            self.segments_labels[segment_indx].append(list([start_el,end_el,label]))
+            self.sigments_labels[segment_indx].append(list([start_el,end_el,label]))
         except:
             print("")
             print("Assigning label to segment pattern failed. Check the segments signals length or content.")
@@ -536,7 +522,7 @@ class SPlate:
     def AssignLabelToEntireSegment(self,segment_indx=0,label=LABEL_DEFAULT_NAME):
         try:
             start_el = 0
-            shp=np.shape(np.asarray(self.segments_sign[segment_indx]))
+            shp=np.shape(np.asarray(self.sigments_sign[segment_indx]))
             if(len(shp)==1):
                 end_el=int(shp[0])
             else:
@@ -549,26 +535,26 @@ class SPlate:
         except:
             print("")
             print("Assigning entire segment to label failed. Check segments signals content and repeat.")
-            try:  print("Segment "+str(segment_indx)+" shape is "+str(np.shape(np.asarray(self.segments_sign[segment_indx][1]))))
+            try:  print("Segment "+str(segment_indx)+" shape is "+str(np.shape(np.asarray(self.sigments_sign[segment_indx][1]))))
             except: print("Unable to establish the shape of the segment signals (probably those are inconsistent.)")
             return
 
     #all segments of this plate are assigned the given lebel
     def AssignLabelToAllSegments(self,label=LABEL_DEFAULT_NAME):
-        if(len(self.segments_sign)==0):
+        if(len(self.sigments_sign)==0):
             print("")
             print("Assigning all segments to lable failed. This segment signals are empty or content is corrupted. Check and repeat later.")
-        for l in range(0,len(self.segments_sign)):
+        for l in range(0,len(self.sigments_sign)):
             self.AssignLabelToEntireSegment(segment_indx=l,label=label)            
 
     def GetUniqueLabelsList(self):
-        l_sgm=len(self.segments_sign)
+        l_sgm=len(self.sigments_sign)
         labels_list=[]
         for l in range(0,l_sgm):
-            #self.segments_labels[segment_indx].append(list([start_el,end_el,label]))
-            cur_l = len(self.segments_labels[l])
+            #self.sigments_labels[segment_indx].append(list([start_el,end_el,label]))
+            cur_l = len(self.sigments_labels[l])
             for pp in range(0,cur_l):
-                labels_list.append(self.segments_labels[l][pp][2])
+                labels_list.append(self.sigments_labels[l][pp][2])
         #unique_l=list(set(labels_list))
         unique_l=GetUniqueElements_List(labels_list)
         return unique_l
@@ -590,9 +576,6 @@ def OpenDataFromFolder(PATH="",
                        SINGLE_FILE_PATH_TXT="",
                        SINGLE_FILE_PATH_CSV="",
                       ):
-    """
-    This function is used to open the data from the folder. The function returns a list of plates, where each plate is a collection of signals that are recorded at the same time.
-    The function can open the data in the classical binary format from SPECTRUM cards, as well as in the multicolumn csv format from Precitec. The function can also open a single file in the specified format."""
 
     #print(SEGMENTATION_SEGMENTS_NAMES_LIST)            
     arr_txt=[]#spectrum files
@@ -637,14 +620,14 @@ def OpenDataFromFolder(PATH="",
             cur_plate.get_segments(ref_chan_name=SEGMENTATION_REF_CHAN_NAME,threshold=SEGMENTATION_THRESHOLD)
 
             if(cur_plate.segments_names == []):
-                for q in range(0,len(cur_plate.segments_sign)):
+                for q in range(0,len(cur_plate.sigments_sign)):
                     cur_plate.segments_names.append(SEGMENTS_MISSED_SEGMENT_NAME+str(q))
-            elif(len(cur_plate.segments_names)<len(cur_plate.segments_sign)):
-                num_to_add=len(cur_plate.segments_sign) - len(cur_plate.segments_names)
+            elif(len(cur_plate.segments_names)<len(cur_plate.sigments_sign)):
+                num_to_add=len(cur_plate.sigments_sign) - len(cur_plate.segments_names)
                 for mm in range(0,num_to_add):
-                    cur_plate.segments_names.append(SEGMENTS_MISSED_SEGMENT_NAME+str(len(cur_plate.segments_sign)+mm))
-            elif(len(cur_plate.segments_names)>len(cur_plate.segments_sign)):
-                num_to_remove = len(cur_plate.segments_names) - len(cur_plate.segments_sign)
+                    cur_plate.segments_names.append(SEGMENTS_MISSED_SEGMENT_NAME+str(len(cur_plate.sigments_sign)+mm))
+            elif(len(cur_plate.segments_names)>len(cur_plate.sigments_sign)):
+                num_to_remove = len(cur_plate.segments_names) - len(cur_plate.sigments_sign)
                 for k in range(0,num_to_remove):
                     del cur_plate.segments_names[-1]
                     
@@ -706,18 +689,18 @@ def OpenDataFromFolder(PATH="",
                 cur_plate.get_segments_PRECITEC()#cur_plate.get_segments_PRECITEC()
                 cur_plate.segments_names = SEGMENTATION_SEGMENTS_NAMES_LIST
                 
-                if(len(cur_plate.segments_sign)!=0):
+                if(len(cur_plate.sigments_sign)!=0):
                     
-                    segm_num=len(cur_plate.segments_sign)#we assume the number of segments in all channels is the same (as originated from trigger channel
+                    segm_num=len(cur_plate.sigments_sign)#we assume the number of segments in all channels is the same (as originated from trigger channel
                     #print(segm_num)
                     if(cur_plate.segments_names == []):
                         for q in range(0,segm_num):
                             cur_plate.segments_names.append(SEGMENTS_MISSED_SEGMENT_NAME+str(q))
-                    elif(len(cur_plate.segments_names)<len(cur_plate.segments_sign)):
+                    elif(len(cur_plate.segments_names)<len(cur_plate.sigments_sign)):
                         num_to_add=segm_num - len(cur_plate.segments_names)
                         for mm in range(0,num_to_add):
-                            cur_plate.segments_names.append(SEGMENTS_MISSED_SEGMENT_NAME+str(len(cur_plate.segments_sign)+mm))
-                    elif(len(cur_plate.segments_names)>len(cur_plate.segments_sign)):
+                            cur_plate.segments_names.append(SEGMENTS_MISSED_SEGMENT_NAME+str(len(cur_plate.sigments_sign)+mm))
+                    elif(len(cur_plate.segments_names)>len(cur_plate.sigments_sign)):
                         num_to_remove = len(cur_plate.segments_names) - segm_num
                         for k in range(0,num_to_remove):
                             del cur_plate.segments_names[-1]
@@ -765,24 +748,25 @@ def SplitIntoSnips(plates=[],snip_size=50,plate_name="",chan_name="",segment_nam
     labs=[]
     indx_plate,indx_chan, indx_segment = FindPlateInArray(plates=plates.copy(),plate_name=plate_name,chan_name=chan_name,segm_name=segment_name)
     
-    for hj in range(0,len(plates[indx_plate].segments_labels[indx_segment])):                            
-                    label=plates[indx_plate].segments_labels[indx_segment][hj][2]
-                    first_el=plates[indx_plate].segments_labels[indx_segment][hj][0]
-                    last_el=plates[indx_plate].segments_labels[indx_segment][hj][1]
+    for hj in range(0,len(plates[indx_plate].sigments_labels[indx_segment])):                            
+                    label=plates[indx_plate].sigments_labels[indx_segment][hj][2]
+                    first_el=plates[indx_plate].sigments_labels[indx_segment][hj][0]
+                    last_el=plates[indx_plate].sigments_labels[indx_segment][hj][1]
                     snips_count=int(np.round((last_el-first_el)/snip_size))
                     st=0
                     for k in range(0,snips_count):
                         labs.append(label)
                         if(indx_chan==-1):
                             feat_tmp=np.empty
-                            for b in range(0,len(plates[indx_plate].segments_sign[indx_segment])):
-                                feat_tmp_1=np.asarray(plates[indx_plate].segments_sign[indx_segment][b][st:st+snip_size])                                  
+                            for b in range(0,len(plates[indx_plate].sigments_sign[indx_segment])):
+                                feat_tmp_1=np.asarray(plates[indx_plate].sigments_sign[indx_segment][b][st:st+snip_size])                                  
                                 feat_tmp=np.concatenate((feat_tmp,feat_tmp_1),axis=None)
                         else:
-                            feat_tmp=np.asarray(plates[indx_plate].segments_sign[indx_segment][indx_chan][st:st+snip_size])
+                            feat_tmp=np.asarray(plates[indx_plate].sigments_sign[indx_segment][indx_chan][st:st+snip_size])
                         st=st+snip_size
                         feat.append(feat_tmp)
     return feat, labs
+
 
 #https://www.pythonguis.com/tutorials/pyside-plotting-matplotlib/
 class MplCanvas(FigureCanvasQTAgg):
@@ -794,13 +778,13 @@ class MplCanvas(FigureCanvasQTAgg):
         #this solution have to be tested for stability in multithreading
         # self.axes1 = self.fig.add_subplot(121) # add in the same row or use (211) to place them one under the other
         super().__init__(self.fig)
-   
+        
 #https://www.pythonguis.com/tutorials/creating-multiple-windows/
 class ChartWindow(QMainWindow):
-    
-    #This "window" is a QWidget. If it has no parent, it
-    #will appear as a free-floating window as we want.
-    
+    """
+    This "window" is a QWidget. If it has no parent, it
+    will appear as a free-floating window as we want.
+    """
     def __init__(self,chart_name="Window",width=5,height=4,dpi=100):
         super().__init__()
         #layout = QVBoxLayout()
@@ -814,6 +798,7 @@ class ChartWindow(QMainWindow):
         self.setCentralWidget(self.Canvas)
         #self.show()
     
+
 #show all segments with labels assigned by user (for the given plate)
 def ShowAllSingleSegmentsWithLabels(fig_id, 
                                     plate,
@@ -887,7 +872,7 @@ def ShowAllSingleSegmentsWithLabels(fig_id,
         full_sign.append([])       
         sample_stamp.append([])
         sample_stamp[-1].append(0)
-        for segment in plate.segments_sign:               
+        for segment in plate.sigments_sign:               
             if(len(full_sign[-1])==0):full_sign[-1]=np.asarray(segment[chan_num[kks]])                                
             else:
                 sfg = np.asarray(full_sign[-1])            
@@ -922,12 +907,12 @@ def ShowAllSingleSegmentsWithLabels(fig_id,
     if(show_labels==True):
         for kkj in range(0,len(chan_num)):
             cnt=0            
-            for k in range(0,len(plate.segments_labels)):                
-                if (k!=0): cnt=cnt+len(plate.segments_sign[k-1][kkj])
-                for j in range(0,len(plate.segments_labels[k])):     
-                    curs_start=int((plate.segments_labels[k][j][0]+cnt))
-                    curs_end=int((plate.segments_labels[k][j][1]+cnt))
-                    label=plate.segments_labels[k][j][2]                
+            for k in range(0,len(plate.sigments_labels)):                
+                if (k!=0): cnt=cnt+len(plate.sigments_sign[k-1][kkj])
+                for j in range(0,len(plate.sigments_labels[k])):     
+                    curs_start=int((plate.sigments_labels[k][j][0]+cnt))
+                    curs_end=int((plate.sigments_labels[k][j][1]+cnt))
+                    label=plate.sigments_labels[k][j][2]                
                     c_ind=unique_labels.index(label)
                     if(c_ind>len(colors_code)-1): c_ind=len(colors_code)-1
                     sector_=plt.axvspan(curs_start, curs_end, facecolor=colors_code[c_ind], alpha=aplpha)    
@@ -961,7 +946,7 @@ def ShowAllSingleSegmentsWithLabels(fig_id,
         chan_n=chan_num[0]
         for p in range(0,len(proc_labels)):
             if(p>0): 
-                cnt=cnt+len(plate.segments_sign[p][chan_n])
+                cnt=cnt+len(plate.sigments_sign[p][chan_n])
                 #if (proc_labels_show_segm_borders==True): 
                 #    fig_ax.vlines(cnt,ymin=min_v,ymax=max_v,colors="black",linestyles="solid")
             
@@ -998,7 +983,7 @@ def ShowAllSingleSegmentsWithLabels(fig_id,
                             #pg.fill_between(p1, p2, brush=pg.mkBrush(cur_color))
                 st_= en_
     """
-            shp_=np.shape(plate.segments_sign[indx_segment][chan_num[i]])
+            shp_=np.shape(plate.sigments_sign[indx_segment][chan_num[i]])
             l_segm_=-1
             if(len(shp_)==1): l_segm_=shp_[0]
             else:            l_segm_=shp_[1]
@@ -1007,15 +992,15 @@ def ShowAllSingleSegmentsWithLabels(fig_id,
                 reduced_signal=[]
                 points_steps=[]
                 for kk in range(0,l_segm_,step_size):
-                    reduced_signal.append(plate.segments_sign[indx_segment][chan_num[i]][kk])
+                    reduced_signal.append(plate.sigments_sign[indx_segment][chan_num[i]][kk])
                     points_steps.append(kk)
                 plt.plot(points_steps,reduced_signal)
             else:
-                plt.plot(plate.segments_sign[indx_segment][chan_num[i]])
+                plt.plot(plate.sigments_sign[indx_segment][chan_num[i]])
             """
     """
-    for kks in range(0,len(plate.segments_sign)):        
-        shp=np.shape(plate.segments_sign[kks])
+    for kks in range(0,len(plate.sigments_sign)):        
+        shp=np.shape(plate.sigments_sign[kks])
         l_segm=-1
         if(len(shp)==1): l_segm=shp[0]
         else:            l_segm=shp[1]
@@ -1030,13 +1015,13 @@ def ShowAllSingleSegmentsWithLabels(fig_id,
         #print(l_segm)        
         
         for i in range(0,len(chan_num)):           
-            y_min=np.min(plate.segments_sign[kks][chan_num[i]])
-            y_max=np.max(plate.segments_sign[kks][chan_num[i]])            
+            y_min=np.min(plate.sigments_sign[kks][chan_num[i]])
+            y_max=np.max(plate.sigments_sign[kks][chan_num[i]])            
             
-            plt.plot(x_axis,plate.segments_sign[kks][chan_num[i]],color="blue")
+            plt.plot(x_axis,plate.sigments_sign[kks][chan_num[i]],color="blue")
 
-            if(plate.segments_labels[kks]!=[]) and (show_labels==True):
-                for k in plate.segments_labels[kks]:     
+            if(plate.sigments_labels[kks]!=[]) and (show_labels==True):
+                for k in plate.sigments_labels[kks]:     
                     curs_start=k[0]+start
                     curs_end=k[1]+start
                     label=k[2]                
@@ -1132,9 +1117,9 @@ def ShowSingleSegmentWithLabels(fig_id, plate,
     
     for i in range(0,len(chan_num)):
         if(points_num_limit_check==False):
-            plt.plot(plate.segments_sign[indx_segment][chan_num[i]])
+            plt.plot(plate.sigments_sign[indx_segment][chan_num[i]])
         else:#show in sparse to be faster
-            shp_=np.shape(plate.segments_sign[indx_segment][chan_num[i]])
+            shp_=np.shape(plate.sigments_sign[indx_segment][chan_num[i]])
             l_segm_=-1
             if(len(shp_)==1): l_segm_=shp_[0]
             else:            l_segm_=shp_[1]
@@ -1143,14 +1128,14 @@ def ShowSingleSegmentWithLabels(fig_id, plate,
                 reduced_signal=[]
                 points_steps=[]
                 for kk in range(0,l_segm_,step_size):
-                    reduced_signal.append(plate.segments_sign[indx_segment][chan_num[i]][kk])
+                    reduced_signal.append(plate.sigments_sign[indx_segment][chan_num[i]][kk])
                     points_steps.append(kk)
                 plt.plot(points_steps,reduced_signal)
             else:
-                plt.plot(plate.segments_sign[indx_segment][chan_num[i]])
+                plt.plot(plate.sigments_sign[indx_segment][chan_num[i]])
 
-        if(plate.segments_labels[indx_segment]!=[]) and (show_labels==True):
-            for k in plate.segments_labels[indx_segment]:     
+        if(plate.sigments_labels[indx_segment]!=[]) and (show_labels==True):
+            for k in plate.sigments_labels[indx_segment]:     
                 start=k[0]
                 end=k[1]
                 label=k[2]   
@@ -1171,9 +1156,9 @@ def ShowSingleSegmentWithLabels(fig_id, plate,
         #if(plt.fignum_exists(fig_id)==False):
         #    fig=plt.figure(fig_id)                    
         fig.clf()        
-        plt.plot(plates[indx_plate].segments_sign[indx_segment][indx_chan])
-        if(plates[indx_plate].segments_labels[indx_segment]!=[]):#if labels are assigned then show those                
-            for k in plates[indx_plate].segments_labels[indx_segment]:                
+        plt.plot(plates[indx_plate].sigments_sign[indx_segment][indx_chan])
+        if(plates[indx_plate].sigments_labels[indx_segment]!=[]):#if labels are assigned then show those                
+            for k in plates[indx_plate].sigments_labels[indx_segment]:                
                 start=k[0]
                 end=k[1]
                 c_num=k[2]
@@ -1186,10 +1171,10 @@ def ShowSingleSegmentWithLabels(fig_id, plate,
         #    fig=plt.figure(fig_id)        
         fig.clf()
         for kp in range(0,len(plates[indx_plate].chans_names)):                    
-           plt.plot(plates[indx_plate].segments_sign[indx_segment][kp])
-        if(plates[indx_plate].segments_labels[indx_segment]!=[]):#if labels are assigned then show those
-            print(len(plates[indx_plate].segments_labels[indx_segment]))            
-            for k in plates[indx_plate].segments_labels[indx_segment]:                
+           plt.plot(plates[indx_plate].sigments_sign[indx_segment][kp])
+        if(plates[indx_plate].sigments_labels[indx_segment]!=[]):#if labels are assigned then show those
+            print(len(plates[indx_plate].sigments_labels[indx_segment]))            
+            for k in plates[indx_plate].sigments_labels[indx_segment]:                
                 start=k[0]
                 end=k[1]
                 c_num=k[2]
@@ -1394,11 +1379,11 @@ class DataPreproc:
                                           proc_time=False,
                                          ):
                 
-        segm_num=len(plate.segments_sign)
+        segm_num=len(plate.sigments_sign)
         
         for t in range(0,segm_num):
             self.np_signal3=np.empty
-            self.np_signal3=plate.segments_sign[t]
+            self.np_signal3=plate.sigments_sign[t]
             self.sign_7=self.SplitEntireSignalIntoSnippets(signal=self.np_signal3, 
                                                       channs_indx=channs_indx, 
                                                       snip_size=snip_size,
@@ -1450,7 +1435,7 @@ class DataPreproc:
 
         self.segm_labels_list=[]
         self.segm_sign_list=[]
-        segm_num=len(plate.segments_sign)
+        segm_num=len(plate.sigments_sign)
         
         for t in range(0,segm_num):           
             self.sign_8=torch.empty 
@@ -1493,15 +1478,15 @@ class DataPreproc:
         self.sign_6=torch.empty
         
         lab=[]        
-        labeled_data_l=len(plate.segments_labels[segm_index])    
-        self.np_signal1 = np.asarray(plate.segments_sign[segm_index])        
+        labeled_data_l=len(plate.sigments_labels[segm_index])    
+        self.np_signal1 = np.asarray(plate.sigments_sign[segm_index])        
         #service labels_names
         #lab_tmp=[]
         for hj in range(0,labeled_data_l):             
             #read labeled data first
-            label=plate.segments_labels[segm_index][hj][2]
-            first_el=plate.segments_labels[segm_index][hj][0]
-            last_el=plate.segments_labels[segm_index][hj][1]
+            label=plate.sigments_labels[segm_index][hj][2]
+            first_el=plate.sigments_labels[segm_index][hj][0]
+            last_el=plate.sigments_labels[segm_index][hj][1]
             self.np_signal2=self.np_signal1[:,first_el:last_el].copy()         
             self.sign_5=torch.empty   
             #if(label not in lab_tmp): lab_tmp.append(label)
@@ -1593,15 +1578,11 @@ class DataPreproc:
                 else:
                     self.sign_3=torch.stack(self.sign_2, dim=0)  #THIS IS A NEW ADD ON, IN CASE REMOVE THE AFOREMENTIONED COPNDITIONS
                     #preprocessing
-                    if(preproc_type=="None" or  preproc_type=="" or preproc_type==" "): 
-                        pass
-                    else: 
-                        self.sign_3=self.DataPreprocessing(self.sign_3,preproc_type=preproc_type)
+                    if(preproc_type=="None" or  preproc_type=="" or preproc_type==" "): pass
+                    else: self.sign_3=self.DataPreprocessing(self.sign_3,preproc_type=preproc_type)
                     #assign further
-                    if(self.sign_4 == torch.empty): 
-                        self.sign_4 = self.sign_3 
-                    else: 
-                        self.sign_4 = torch.cat([self.sign_4,self.sign_3],dim=1)#stack((self.sign_4,self.sign_3),dim=1) 
+                    if(self.sign_4 == torch.empty): self.sign_4 = self.sign_3 
+                    else: self.sign_4 = torch.cat([self.sign_4,self.sign_3],dim=1)#stack((self.sign_4,self.sign_3),dim=1) 
         if(proc_time==True):
             end_t = time.time()
             print("Feat. extr. time(s): "+str(end_t - start_t))
@@ -1612,13 +1593,9 @@ class DataPreproc:
             else:
                 return None
         else:
-            try:
-                if(self.sign_4.is_cuda):
-                    return self.sign_4.cpu().numpy().copy()      
-                else:
-                    return self.sign_4.numpy().copy()
-            except:
-                return None
+            if(self.sign_4.is_cuda):
+                return self.sign_4.cpu().numpy().copy()      
+            else: return self.sign_4.numpy().copy()      
                 
 
     #------------------obtain spectrograms-------------------------
@@ -1819,7 +1796,7 @@ class DataPreproc:
         return feat_new,labs
             
 #dp=DataPreproc()
-#fd= dp.SplitEntireSignalIntoSnippets(signal=PLATES_ARRAY[0].segments_sign[0],channs_indx=0,torch_tensor=False,snip_size=1000)
+#fd= dp.SplitEntireSignalIntoSnippets(signal=PLATES_ARRAY[0].sigments_sign[0],channs_indx=0,torch_tensor=False,snip_size=1000)
 #fd,labs= dp.SplitLabPlateSegmentIntoSnips(PLATES_ARRAY[0],snip_size=5,segm_index=0,channs_indx=[0])
 
 #extract channels from the string
@@ -2228,7 +2205,6 @@ def ColorsListGen(type_list,col_num):
 #get bipolar plate segments list
 def getSegmentNames(plate_type):
     tmp_tuple=None
-    if(plate_type=="new_bpp"):    tmp_tuple = new_bpp_layout 
     if(plate_type=="bpp"):        tmp_tuple = bpp_layout  
     if(plate_type=="long_bpp_1"): tmp_tuple = long_bpp1_layout  
     if(plate_type=="long_bpp_2"): tmp_tuple = long_bpp2_layout  
@@ -2282,193 +2258,6 @@ def func():
 #****************************************************************************************
 #*******************************bipolar plates layout************************************
 #****************************************************************************************
-
-new_bpp_layout = (
-    "C_001",
-    "C_002",
-    "C_003",
-    "C_004",
-    "C_005",
-    "C_006",
-    "C_007",
-    "C_008",
-    "C_009",
-    "C_010",
-    "C_011",
-    "C_012",
-    "C_013",
-    "C_014",
-    "C_015",
-    "C_016",
-    "C_017",
-    "C_018",
-    "C_019",
-    "C_020",
-    "C_021",
-    "C_022",
-    "C_023",
-    "C_024",
-    "C_025",
-    "C_026",
-    "C_027",
-    "C_028",
-    "C_029",
-    "C_030",
-    "C_031",
-    "C_032",
-    "C_033",
-    "C_034",
-    "C_035",
-    "C_036",
-    "C_037",
-    "C_038",
-    "C_039",
-    "C_040",
-    "C_041",
-    "C_042",
-    "C_043",
-    "C_044",
-    "C_045",
-    "C_046",
-    "C_047",
-    "C_048",
-    "C_049",
-    "C_050",
-    "C_051",
-    "C_052",
-    "C_053",
-    "C_054",
-    "C_055",
-    "C_056",
-    "C_057",
-    "C_058",
-    "C_059",
-    "C_060",
-    "C_061",
-    "C_062",
-    "C_063",
-    "C_064",
-    "C_065",
-    "C_066",
-    "C_067",
-    "C_068",
-    "C_069",
-    "C_070",
-    "C_071",
-    "C_072",
-    "C_073",
-    "C_074",
-    "C_075",
-    "C_076",
-    "C_077",
-    "C_078",
-    "C_079",
-    "C_080",
-    "C_081",
-    "C_082",
-    "C_083",
-    "C_084",
-    "C_085",
-    "C_086",
-    "C_087",
-    "C_088",
-    "C_089",
-    "C_090",
-    "C_091",
-    "C_092",
-    "C_093",
-    "C_094",
-    "C_095",
-    "C_096",
-    "C_097",
-    "C_098",
-    "C_099",
-    "C_100",
-    "C_101",
-    "C_102",
-    "C_103",
-    "C_104",
-    "C_105",
-    "C_106",
-    "C_107",
-    "C_108",
-    "C_109",
-    "C_110",
-    "C_111",
-    "C_112",
-    "C_113",
-    "C_114",
-    "C_115",
-    "C_116",
-    "C_117",
-    "C_118",
-    "C_119",
-    "C_120",
-    "C_121",
-    "C_122",
-    "C_123",
-    "C_124",
-    "C_125",
-    "C_126",
-    "C_127",
-    "C_128",
-    "C_129",
-    "C_130",
-    "C_131",
-    "C_132",
-    "C_133",
-    "C_134",
-    "C_135",
-    "C_136",
-    "C_137",
-    "C_138",
-    "C_139",
-    "C_140",
-    "C_141",
-    "C_142",
-    "C_143",
-    "C_144",
-    "C_145",
-    "C_146",
-    "C_147",
-    "C_148",
-    "C_149",
-    "C_150",
-    "C_151",
-    "C_152",
-    "C_153",
-    "C_154",
-    "C_155",
-    "C_156",
-    "C_157",
-    "C_158",
-    "C_159",
-    "C_160",
-    "C_161",
-    "C_162",
-    "C_163",
-    "C_164",
-    "C_165",
-    "C_166",
-    "C_167",
-    "C_168",
-    "C_169",
-    "C_170",
-    "C_171",
-    "C_172",
-    "C_173",
-    "C_174",
-    "C_175",
-    "C_176",
-    "C_177",
-    "C_178",
-    "C_179",
-    "C_180",
-    "C_181",
-    "C_182",
-    "C_183",
-    "C_184",
-)
 
 bpp_layout = (
                 ("aL", "01"),
@@ -2974,7 +2763,7 @@ def TrainTorchAutoencoder(feat=None,labels=None,num_epochs=100,lr=1e-7):
     start_t = time.time()
     y_pred = model(sequences)
     end_t = time.time()
-    print("Prediction time: "+str(end_t-start_t)+" s for " +str(shp_training_set[0])+" features")
+    print("Pridiction time: "+str(end_t-start_t)+" s for " +str(shp_training_set[0])+" features")
     return model  
 
 def PredictTorchAutoencoder(model=None, feat=None,thresh_fact=2,show_hist=False,bins_num=50,fig_ax=None):
@@ -3883,7 +3672,6 @@ class S_Classif:
                 count=torch.sum(anomalies[l]==True)
                 if(count>lk):labs.append(1)
                 else: labs.append(0)
-<<<<<<< HEAD
 
         if( str(cls_type) == 'SHelpers.DeepK1') or str(cls_type) ==("<class 'SHelpers.DeepK1'>"): 
             device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -3891,11 +3679,7 @@ class S_Classif:
             norm_y = torch.empty
             
             labs=self.classifier.eval(norm_x)                   
-=======
->>>>>>> 2f193aacf2187cf0b7ac99e9ac52cf277a9c0345
-        #NICOLA adds classifiers here
-        #if(str(cls_type)==):
-            #bla bla bla
+            
         return labs
         
     def getClassifType(self):

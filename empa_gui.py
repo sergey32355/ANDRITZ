@@ -1,9 +1,15 @@
 # -*- coding: utf-8 -*-
 
 ################################################################################
+<<<<<<< HEAD:empa_gui.py
 ## Form generated from reading UI file 'empa_gui.ui'
 ##
 ## Created by: Qt User Interface Compiler version 6.10.0
+=======
+## Form generated from reading UI file 'empa_guikrSeIl.ui'
+##
+## Created by: Qt User Interface Compiler version 6.9.0
+>>>>>>> 2f193aacf2187cf0b7ac99e9ac52cf277a9c0345:Andritz_GUI/Andritz_GUI/gui_files/empa_gui.py
 ##
 ## WARNING! All changes made in this file will be lost when recompiling UI file!
 ################################################################################
