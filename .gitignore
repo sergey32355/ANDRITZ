@@ -1,0 +1,13 @@
+__pycache__/
+.ipynb_checkpoints/
+.vscode/
+.vs/
+.python-version
+data/
+models/
+runs/
+init_weights_ae/
+TODO_GUI.md
+*.htm
+*.slnx
+*.pyproj
