@@ -3883,7 +3883,7 @@ class S_Classif:
                 count=torch.sum(anomalies[l]==True)
                 if(count>lk):labs.append(1)
                 else: labs.append(0)
-<<<<<<< HEAD
+
 
         if( str(cls_type) == 'SHelpers.DeepK1') or str(cls_type) ==("<class 'SHelpers.DeepK1'>"): 
             device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -3891,8 +3891,7 @@ class S_Classif:
             norm_y = torch.empty
             
             labs=self.classifier.eval(norm_x)                   
-=======
->>>>>>> 2f193aacf2187cf0b7ac99e9ac52cf277a9c0345
+
         #NICOLA adds classifiers here
         #if(str(cls_type)==):
             #bla bla bla
