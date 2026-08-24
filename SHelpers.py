@@ -819,6 +819,7 @@ def OpenDataFromFolder(PATH="",
     #sxls format for ground truth files
     check=len(arr_xlsx)
     if(len(arr_xlsx)!=0) and (arr_xlsx[0]!=""):         
+
         counter_ground_truth_assigned=0
         #we tra to open gorund truth files
         #veriosn 1 of ground truth files format
@@ -840,6 +841,7 @@ def OpenDataFromFolder(PATH="",
                     if (indx==-1):
                         continue
                     bad_segm_list=bad_segments.split(",")
+                    bad_labs_assigned=False
                     for k in range(0,len(bad_segm_list)):
                         bad_segm_name=bad_segm_list[k].strip()
                         for l in range(0,len(plates[indx].segments_names)):
@@ -847,7 +849,14 @@ def OpenDataFromFolder(PATH="",
                             if(seg_n==bad_segm_name):
                                 plates[indx].AssignLabelToEntireSegment(segment_indx=l,label=1)
                                 counter_ground_truth_assigned+=1
-
+                                bad_labs_assigned=True
+                    #assign good labels to the rest of the segments
+                    if(bad_labs_assigned==True):    
+                        for l in range(0,len(plates[indx].segments_names)):
+                            seg_n=plates[indx].segments_names[l]
+                            if(seg_n not in bad_segm_list):
+                                plates[indx].AssignLabelToEntireSegment(segment_indx=l,label=0)
+                                
         print("Gorund truth is uploaded for: " + str(counter_ground_truth_assigned) + " segments")
 
 
