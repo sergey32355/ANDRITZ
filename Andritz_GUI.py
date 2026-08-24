@@ -373,7 +373,7 @@ class MainWindow(QMainWindow):
                     plt.plot(self.plates[indx_plate].time, self.plates[indx_plate].raw_signals[kp])
                 plt.show()
         else: #segments
-            if(indx_chan!=-1):#this is the case when single channel is selected                
+            if(indx_chan!=-1):#this is the case when single segment for a single channel is selected                
                 shlp.ShowSingleSegmentWithLabels(self.classif_plot_fig_id,
                                                  self.plates[indx_plate],
                                                  indx_segment=indx_segment,
@@ -1352,10 +1352,23 @@ class MainWindow(QMainWindow):
         self.ui.plot_plate_dropdown.clear()
         self.ui.plot_segment_dropdown.clear()
         self.ui.Channel_segment_plot.clear()    
+
+        segm_ref_chan_val = self.ui.Settings_OpenFile_TrigChannelID_text.text()
+        try:    segm_ref_chan=int(segm_ref_chan_val)
+        except: segm_ref_chan = segm_ref_chan_val
+
+        segm_thresh_val = self.ui.Settings_openfile_segmentation_mode_text.currentText()
+        if(segm_thresh_val=="automatic"): segm_thresh_val = "automatic"
+        else:
+            segm_thresh_val=self.ui.Settings_Segmentation_TriggerThreshold_text.text()
+            try:    segm_thresh_val=float(segm_thresh_val)
+            except: segm_thresh_val = "automatic"
         
+
+
         self.plates=shlp.OpenDataFromFolder(PATH=PATH,
-                                            SEGMENTATION_REF_CHAN_NAME="Trigger",
-                                            SEGMENTATION_THRESHOLD="automatic"    ,
+                                            SEGMENTATION_REF_CHAN_NAME=segm_ref_chan,#"Trigger",
+                                            SEGMENTATION_THRESHOLD=segm_thresh_val,
                                             SEGMENTATION_SEGMENTS_NAMES_LIST=self.plate_segments_id
                                            )
         

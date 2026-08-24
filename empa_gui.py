@@ -1,15 +1,9 @@
 # -*- coding: utf-8 -*-
 
 ################################################################################
-#<<<<<<< HEAD:empa_gui.py
-## Form generated from reading UI file 'empa_gui.ui'
-##
-## Created by: Qt User Interface Compiler version 6.10.0
-#=======
-## Form generated from reading UI file 'empa_guikrSeIl.ui'
+## Form generated from reading UI file 'empa_guirKsITZ.ui'
 ##
 ## Created by: Qt User Interface Compiler version 6.9.0
-#>>>>>>> 2f193aacf2187cf0b7ac99e9ac52cf277a9c0345:Andritz_GUI/Andritz_GUI/gui_files/empa_gui.py
 ##
 ## WARNING! All changes made in this file will be lost when recompiling UI file!
 ################################################################################
@@ -53,6 +47,7 @@ class Ui_EmpaGUI(object):
         self.Brows_data_folder_button.setObjectName(u"Brows_data_folder_button")
         self.Brows_data_folder_button.setGeometry(QRect(323, 20, 91, 24))
         self.load_data_plate_type_dropdown = QComboBox(self.groupBox)
+        self.load_data_plate_type_dropdown.addItem("")
         self.load_data_plate_type_dropdown.addItem("")
         self.load_data_plate_type_dropdown.addItem("")
         self.load_data_plate_type_dropdown.addItem("")
@@ -721,10 +716,10 @@ class Ui_EmpaGUI(object):
         self.Brows_data_folder_button.setText(QCoreApplication.translate("EmpaGUI", u"Browse folder", None))
         self.load_data_plate_type_dropdown.setItemText(0, QCoreApplication.translate("EmpaGUI", u"default", None))
         self.load_data_plate_type_dropdown.setItemText(1, QCoreApplication.translate("EmpaGUI", u"new_bpp", None))
-        self.load_data_plate_type_dropdown.setItemText(1, QCoreApplication.translate("EmpaGUI", u"bpp", None))
-        self.load_data_plate_type_dropdown.setItemText(2, QCoreApplication.translate("EmpaGUI", u"long_bpp_1", None))
-        self.load_data_plate_type_dropdown.setItemText(3, QCoreApplication.translate("EmpaGUI", u"long_bpp_2", None))
-        self.load_data_plate_type_dropdown.setItemText(4, QCoreApplication.translate("EmpaGUI", u"from file", None))
+        self.load_data_plate_type_dropdown.setItemText(2, QCoreApplication.translate("EmpaGUI", u"bpp", None))
+        self.load_data_plate_type_dropdown.setItemText(3, QCoreApplication.translate("EmpaGUI", u"long_bpp_1", None))
+        self.load_data_plate_type_dropdown.setItemText(4, QCoreApplication.translate("EmpaGUI", u"long_bpp_2", None))
+        self.load_data_plate_type_dropdown.setItemText(5, QCoreApplication.translate("EmpaGUI", u"from file", None))
 
         self.load_data_plate_type_dropdown.setCurrentText("")
         self.load_data_plate_type_dropdown.setPlaceholderText(QCoreApplication.translate("EmpaGUI", u"default", None))
@@ -851,7 +846,7 @@ class Ui_EmpaGUI(object):
 
         self.Settings_openfile_segmentation_mode_text.setCurrentText(QCoreApplication.translate("EmpaGUI", u"automatic", None))
         self.Settings_openfile_segmentation_mode_text.setPlaceholderText(QCoreApplication.translate("EmpaGUI", u"Choose BPP type", None))
-        self.Settings_Segmentation_TriggerThreshold_text.setText(QCoreApplication.translate("EmpaGUI", u"Trigger", None))
+        self.Settings_Segmentation_TriggerThreshold_text.setText(QCoreApplication.translate("EmpaGUI", u"3.3", None))
         self.RealT_show_info_checkbox.setText(QCoreApplication.translate("EmpaGUI", u"Show info", None))
         self.RealT_show_processed_signals_checkbox_3.setText(QCoreApplication.translate("EmpaGUI", u"Show results", None))
         self.RealT_show_only_single_shot_checkbox_4.setText(QCoreApplication.translate("EmpaGUI", u"Only single shot", None))

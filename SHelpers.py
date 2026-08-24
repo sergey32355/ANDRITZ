@@ -5,6 +5,8 @@ import pandas as pd
 import os
 # from os import walk
 import sys
+import pickle
+import math
 # from time import sleep
 # import traceback
 # import joblib
@@ -460,6 +462,48 @@ class SPlate:
         self.segments_labels=[]
         if(len(segments)!=0):
             for ip in range(0,len(segments)):self.segments_labels.append([])
+
+
+
+    def get_segments_UNIVERSAL_above_threshold(self,ref_chan_name="",threshold="automatic"):
+
+        if isinstance(ref_chan_name, str): indx = self.chans_names.index(ref_chan_name)  
+        if isinstance(ref_chan_name, int): indx = ref_chan_name
+        
+        if isinstance(threshold, str)==True:
+           if threshold=="automatic": 
+               trig_sgn=np.asarray(self.raw_signals[indx])
+               trig_max=np.max(trig_sgn)
+               trig_min=np.min(trig_sgn)
+               threshold=trig_min+(trig_max-trig_min)/2      
+           elif threshold=="user defined thershold:":
+               pass
+        else:threshold=threshold
+
+        # Get indices where arr > threshold
+        trig_arr = np.asarray(self.raw_signals[indx])
+        # Boolean mask for active regions
+        active = trig_arr > threshold
+        # Find boundaries of contiguous active regions
+        # Pad with False to handle edges cleanly
+        padded = np.concatenate(([False], active, [False]))
+        changes = np.where(padded[:-1] != padded[1:])[0]
+
+        len_chng=len(changes)
+        signals_num = len(self.raw_signals)
+        #segments structure - plate.segments_sign[indx_segment][chan_num[i]]
+        segments = []#[[] for _ in range(len(self.raw_signals))]
+        # changes comes in pairs: [start_index, end_index, start_index, end_index, ...]        
+        for i in range(0, len(changes), 2):
+            start = changes[i]          # inclusive start in original indexing
+            end = changes[i+1]          # exclusive end in original indexing            
+            segments.append([])
+            for s in range(0,signals_num):                
+                segments[-1].append(self.raw_signals[s][start:end])
+
+        self.segments_sign=[]
+        self.segments_sign=segments        
+        tets_l=len(self.segments_sign)
     
     def get_segments(self,ref_chan_name="",threshold="automatic"):
         indx_trig=-1
@@ -562,7 +606,7 @@ class SPlate:
             self.AssignLabelToEntireSegment(segment_indx=l,label=label)            
 
     def GetUniqueLabelsList(self):
-        l_sgm=len(self.segments_sign)
+        l_sgm=len(self.segments_sign)        
         labels_list=[]
         for l in range(0,l_sgm):
             #self.segments_labels[segment_indx].append(list([start_el,end_el,label]))
@@ -598,6 +642,10 @@ def OpenDataFromFolder(PATH="",
     arr_txt=[]#spectrum files
     arr_bin=[]#spectreum files
     arr_csv=[]
+    arr_pkl=[]
+
+    arr_xlsx=[]
+
     if(ONLY_SINGLE_FILE==False):        
         arr = next(os.walk(PATH))[2]
         for k in arr:
@@ -612,7 +660,11 @@ def OpenDataFromFolder(PATH="",
                         arr_bin.append(l_1)
                         break
             if(file_extension==".csv"):
-                arr_csv.append(k)                
+                arr_csv.append(k)        
+            if(file_extension==".pkl"):
+                arr_pkl.append(k)          
+            if(file_extension==".xlsx"):#here we store gorund truth
+                arr_xlsx.append(k)          
     else:        
         arr_txt.append(SINGLE_FILE_PATH_TXT)
         arr_bin.append(SINGLE_FILE_PATH_BIN)
@@ -729,7 +781,82 @@ def OpenDataFromFolder(PATH="",
             #print("")  
             #print_progress_bar(files_cnt, len(arr_csv), "File opened (Precitec *.csv)")
     #print("")            
+    
+    #pkl format
+    check=len(arr_pkl)
+    if(len(arr_pkl)!=0) and (arr_pkl[0]!=""): 
+        cnt=0
+        files_cnt=0
+        for lss in tqdm(range(0,len(arr_pkl)),desc="Opening *.pkl format files"):
+            l=arr_pkl[lss]
+            path_pkl=PATH+"\\"+l
+            data = OpenPKLFile(path_pkl) 
+            type_data=str(type(data)) 
+            if( type_data == "<class 'dict'>"):#if the retuned type is dictionay
+                keys_list = list(data.keys())
+                cur_plate=SPlate(plate_name=l)
+                cur_plate.chans_names = keys_list
+                signals = []
+                for k in range(0,len(keys_list)):
+                    signals.append(np.array(data[keys_list[k]], dtype=float))
+                cur_plate.raw_signals = signals
+                cur_plate.sr=data['sr']=1
+                cur_plate.time = np.asarray(list(range(1, len(signals[0])+1)))                   
+                cur_plate.get_segments_UNIVERSAL_above_threshold(ref_chan_name=SEGMENTATION_REF_CHAN_NAME,threshold=SEGMENTATION_THRESHOLD)       
+                cur_plate.segments_labels=[[] for _ in range(len(cur_plate.segments_sign))]#[]
+                segm_num=len(cur_plate.segments_sign)#we assume the number of segments in all channels is the same (as originated from trigger channel
+                if(segm_num!=SEGMENTATION_SEGMENTS_NAMES_LIST):
+                    if(segm_num>len(SEGMENTATION_SEGMENTS_NAMES_LIST)):
+                        seg_updateded_list=SEGMENTATION_SEGMENTS_NAMES_LIST.copy()
+                        for k in range(0, segm_num - len(SEGMENTATION_SEGMENTS_NAMES_LIST)):
+                            seg_updateded_list.append("NONAME_"+str(k+1))
+                        cur_plate.segments_names = seg_updateded_list
+                    else:
+                        cur_plate.segments_names = SEGMENTATION_SEGMENTS_NAMES_LIST[:segm_num]
+                else:  cur_plate.segments_names = SEGMENTATION_SEGMENTS_NAMES_LIST
+                plates.append(cur_plate)
+
+    #sxls format for ground truth files
+    check=len(arr_xlsx)
+    if(len(arr_xlsx)!=0) and (arr_xlsx[0]!=""):         
+        counter_ground_truth_assigned=0
+        #we tra to open gorund truth files
+        #veriosn 1 of ground truth files format
+        for l in arr_xlsx:
+            path_xlxs=PATH+"\\"+l
+            df = pd.read_excel(path_xlxs, sheet_name=0)
+            for idx, row in df.iterrows():
+                plate_id = row["plate_id"]   # replace with your actual column names
+                bad_segments = row["bad_segments"]
+                # process each row
+                if(bad_segments!="") and isinstance(bad_segments, str):
+                    #print(plate_id, bad_segments)
+                    indx=-1
+                    for k in range(0,len(plates)):
+                        p_name=str(plates[k].name)
+                        if p_name.find(str(plate_id))!=-1: #(str(plate_id) in plates[k].name) or (plates[k].name==str(plate_id)):
+                            indx=k
+                            break
+                    if (indx==-1):
+                        continue
+                    bad_segm_list=bad_segments.split(",")
+                    for k in range(0,len(bad_segm_list)):
+                        bad_segm_name=bad_segm_list[k].strip()
+                        for l in range(0,len(plates[indx].segments_names)):
+                            seg_n=plates[indx].segments_names[l]
+                            if(seg_n==bad_segm_name):
+                                plates[indx].AssignLabelToEntireSegment(segment_indx=l,label=1)
+                                counter_ground_truth_assigned+=1
+
+        print("Gorund truth is uploaded for: " + str(counter_ground_truth_assigned) + " segments")
+
+
     return plates
+
+def OpenPKLFile(path):
+    with open(path, 'rb') as f:
+        data = pickle.load(f)
+    return data
 
     
 #find plates in list
@@ -1116,7 +1243,13 @@ def ShowSingleSegmentWithLabels(fig_id, plate,
     if isinstance(indx_chan, int)==True:     chan_num=[indx_chan]    
     if indx_chan==-1:     chan_num=list(np.linspace(0,len(plate.chans_names),len(plate.chans_names)))
     
-    unique_labels=plate.GetUniqueLabelsList()    
+    if(len(plate.segments_labels)!=0):
+        unique_labels=plate.GetUniqueLabelsList()    
+    else:
+        unique_labels=[]
+        unique_labels.append(0)
+        show_labels=False
+    
     indx_color=np.arange(0,len(unique_labels),dtype=int)#,len(unique_labels)) #CHECK FUNCTIONALITY
     print(indx_color)
     print(unique_labels)
@@ -1132,9 +1265,12 @@ def ShowSingleSegmentWithLabels(fig_id, plate,
     
     for i in range(0,len(chan_num)):
         if(points_num_limit_check==False):
-            plt.plot(plate.segments_sign[indx_segment][chan_num[i]])
+            arr_to_plot=np.asarray(plate.segments_sign[indx_segment][chan_num[i]])
+            plt.plot(arr_to_plot)
         else:#show in sparse to be faster
-            shp_=np.shape(plate.segments_sign[indx_segment][chan_num[i]])
+            ch_n=chan_num[i]            
+            arr_to_plot=np.asarray(plate.segments_sign[indx_segment][ch_n])
+            shp_=np.shape(arr_to_plot)
             l_segm_=-1
             if(len(shp_)==1): l_segm_=shp_[0]
             else:            l_segm_=shp_[1]
@@ -1149,17 +1285,20 @@ def ShowSingleSegmentWithLabels(fig_id, plate,
             else:
                 plt.plot(plate.segments_sign[indx_segment][chan_num[i]])
 
-        if(plate.segments_labels[indx_segment]!=[]) and (show_labels==True):
-            for k in plate.segments_labels[indx_segment]:     
-                start=k[0]
-                end=k[1]
-                label=k[2]   
-                index_label=unique_labels.index(label)                
-                c_ind=indx_color[index_label]
-                sector_=plt.axvspan(start, end, facecolor=colors_code[c_ind], alpha=aplpha)    
-                if(label not in labels_tags):
-                    labels_tags.append(label)
-                    sectors.append(sector_)
+
+        if(show_labels==True):
+            if(plate.segments_labels!=[]):
+                if(plate.segments_labels[indx_segment]!=[]):
+                    for k in plate.segments_labels[indx_segment]:     
+                        start=k[0]
+                        end=k[1]
+                        label=k[2]   
+                        index_label=unique_labels.index(label)                
+                        c_ind=indx_color[index_label]
+                        sector_=plt.axvspan(start, end, facecolor=colors_code[c_ind], alpha=aplpha)    
+                        if(label not in labels_tags):
+                            labels_tags.append(label)
+                            sectors.append(sector_)
     fig.legend(sectors,labels_tags)
     fig.canvas.draw()
     fig.canvas.flush_events()
@@ -1880,6 +2019,12 @@ def ReadSettings(window):
     Tools_best_params_search_channels_list_text_3= window.ui.Tools_best_params_search_channels_list_text_3.text()
     settings["Tools_best_params_search_channels_list_text_3"] = Tools_best_params_search_channels_list_text_3
 
+    #settings tab, group box trigger channel
+    settings["Settings_OpenFile_TrigChannelID_text"] = window.ui.Settings_OpenFile_TrigChannelID_text.text()
+    settings["Settings_openfile_segmentation_mode_text"] = window.ui.Settings_openfile_segmentation_mode_text.currentIndex()
+    settings["Settings_Segmentation_TriggerThreshold_text"] = window.ui.Settings_Segmentation_TriggerThreshold_text.text()
+      
+
     #algorithm
     algorithm=window.ui.classificationclassifier_dropdown.currentText()
     settings["algorithm"] = algorithm
@@ -2083,6 +2228,13 @@ def LoadInterfaceFromFile(window,path):
     window.ui.GUI_show_results_points_number_limit_checkbox.setChecked(bool(my_set["GUI_show_results_points_number_limit_checkbox"]))
     window.ui.RealT_show_processed_signals_checkbox_3.setChecked(bool(my_set["RealT_show_processed_signals_checkbox_3"]))
        
+    #setting Train data source group box
+    try:
+        window.ui.Settings_OpenFile_TrigChannelID_text.setText(str(my_set["Settings_OpenFile_TrigChannelID_text"]))
+        window.ui.Settings_openfile_segmentation_mode_text.setCurrentIndex(int(my_set["Settings_openfile_segmentation_mode_text"]))
+        window.ui.Settings_Segmentation_TriggerThreshold_text.setText(str(my_set["Settings_Segmentation_TriggerThreshold_text"]))
+    except:   pass
+
     #settings - optimization of parameter tab
     try:
         window.ui.Tools_best_params_search_folder_path_text_2.setText(str(my_set["Tools_best_params_search_folder_path_text_2"]))
@@ -2139,9 +2291,11 @@ def LoadInterfaceFromFile(window,path):
         
         #files folder
         window.ui.RealT_filse_folders_delete_files_checkbox.setChecked(bool(my_set["RealT_filse_folders_delete_files_checkbox"]))
+
         #GUI
         window.ui.GUI_fiure_coment_text_2.setText(str(my_set["GUI_fiure_coment_text_2"]))
         window.ui.GUI_settitle_figure_checkbox_2.setChecked(bool(my_set["GUI_settitle_figure_checkbox_2"]))     
+        
 
     except Exception as exs:
         print("Error loading real time settings. Exception: "+str(exs))
@@ -2235,7 +2389,7 @@ def getSegmentNames(plate_type):
     if(tmp_tuple is not None):
         list_names=[]
         for i in range(0,len(tmp_tuple)):
-            list_names.append(str(tmp_tuple[i][0]+"_"+tmp_tuple[i][1]))       
+            list_names.append(str(tmp_tuple[i])) #[0]+"_"+tmp_tuple[i][1]))       
         return list_names
     else:
         return []
@@ -2284,190 +2438,190 @@ def func():
 #****************************************************************************************
 
 new_bpp_layout = (
-    "C_001",
-    "C_002",
-    "C_003",
-    "C_004",
-    "C_005",
-    "C_006",
-    "C_007",
-    "C_008",
-    "C_009",
-    "C_010",
-    "C_011",
-    "C_012",
-    "C_013",
-    "C_014",
-    "C_015",
-    "C_016",
-    "C_017",
-    "C_018",
-    "C_019",
-    "C_020",
-    "C_021",
-    "C_022",
-    "C_023",
-    "C_024",
-    "C_025",
-    "C_026",
-    "C_027",
-    "C_028",
-    "C_029",
-    "C_030",
-    "C_031",
-    "C_032",
-    "C_033",
-    "C_034",
-    "C_035",
-    "C_036",
-    "C_037",
-    "C_038",
-    "C_039",
-    "C_040",
-    "C_041",
-    "C_042",
-    "C_043",
-    "C_044",
-    "C_045",
-    "C_046",
-    "C_047",
-    "C_048",
-    "C_049",
-    "C_050",
-    "C_051",
-    "C_052",
-    "C_053",
-    "C_054",
-    "C_055",
-    "C_056",
-    "C_057",
-    "C_058",
-    "C_059",
-    "C_060",
-    "C_061",
-    "C_062",
-    "C_063",
-    "C_064",
-    "C_065",
-    "C_066",
-    "C_067",
-    "C_068",
-    "C_069",
-    "C_070",
-    "C_071",
-    "C_072",
-    "C_073",
-    "C_074",
-    "C_075",
-    "C_076",
-    "C_077",
-    "C_078",
-    "C_079",
-    "C_080",
-    "C_081",
-    "C_082",
-    "C_083",
-    "C_084",
-    "C_085",
-    "C_086",
-    "C_087",
-    "C_088",
-    "C_089",
-    "C_090",
-    "C_091",
-    "C_092",
-    "C_093",
-    "C_094",
-    "C_095",
-    "C_096",
-    "C_097",
-    "C_098",
-    "C_099",
-    "C_100",
-    "C_101",
-    "C_102",
-    "C_103",
-    "C_104",
-    "C_105",
-    "C_106",
-    "C_107",
-    "C_108",
-    "C_109",
-    "C_110",
-    "C_111",
-    "C_112",
-    "C_113",
-    "C_114",
-    "C_115",
-    "C_116",
-    "C_117",
-    "C_118",
-    "C_119",
-    "C_120",
-    "C_121",
-    "C_122",
-    "C_123",
-    "C_124",
-    "C_125",
-    "C_126",
-    "C_127",
-    "C_128",
-    "C_129",
-    "C_130",
-    "C_131",
-    "C_132",
-    "C_133",
-    "C_134",
-    "C_135",
-    "C_136",
-    "C_137",
-    "C_138",
-    "C_139",
-    "C_140",
-    "C_141",
-    "C_142",
-    "C_143",
-    "C_144",
-    "C_145",
-    "C_146",
-    "C_147",
-    "C_148",
-    "C_149",
-    "C_150",
-    "C_151",
-    "C_152",
-    "C_153",
-    "C_154",
-    "C_155",
-    "C_156",
-    "C_157",
-    "C_158",
-    "C_159",
-    "C_160",
-    "C_161",
-    "C_162",
-    "C_163",
-    "C_164",
-    "C_165",
-    "C_166",
-    "C_167",
-    "C_168",
-    "C_169",
-    "C_170",
-    "C_171",
-    "C_172",
-    "C_173",
-    "C_174",
-    "C_175",
-    "C_176",
-    "C_177",
-    "C_178",
-    "C_179",
-    "C_180",
-    "C_181",
-    "C_182",
-    "C_183",
-    "C_184",
+    "C001",
+    "C002",
+    "C003",
+    "C004",
+    "C005",
+    "C006",
+    "C007",
+    "C008",
+    "C009",
+    "C010",
+    "C011",
+    "C012",
+    "C013",
+    "C014",
+    "C015",
+    "C016",
+    "C017",
+    "C018",
+    "C019",
+    "C020",
+    "C021",
+    "C022",
+    "C023",
+    "C024",
+    "C025",
+    "C026",
+    "C027",
+    "C028",
+    "C029",
+    "C030",
+    "C031",
+    "C032",
+    "C033",
+    "C034",
+    "C035",
+    "C036",
+    "C037",
+    "C038",
+    "C039",
+    "C040",
+    "C041",
+    "C042",
+    "C043",
+    "C044",
+    "C045",
+    "C046",
+    "C047",
+    "C048",
+    "C049",
+    "C050",
+    "C051",
+    "C052",
+    "C053",
+    "C054",
+    "C055",
+    "C056",
+    "C057",
+    "C058",
+    "C059",
+    "C060",
+    "C061",
+    "C062",
+    "C063",
+    "C064",
+    "C065",
+    "C066",
+    "C067",
+    "C068",
+    "C069",
+    "C070",
+    "C071",
+    "C072",
+    "C073",
+    "C074",
+    "C075",
+    "C076",
+    "C077",
+    "C078",
+    "C079",
+    "C080",
+    "C081",
+    "C082",
+    "C083",
+    "C084",
+    "C085",
+    "C086",
+    "C087",
+    "C088",
+    "C089",
+    "C090",
+    "C091",
+    "C092",
+    "C093",
+    "C094",
+    "C095",
+    "C096",
+    "C097",
+    "C098",
+    "C099",
+    "C100",
+    "C101",
+    "C102",
+    "C103",
+    "C104",
+    "C105",
+    "C106",
+    "C107",
+    "C108",
+    "C109",
+    "C110",
+    "C111",
+    "C112",
+    "C113",
+    "C114",
+    "C115",
+    "C116",
+    "C117",
+    "C118",
+    "C119",
+    "C120",
+    "C121",
+    "C122",
+    "C123",
+    "C124",
+    "C125",
+    "C126",
+    "C127",
+    "C128",
+    "C129",
+    "C130",
+    "C131",
+    "C132",
+    "C133",
+    "C134",
+    "C135",
+    "C136",
+    "C137",
+    "C138",
+    "C139",
+    "C140",
+    "C141",
+    "C142",
+    "C143",
+    "C144",
+    "C145",
+    "C146",
+    "C147",
+    "C148",
+    "C149",
+    "C150",
+    "C151",
+    "C152",
+    "C153",
+    "C154",
+    "C155",
+    "C156",
+    "C157",
+    "C158",
+    "C159",
+    "C160",
+    "C161",
+    "C162",
+    "C163",
+    "C164",
+    "C165",
+    "C166",
+    "C167",
+    "C168",
+    "C169",
+    "C170",
+    "C171",
+    "C172",
+    "C173",
+    "C174",
+    "C175",
+    "C176",
+    "C177",
+    "C178",
+    "C179",
+    "C180",
+    "C181",
+    "C182",
+    "C183",
+    "C184",
 )
 
 bpp_layout = (
