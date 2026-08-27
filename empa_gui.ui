@@ -30,7 +30,7 @@
      </rect>
     </property>
     <property name="currentIndex">
-     <number>2</number>
+     <number>1</number>
     </property>
     <widget class="QWidget" name="tab">
      <attribute name="title">
@@ -605,6 +605,16 @@
           </item>
           <item>
            <property name="text">
+            <string>Self_Deforming_Geometric_Encoder</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Transformer_GAN</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
             <string>IsolationForest</string>
            </property>
           </item>
@@ -646,6 +656,21 @@
           <item>
            <property name="text">
             <string>DeepKern</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Conv1DAutoencoder</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Transformer_1</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Geometric_Encoder_1</string>
            </property>
           </item>
          </widget>
@@ -1408,7 +1433,7 @@
        </rect>
       </property>
       <property name="currentIndex">
-       <number>0</number>
+       <number>1</number>
       </property>
       <widget class="QWidget" name="tab_11">
        <attribute name="title">

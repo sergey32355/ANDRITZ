@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 
 ################################################################################
-## Form generated from reading UI file 'empa_guirKsITZ.ui'
+## Form generated from reading UI file 'empa_guipKRDnj.ui'
 ##
-## Created by: Qt User Interface Compiler version 6.9.0
+## Created by: Qt User Interface Compiler version 6.11.1
 ##
 ## WARNING! All changes made in this file will be lost when recompiling UI file!
 ################################################################################
@@ -162,6 +162,11 @@ class Ui_EmpaGUI(object):
         self.label_13.setObjectName(u"label_13")
         self.label_13.setGeometry(QRect(8, 15, 41, 16))
         self.classificationclassifier_dropdown = QComboBox(self.groupBox_7)
+        self.classificationclassifier_dropdown.addItem("")
+        self.classificationclassifier_dropdown.addItem("")
+        self.classificationclassifier_dropdown.addItem("")
+        self.classificationclassifier_dropdown.addItem("")
+        self.classificationclassifier_dropdown.addItem("")
         self.classificationclassifier_dropdown.addItem("")
         self.classificationclassifier_dropdown.addItem("")
         self.classificationclassifier_dropdown.addItem("")
@@ -687,7 +692,7 @@ class Ui_EmpaGUI(object):
 
         self.retranslateUi(EmpaGUI)
 
-        self.tabWidget.setCurrentIndex(2)
+        self.tabWidget.setCurrentIndex(1)
         self.load_data_plate_type_dropdown.setCurrentIndex(-1)
         self.real_time_source_dropdown_2.setCurrentIndex(1)
         self.tabWidget_2.setCurrentIndex(0)
@@ -697,7 +702,7 @@ class Ui_EmpaGUI(object):
         self.tabWidget_3.setCurrentIndex(0)
         self.classification_plot_choice_dropdown_3.setCurrentIndex(0)
         self.Settings_openfile_segmentation_mode_text.setCurrentIndex(0)
-        self.Settings_Spectrograms_Define_Parameters_Tab.setCurrentIndex(0)
+        self.Settings_Spectrograms_Define_Parameters_Tab.setCurrentIndex(1)
         self.REAL_T_trigger_channel_drop_box.setCurrentIndex(7)
         self.Color_list_drop_down_.setCurrentIndex(0)
         self.Show_results_color_scheme_drop_down_1.setCurrentIndex(0)
@@ -766,15 +771,20 @@ class Ui_EmpaGUI(object):
         self.classification_run_classification_button.setText(QCoreApplication.translate("EmpaGUI", u"Train", None))
         self.label_13.setText(QCoreApplication.translate("EmpaGUI", u"Model:", None))
         self.classificationclassifier_dropdown.setItemText(0, QCoreApplication.translate("EmpaGUI", u"XGBoost", None))
-        self.classificationclassifier_dropdown.setItemText(1, QCoreApplication.translate("EmpaGUI", u"IsolationForest", None))
-        self.classificationclassifier_dropdown.setItemText(2, QCoreApplication.translate("EmpaGUI", u"DBSCAN", None))
-        self.classificationclassifier_dropdown.setItemText(3, QCoreApplication.translate("EmpaGUI", u"OneClassSVM", None))
-        self.classificationclassifier_dropdown.setItemText(4, QCoreApplication.translate("EmpaGUI", u"Autoencoder_1", None))
-        self.classificationclassifier_dropdown.setItemText(5, QCoreApplication.translate("EmpaGUI", u"Autoencoder_2", None))
-        self.classificationclassifier_dropdown.setItemText(6, QCoreApplication.translate("EmpaGUI", u"AE_CNN_Shallow", None))
-        self.classificationclassifier_dropdown.setItemText(7, QCoreApplication.translate("EmpaGUI", u"ResNet_Shallow", None))
-        self.classificationclassifier_dropdown.setItemText(8, QCoreApplication.translate("EmpaGUI", u"NonStatKern_1", None))
-        self.classificationclassifier_dropdown.setItemText(9, QCoreApplication.translate("EmpaGUI", u"DeepKern", None))
+        self.classificationclassifier_dropdown.setItemText(1, QCoreApplication.translate("EmpaGUI", u"Self_Deforming_Geometric_Encoder", None))
+        self.classificationclassifier_dropdown.setItemText(2, QCoreApplication.translate("EmpaGUI", u"Transformer_GAN", None))
+        self.classificationclassifier_dropdown.setItemText(3, QCoreApplication.translate("EmpaGUI", u"IsolationForest", None))
+        self.classificationclassifier_dropdown.setItemText(4, QCoreApplication.translate("EmpaGUI", u"DBSCAN", None))
+        self.classificationclassifier_dropdown.setItemText(5, QCoreApplication.translate("EmpaGUI", u"OneClassSVM", None))
+        self.classificationclassifier_dropdown.setItemText(6, QCoreApplication.translate("EmpaGUI", u"Autoencoder_1", None))
+        self.classificationclassifier_dropdown.setItemText(7, QCoreApplication.translate("EmpaGUI", u"Autoencoder_2", None))
+        self.classificationclassifier_dropdown.setItemText(8, QCoreApplication.translate("EmpaGUI", u"AE_CNN_Shallow", None))
+        self.classificationclassifier_dropdown.setItemText(9, QCoreApplication.translate("EmpaGUI", u"ResNet_Shallow", None))
+        self.classificationclassifier_dropdown.setItemText(10, QCoreApplication.translate("EmpaGUI", u"NonStatKern_1", None))
+        self.classificationclassifier_dropdown.setItemText(11, QCoreApplication.translate("EmpaGUI", u"DeepKern", None))
+        self.classificationclassifier_dropdown.setItemText(12, QCoreApplication.translate("EmpaGUI", u"Conv1DAutoencoder", None))
+        self.classificationclassifier_dropdown.setItemText(13, QCoreApplication.translate("EmpaGUI", u"Transformer_1", None))
+        self.classificationclassifier_dropdown.setItemText(14, QCoreApplication.translate("EmpaGUI", u"Geometric_Encoder_1", None))
 
         self.classificationclassifier_dropdown.setPlaceholderText(QCoreApplication.translate("EmpaGUI", u"XGBoost", None))
         self.label_11.setText(QCoreApplication.translate("EmpaGUI", u"Test (%):", None))

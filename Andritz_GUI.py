@@ -15,6 +15,7 @@ import pandas as pd
 import uuid 
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
+from sklearn.preprocessing import StandardScaler
 # from sklearn.ensemble import IsolationForest
 # from sklearn.cluster import DBSCAN
 # from sklearn.svm import OneClassSVM
@@ -66,12 +67,14 @@ import datetime
 # import ptwt
 
 import torch
-# import torchaudio
-# from torch import nn
-# import torch.functional as F
 import torchaudio.functional as F
+from torch.utils.data import TensorDataset, DataLoader
+import torch.nn as nn
+
 
 import SHelpers as shlp
+import Transformer_GAN as trg
+import Geometr_Encoder as ge
 
 #LINKS TOOLS
 
@@ -848,7 +851,359 @@ class MainWindow(QMainWindow):
 
         if(self.proc_settings.get("algorithm")=="DeepKern"):
             #https://github.com/paulinebourigault/GHKernelAnomalyDetect
-            pass        
+            #SPLIT INTO tests
+            X_train, X_test, y_train, y_test = train_test_split(feat, new_lab, test_size=test_size)
+            #we select onyl one label for anomaly detection (label 0)
+            try: target_label = np.unique(y_train) [0]
+            except: 
+                print("Labels are not settled up. make labelling and repeat...")
+                return 
+
+            mask = y_train == target_label
+            x_tr = np.asarray(X_train)[mask]
+            y_tr = np.asarray(y_train)[mask]
+            print("Selected label: " + str(target_label)+" ,selected features shape: " + str(x_tr.shape[0]))
+
+            DEVICE = shlp.get_device()
+
+            #make training
+            epochs=int(self.proc_settings.get("autoencoder_torch_epochs_num"))
+            batch_size=64
+            learning_rate=0.001
+            n_centers=64#ref centers
+            contamination=0.05
+            normalized=True
+
+            model = shlp.train_model_DeepK(x_tr,latent_dim=32,hidden_dims=(128, 64),dropout=0.1,kernel_sigma=0.5,epochs=epochs,batch_size=batch_size,learning_rate=learning_rate,device=DEVICE)
+            # Build kernel reference set
+            reference_centers = shlp.create_reference_centers(model,x_tr,n_centers=n_centers,device=DEVICE)
+            validation_scores = shlp.anomaly_score(model,x_tr,reference_centers,device=DEVICE)
+            threshold = np.quantile(validation_scores,(1-contamination))#   0.995,
+            print(f"Anomaly threshold: {threshold:.6f}")
+            # Evaluate test data            
+            is_anomaly = (validation_scores > threshold)
+            print(f"Detected anomalies in validation of training set: " f"{is_anomaly.sum()} / {len(is_anomaly)}")
+
+            print("Deep kernel model trained. Now we calculate anomaly scores...")
+            
+            #fill global model
+            self.s_model=shlp.S_Classif()
+            self.s_model.AssignClassif(model,None,None)  
+            self.s_model.DEVICE=DEVICE
+            self.s_model.contamination=contamination
+            self.s_model.normalized=normalized
+            self.s_model.threshold=threshold
+            self.s_model.reference_centers=reference_centers
+
+        if(self.proc_settings.get("algorithm")=="Conv1DAutoencoder"):
+            #SPLIT INTO tests
+            X_train, X_test, y_train, y_test = train_test_split(feat, new_lab, test_size=test_size)
+            #we select onyl one label for anomaly detection (label 0)
+            try: target_label = np.unique(y_train) [0]
+            except: 
+                print("Labels are not settled up. make labelling and repeat...")
+                return 
+
+            mask = y_train == target_label
+            x_tr = np.asarray(X_train)[mask]
+            y_tr = np.asarray(y_train)[mask]
+            print("Selected label: " + str(target_label)+" ,selected features shape: " + str(x_tr.shape[0]))
+
+            #train autoencoder with the LLMs
+
+            # --------------------------------------------------------
+            # Train/validation split
+            #
+            # IMPORTANT:
+            # Ideally train_signals contains only normal signals.
+            # --------------------------------------------------------
+
+            latent_dim=64
+            epochs=int(self.proc_settings.get("autoencoder_torch_epochs_num"))
+            learning_rate=0.0001
+            normalized=True
+            batch_size=32
+            contamination=0.01
+
+            DEVICE=torch.device("cuda" if torch.cuda.is_available() else "cpu")
+            print("Device: "+str(DEVICE))
+            N=np.shape(x_tr)[1]
+
+            #train_signals, validation_signals = (shlp.train_test_split(normalized,test_size=0.0,random_state=42)) -inherited from poposed code
+            train_dataset = shlp.SignalDataset_LLM1(x_tr)
+            train_loader = DataLoader(train_dataset,batch_size=batch_size,shuffle=True, drop_last=False)
+
+            model = shlp.Conv1DAutoencoder(latent_dim=latent_dim)
+            model.initialize_decoder(N)
+            model = model.to(DEVICE)
+            #print(model)
+            #train
+            history = shlp.train_autoencoder(model=model, train_loader=train_loader,epochs=epochs,learning_rate=learning_rate,DEVICE=DEVICE)
+            # Calculate reconstruction errors on TRAINING data
+            train_errors = shlp.reconstruction_errors(model,x_tr,DEVICE=DEVICE)
+            percentile = (100 * (1 - contamination))
+
+            threshold = shlp.calculate_threshold(train_errors,method="percentile",percentile=percentile)
+            print(f"\nAnomaly threshold: " f"{threshold:.6f}")
+            # --------------------------------------------------------
+            # Score ALL signals
+            # --------------------------------------------------------
+
+            all_errors = shlp.reconstruction_errors(model,x_tr,DEVICE=DEVICE)
+
+            anomaly_labels = ( all_errors > threshold )
+
+            #plot all stuff
+            shlp.plot_training_history(history)
+            shlp.plot_anomaly_score_distribution(all_errors,threshold)
+
+            #return (model,normalized,history,all_errors,threshold,anomaly_labels)
+            self.s_model=shlp.S_Classif()
+            self.s_model.AssignClassif(model,None,None)  
+            self.s_model.DEVICE=DEVICE
+            self.s_model.contamination=contamination
+            self.s_model.normalized=normalized
+            self.threshold=threshold
+
+            #print out what we have at the end
+            model_type=str(type(self.s_model.classifier))
+            print("Universal classifier assigned as type: " + model_type)
+
+
+
+        if(self.proc_settings.get("algorithm")=="Transformer_1"):
+
+            #SPLIT INTO tests
+            X_train, X_test, y_train, y_test = train_test_split(feat, new_lab, test_size=test_size)
+            #we select onyl one label for anomaly detection (label 0)
+            try: target_label = np.unique(y_train) [0]
+            except: 
+                print("Labels are not settled up. make labelling and repeat...")
+                return 
+
+            mask = y_train == target_label
+            x_tr = np.asarray(X_train)[mask]
+            y_tr = np.asarray(y_train)[mask]
+            print("Selected label: " + str(target_label)+" ,selected features shape: " + str(x_tr.shape[0]))
+
+            ##start to train the Transformer model
+            learning_rate=0.0001
+            weight_decay=0.0001
+            epochs=int(self.proc_settings.get("autoencoder_torch_epochs_num"))
+            batch_size=64
+            normalized=True
+            contamination=0.05
+
+            DEVICE=torch.device("cuda" if torch.cuda.is_available() else "cpu")
+            print("Device: "+str(DEVICE))
+
+            #train_dataset = shlp.SignalDataset_LLM1(x_tr)
+            #train_loader = DataLoader(train_dataset,batch_size=batch_size,shuffle=True, drop_last=False)           
+
+            train_dataset = TensorDataset(torch.tensor(x_tr, dtype=torch.float32))
+            train_loader = DataLoader(train_dataset,batch_size=batch_size,shuffle=True,pin_memory=torch.cuda.is_available(),)
+
+            X_train_tensor = torch.tensor(x_tr,dtype=torch.float32,device=DEVICE,)
+            model = shlp.TransformerAnomalyDetector(n_features=X_train.shape[1],d_model=64,n_heads=4,n_layers=3,dim_feedforward=128, dropout=0.1,).to(DEVICE)
+
+            optimizer = torch.optim.AdamW(model.parameters(),lr=learning_rate,weight_decay=weight_decay,)
+            loss_fn = nn.MSELoss()
+            avg_loss_hist=[]
+
+            for epoch in range(epochs):
+
+                model.train()
+                total_loss = 0.0
+
+                for (x,) in train_loader:
+                    x = x.to(DEVICE, non_blocking=True)
+                    optimizer.zero_grad()
+                    x_hat = model(x)
+                    loss = loss_fn(x_hat, x)
+                    loss.backward()
+                    optimizer.step()
+                    total_loss += loss.item() * x.size(0)
+
+                avg_loss = total_loss / len(train_dataset)
+                avg_loss_hist.append(avg_loss)
+                if epoch % 10 == 0:
+                    print(f"Epoch {epoch:3d}/{epochs} " f"| Loss: {avg_loss:.6f}")
+
+            X_validation_tensor = torch.tensor(x_tr,dtype=torch.float32, device=DEVICE,)
+            scores = model.anomaly_score(X_validation_tensor)
+            if(DEVICE=="cuda"):
+                scores=scores.cpu().detach().numpy()  
+            else:
+                scores=scores.numpy()  
+            # 99.5 percentile
+            threshold = np.quantile(scores, (1-contamination))#0.995)
+            labels = (scores > threshold).astype(int)
+
+            #return (model,normalized,history,all_errors,threshold,anomaly_labels)
+            self.s_model=shlp.S_Classif()
+            self.s_model.AssignClassif(model,None,None)  
+            self.s_model.DEVICE=DEVICE
+            self.s_model.contamination=contamination
+            self.s_model.normalized=normalized
+            self.threshold=threshold
+
+            #print out what we have at the end
+            model_type=str(type(self.s_model.classifier))
+            print("Universal classifier assigned as type: " + model_type)
+
+
+        if(self.proc_settings.get("algorithm")=="Transformer_GAN"):
+            
+            #SPLIT INTO tests
+            X_train, X_test, y_train, y_test = train_test_split(feat, new_lab, test_size=test_size)
+            #we select onyl one label for anomaly detection (label 0)
+            try: target_label = np.unique(y_train) [0]
+            except: 
+                print("Labels are not settled up. make labelling and repeat...")
+                return 
+
+            if(len(np.unique(y_train))<=1):
+                print("Several labels required for training. re-label data and repeat")
+                return
+            #select only good labels
+            mask = y_train == target_label
+            X_normal = np.asarray(X_train)[mask]
+            Y_normal = np.asarray(y_train)[mask]
+            print("Selected label: " + str(target_label)+" ,selected features shape: " + str(X_normal.shape[0]))
+            #select only bad labels
+            mask = y_train != target_label
+            X_anomaly = np.asarray(X_train)[mask]
+            Y_anom = np.asarray(y_train)[mask]
+
+            DEVICE = trg.get_device()
+            print("Device: "+str(DEVICE))
+
+            epochs=int(self.proc_settings.get("autoencoder_torch_epochs_num"))
+            batch_size=64
+            contamination=0.05
+            noise_dim=32
+            normalized=True
+
+            #for contrastive leanring
+            lambda_anomaly   = 1.0
+            lambda_perturb   = 0.01 - 0.1
+            lambda_embedding = 0.5 - 2.0
+            alpha            = 0.5 - 0.8
+            lambda_contrastive = 0.8
+
+            alpha=0.7
+
+            #train transformetr on isolated good welds
+            print("Train transformer")
+            transformer = trg.train_transformer(X_normal=X_normal,epochs=epochs,batch_size=batch_size,)
+            #now contrastive learning
+            generator, discriminator, contrastive_encoder = (trg.train_gan_contrastive( transformer=transformer,
+
+                                                                                        X_normal=X_normal,
+                                                                                        X_anomaly=X_anomaly,
+
+                                                                                        epochs=epochs,
+                                                                                        batch_size=batch_size,
+
+                                                                                        noise_dim=32,
+
+                                                                                        lambda_anomaly=lambda_anomaly,#1.0,
+                                                                                        lambda_contrastive=lambda_contrastive,#1.0,
+                                                                                        lambda_perturb=lambda_perturb,#0.05,
+                                                                                        lambda_embedding=lambda_embedding,#0.5,
+                                                                                      )
+                                                            )
+
+
+
+            normal_centroid = trg.get_normal_centroid(contrastive_encoder,X_normal,)
+
+            scores = trg.anomaly_score(transformer=transformer,
+                                       contrastive_encoder=contrastive_encoder,
+                                       X=X_normal,
+                                       normal_centroid=normal_centroid,
+                                       alpha=alpha,
+                                      )
+
+            normal_validation_scores = trg.anomaly_score(transformer,
+                                                         contrastive_encoder,
+                                                         X_normal,
+                                                         normal_centroid,
+                                                        )
+
+            threshold = np.quantile( normal_validation_scores,(1-contamination))# 0.995,
+            print("Threshold:", threshold,)
+
+            test_scores = trg.anomaly_score(transformer,contrastive_encoder,X_anomaly,normal_centroid,)
+            predicted_anomaly = (test_scores > threshold)
+
+            #transfer to the main classifier            
+            self.s_model=shlp.S_Classif()
+            self.s_model.AssignClassif(transformer,None,None)  
+            self.s_model.DEVICE=DEVICE
+            self.s_model.contamination=contamination
+            self.s_model.normalized=normalized
+            self.s_model.threshold=threshold
+            self.s_model.contrastive_encoder=contrastive_encoder
+            self.s_model.normal_centroid=normal_centroid
+            self.s_model.alpha_GAN=alpha
+
+            #print out what we have at the end
+            model_type=str(type(self.s_model.classifier))
+            print("Universal classifier assigned as type: " + model_type)
+
+
+        if(self.proc_settings.get("algorithm")=="Geometric_Encoder_1"):
+
+            #SPLIT INTO tests
+            X_train, X_test, y_train, y_test = train_test_split(feat, new_lab, test_size=test_size)
+            #we select onyl one label for anomaly detection (label 0)
+            try: target_label = np.unique(y_train) [0]
+            except: 
+                print("Labels are not settled up. make labelling and repeat...")
+                return 
+                        
+            #select only good labels
+            mask = y_train == target_label
+            X_normal = np.asarray(X_train)[mask]
+            Y_normal = np.asarray(y_train)[mask]
+            print("Selected label: " + str(target_label)+" ,selected features shape: " + str(X_normal.shape[0]))
+            
+            #*****************
+            epochs=200
+            contamination=0.01
+            normalized=True
+
+            DEVICE = ge.resolve_device()
+            print("Device: "+str(DEVICE))
+
+            #geometric_model = train_geometric_encoder(X_normal,latent_dim=16,k=10,epochs=100,device=DEVICE,)#device=None -automatically select device
+            #Z_normal = ge.encode_data(geometric_model,X_normal,device=DEVICE,)
+            #scores = ge.geometric_score(model=geometric_model,X=X_test,Z_normal=Z_normal,k=10, device=DEVICE,)
+
+            detector = ge.GeometricAnomalyDetector(latent_dim=64,k=10,device=DEVICE,)       # automatic)
+            detector.fit(X_normal,epochs=epochs,)
+            scores = detector.score(X_normal)
+
+            threshold = np.quantile( scores,(1-contamination))
+
+            #transfer to the main classifier            
+            self.s_model=shlp.S_Classif()
+            self.s_model.AssignClassif(detector,None,None)  
+            self.s_model.DEVICE=DEVICE
+            self.s_model.contamination=contamination
+            self.s_model.normalized=normalized
+            self.s_model.threshold=threshold
+            
+            #print out what we have at the end
+            model_type=str(type(self.s_model.classifier))
+            print("Universal classifier assigned as type: " + model_type)
+
+
+        #***************************************************************************************************
+        #**************************************************************************************************
+        #*******************************************************************************************
+
 
         if(self.s_model!=None):
             self.s_model.train_feat=feat

@@ -19,6 +19,7 @@ import time
 from sklearn.ensemble import IsolationForest
 from sklearn.cluster import DBSCAN
 from sklearn.svm import OneClassSVM
+from sklearn.preprocessing import StandardScaler
 # import logging
 import threading
 # import sys
@@ -38,6 +39,7 @@ import torch
 import torchaudio
 from torch import nn
 import torchaudio.functional as F
+from torch.utils.data import TensorDataset, DataLoader,Dataset
 # import torchaudio.transforms as T
 #this is needed for Autoencoder_1
 # from torch.utils.data import DataLoader
@@ -54,6 +56,25 @@ import torch.optim as optim
 from tqdm import tqdm
 from PySide6.QtWidgets import QMainWindow
 import PySide6
+
+#LLM based model with explanations
+#LLM1
+
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+
+import torch
+import torch.nn as nn
+from torch.utils.data import Dataset, DataLoader
+
+#specific architectures libs
+import Transformer_GAN as trg
+
+#***************END*******************
 
 
 SEGMENTS_MISSED_SEGMENT_NAME="noname_"
@@ -3940,6 +3961,1243 @@ def TrainDeepKernel(feat,lab):
 
 #****************************************************************************************
 #****************************************************************************************
+#   LLM_1 anomaly detector 
+
+class SignalDataset_LLM1(Dataset):
+
+    def __init__(self, signals):
+        """
+        signals shape:
+            (num_signals, N)
+        """
+
+        self.signals = torch.tensor(
+            signals,
+            dtype=torch.float32
+        )
+
+    def __len__(self):
+        return len(self.signals)
+
+    def __getitem__(self, idx):
+
+        x = self.signals[idx]
+
+        # Conv1d expects:
+        # (channels, sequence_length)
+
+        return x.unsqueeze(0)
+
+
+# ============================================================
+# 1D Convolutional Autoencoder
+# ============================================================
+
+class Conv1DAutoencoder(nn.Module):
+
+    def __init__(
+        self,
+        latent_dim=32
+    ):
+
+        super().__init__()
+
+        # ----------------------------------------------------
+        # Encoder
+        # ----------------------------------------------------
+
+        self.encoder = nn.Sequential(
+
+            nn.Conv1d(
+                in_channels=1,
+                out_channels=32,
+                kernel_size=7,
+                stride=2,
+                padding=3
+            ),
+
+            nn.BatchNorm1d(32),
+            nn.ReLU(),
+
+            nn.Conv1d(
+                in_channels=32,
+                out_channels=64,
+                kernel_size=7,
+                stride=2,
+                padding=3
+            ),
+
+            nn.BatchNorm1d(64),
+            nn.ReLU(),
+
+            nn.Conv1d(
+                in_channels=64,
+                out_channels=128,
+                kernel_size=7,
+                stride=2,
+                padding=3
+            ),
+
+            nn.BatchNorm1d(128),
+            nn.ReLU(),
+
+            nn.Conv1d(
+                in_channels=128,
+                out_channels=256,
+                kernel_size=7,
+                stride=2,
+                padding=3
+            ),
+
+            nn.BatchNorm1d(256),
+            nn.ReLU()
+        )
+
+        # ----------------------------------------------------
+        # We determine the encoded size dynamically.
+        # ----------------------------------------------------
+
+        self.latent_dim = latent_dim
+
+        self._encoded_shape = None
+        self._encoder_output_size = None
+
+    def initialize_decoder(self, input_length):
+
+        """
+        Determine encoder output shape and create
+        bottleneck + decoder.
+        """
+
+        with torch.no_grad():
+
+            dummy = torch.zeros(
+                1,
+                1,
+                input_length
+            )
+
+            encoded = self.encoder(dummy)
+
+            self._encoded_shape = encoded.shape[1:]
+            self._encoder_output_size = (
+                encoded.shape[1]
+                * encoded.shape[2]
+            )
+
+        # ----------------------------------------------------
+        # Bottleneck
+        # ----------------------------------------------------
+
+        self.fc_encoder = nn.Linear(
+            self._encoder_output_size,
+            self.latent_dim
+        )
+
+        self.fc_decoder = nn.Linear(
+            self.latent_dim,
+            self._encoder_output_size
+        )
+
+        # ----------------------------------------------------
+        # Decoder
+        # ----------------------------------------------------
+
+        self.decoder = nn.Sequential(
+
+            nn.ConvTranspose1d(
+                256,
+                128,
+                kernel_size=7,
+                stride=2,
+                padding=3,
+                output_padding=1
+            ),
+
+            nn.BatchNorm1d(128),
+            nn.ReLU(),
+
+            nn.ConvTranspose1d(
+                128,
+                64,
+                kernel_size=7,
+                stride=2,
+                padding=3,
+                output_padding=1
+            ),
+
+            nn.BatchNorm1d(64),
+            nn.ReLU(),
+
+            nn.ConvTranspose1d(
+                64,
+                32,
+                kernel_size=7,
+                stride=2,
+                padding=3,
+                output_padding=1
+            ),
+
+            nn.BatchNorm1d(32),
+            nn.ReLU(),
+
+            nn.ConvTranspose1d(
+                32,
+                1,
+                kernel_size=7,
+                stride=2,
+                padding=3,
+                output_padding=1
+            )
+        )
+
+    def encode(self, x):
+
+        x = self.encoder(x)
+
+        x = x.reshape(
+            x.size(0),
+            -1
+        )
+
+        z = self.fc_encoder(x)
+
+        return z
+
+    def decode(self, z):
+
+        x = self.fc_decoder(z)
+
+        x = x.view(
+            z.size(0),
+            *self._encoded_shape
+        )
+
+        x = self.decoder(x)
+
+        return x
+
+    def forward(self, x):
+
+        z = self.encode(x)
+
+        reconstruction = self.decode(z)
+
+        return reconstruction, z
+
+# ============================================================
+# Signal normalization
+# ============================================================
+
+def normalize_signals(
+    signals,
+    mode="per_signal"
+):
+    """
+    Normalize signals.
+
+    mode="per_signal":
+        Each signal independently gets zero mean / unit std.
+
+    mode="global":
+        One normalization is applied to the entire dataset.
+    """
+
+    signals = np.asarray(
+        signals,
+        dtype=np.float32
+    )
+
+    if mode == "per_signal":
+
+        mean = np.mean(
+            signals,
+            axis=1,
+            keepdims=True
+        )
+
+        std = np.std(
+            signals,
+            axis=1,
+            keepdims=True
+        )
+
+        std = np.maximum(std, 1e-8)
+
+        normalized = (
+            signals - mean
+        ) / std
+
+        return normalized
+
+    elif mode == "global":
+
+        mean = np.mean(signals)
+
+        std = np.std(signals)
+
+        std = max(std, 1e-8)
+
+        return (signals - mean) / std
+
+    else:
+
+        raise ValueError(
+            "mode must be 'per_signal' or 'global'"
+        )
+
+# ============================================================
+# Training
+# ============================================================
+
+def train_autoencoder(
+    model,
+    train_loader,
+    epochs=100,
+    learning_rate=1e-3,
+    weight_decay=1e-5,
+    DEVICE="cpu"
+):
+
+    optimizer = torch.optim.Adam(
+        model.parameters(),
+        lr=learning_rate,
+        weight_decay=weight_decay
+    )
+
+    # Smooth L1 is often more robust to occasional
+    # large signal errors than pure MSE.
+
+    criterion = nn.SmoothL1Loss()
+
+    model.to(DEVICE)
+
+    history = []
+
+    for epoch in range(epochs):
+
+        model.train()
+
+        total_loss = 0.0
+
+        for batch in train_loader:
+
+            batch = batch.to(DEVICE)
+
+            optimizer.zero_grad()
+
+            reconstruction, _ = model(batch)
+
+            # Decoder can occasionally differ by one sample
+            # due to convolution arithmetic.
+            min_length = min(
+                batch.shape[-1],
+                reconstruction.shape[-1]
+            )
+
+            batch_trimmed = (
+                batch[..., :min_length]
+            )
+
+            reconstruction_trimmed = (
+                reconstruction[..., :min_length]
+            )
+
+            loss = criterion(
+                reconstruction_trimmed,
+                batch_trimmed
+            )
+
+            loss.backward()
+
+            optimizer.step()
+
+            total_loss += (
+                loss.item()
+                * batch.size(0)
+            )
+
+        epoch_loss = (
+            total_loss
+            / len(train_loader.dataset)
+        )
+
+        history.append(epoch_loss)
+
+        if (
+            epoch % 10 == 0
+            or epoch == epochs - 1
+        ):
+
+            print(
+                f"Epoch "
+                f"{epoch + 1:4d}/{epochs} "
+                f"Loss: {epoch_loss:.6f}"
+            )
+
+    return history
+
+# ============================================================
+# Reconstruction error
+# ============================================================
+
+def reconstruction_errors(
+    model,
+    signals,
+    batch_size=256,
+    DEVICE="cpu"
+):
+
+    dataset = SignalDataset_LLM1(signals)
+
+    loader = DataLoader(
+        dataset,
+        batch_size=batch_size,
+        shuffle=False
+    )
+
+    model.eval()
+
+    errors = []
+
+    with torch.no_grad():
+
+        for batch in loader:
+
+            batch = batch.to(DEVICE)
+
+            reconstruction, _ = model(batch)
+
+            min_length = min(
+                batch.shape[-1],
+                reconstruction.shape[-1]
+            )
+
+            batch = batch[..., :min_length]
+
+            reconstruction = (
+                reconstruction[..., :min_length]
+            )
+
+            # Per-signal MSE
+            error = torch.mean(
+                (batch - reconstruction) ** 2,
+                dim=(1, 2)
+            )
+
+            errors.extend(
+                error.cpu().numpy()
+            )
+
+    return np.asarray(errors)
+
+# ============================================================
+# Get reconstructions
+# ============================================================
+
+def reconstruct_signals(
+    model,
+    signals,
+    batch_size=256
+):
+
+    dataset = SignalDataset(signals)
+
+    loader = DataLoader(
+        dataset,
+        batch_size=batch_size,
+        shuffle=False
+    )
+
+    model.eval()
+
+    reconstructions = []
+
+    with torch.no_grad():
+
+        for batch in loader:
+
+            batch = batch.to(DEVICE)
+
+            reconstruction, _ = model(batch)
+
+            reconstruction = (
+                reconstruction.squeeze(1)
+                .cpu()
+                .numpy()
+            )
+
+            reconstructions.append(
+                reconstruction
+            )
+
+    return np.concatenate(
+        reconstructions,
+        axis=0
+    )
+
+
+# ============================================================
+# Determine anomaly threshold
+# ============================================================
+
+def calculate_threshold(
+    normal_errors,
+    method="percentile",
+    percentile=99
+):
+
+    normal_errors = np.asarray(
+        normal_errors
+    )
+
+    if method == "percentile":
+
+        threshold = np.percentile(
+            normal_errors,
+            percentile
+        )
+
+    elif method == "mean_std":
+
+        threshold = (
+            np.mean(normal_errors)
+            + 3 * np.std(normal_errors)
+        )
+
+    else:
+
+        raise ValueError(
+            "Unknown threshold method"
+        )
+
+    return threshold
+
+
+
+
+# ============================================================
+# Anomaly detection
+# ============================================================
+
+def detect_anomalies_from_errors(
+    errors,
+    threshold
+):
+
+    errors = np.asarray(errors)
+
+    anomaly = errors > threshold
+
+    return anomaly
+
+
+
+
+
+# ============================================================
+# Complete pipeline
+# ============================================================
+
+def run_anomaly_detection(
+    signals,
+    latent_dim=32,
+    batch_size=128,
+    epochs=100,
+    learning_rate=1e-3,
+    contamination=0.01,
+    normalization="per_signal"
+):
+
+    """
+    Parameters
+    ----------
+    signals:
+        numpy array with shape:
+
+            (number_of_signals, N)
+
+    latent_dim:
+        Size of compressed latent representation.
+
+    batch_size:
+        Training batch size.
+
+    epochs:
+        Number of training epochs.
+
+    learning_rate:
+        Adam learning rate.
+
+    contamination:
+        Expected fraction of anomalies.
+
+        Used to select the threshold from the
+        training reconstruction errors.
+
+    normalization:
+        "per_signal" or "global"
+
+    Returns
+    -------
+    model
+    normalized_signals
+    reconstruction_errors
+    threshold
+    anomaly_labels
+    """
+
+    signals = np.asarray(
+        signals,
+        dtype=np.float32
+    )
+
+    if signals.ndim != 2:
+
+        raise ValueError(
+            "signals must have shape "
+            "(num_signals, N)"
+        )
+
+    n_samples, N = signals.shape
+
+    print(
+        f"Number of signals: {n_samples}"
+    )
+
+    print(
+        f"Signal length: {N}"
+    )
+
+    # --------------------------------------------------------
+    # Normalize
+    # --------------------------------------------------------
+
+    normalized = normalize_signals(
+        signals,
+        mode=normalization
+    )
+
+
+#show stuff after training
+
+def plot_training_history(history):
+
+    plt.figure(figsize=(8, 4))
+
+    plt.plot(history)
+
+    plt.xlabel("Epoch")
+    plt.ylabel("Reconstruction loss")
+
+    plt.title(
+        "Autoencoder training"
+    )
+
+    plt.grid(True)
+
+    plt.tight_layout()
+
+    plt.show()
+
+def plot_anomaly_score_distribution(
+    errors,
+    threshold
+):
+
+    plt.figure(figsize=(8, 5))
+
+    plt.hist(
+        errors,
+        bins=100,
+        alpha=0.7
+    )
+
+    plt.axvline(
+        threshold,
+        color="red",
+        linestyle="--",
+        linewidth=2,
+        label=f"Threshold = {threshold:.4f}"
+    )
+
+    plt.xlabel(
+        "Reconstruction error"
+    )
+
+    plt.ylabel(
+        "Number of signals"
+    )
+
+    plt.title(
+        "Anomaly score distribution"
+    )
+
+    plt.legend()
+
+    plt.tight_layout()
+
+    plt.show()
+
+
+def plot_signal_reconstruction(
+    model,
+    signal,
+    normalization="per_signal"
+):
+
+    x = np.asarray(
+        signal,
+        dtype=np.float32
+    )
+
+    x_normalized = normalize_signals(
+        x.reshape(1, -1),
+        mode=normalization
+    )[0]
+
+    reconstruction = reconstruct_signals(
+        model,
+        x_normalized.reshape(1, -1)
+    )[0]
+
+    min_length = min(
+        len(x_normalized),
+        len(reconstruction)
+    )
+
+    plt.figure(figsize=(14, 5))
+
+    plt.plot(
+        x_normalized[:min_length],
+        label="Original",
+        linewidth=1.5
+    )
+
+    plt.plot(
+        reconstruction[:min_length],
+        label="Reconstruction",
+        linewidth=1.5
+    )
+
+    plt.xlabel("Sample")
+
+    plt.ylabel("Amplitude")
+
+    plt.title(
+        "Signal vs Autoencoder reconstruction"
+    )
+
+    plt.legend()
+
+    plt.grid(True)
+
+    plt.tight_layout()
+
+    plt.show()
+
+
+#****************************************************************************************
+#****************************************************************************************
+#   Transofrmer anomaly detector
+
+class TransformerAnomalyDetector(nn.Module):
+    def __init__(
+        self,
+        n_features,
+        d_model=64,
+        n_heads=4,
+        n_layers=3,
+        dim_feedforward=128,
+        dropout=0.1,
+    ):
+        super().__init__()
+
+        self.n_features = n_features
+
+        # Each scalar feature -> embedding vector
+        self.feature_embedding = nn.Linear(1, d_model)
+
+        # Feature identity embeddings
+        self.feature_pos = nn.Parameter(
+            torch.randn(1, n_features, d_model)
+        )
+
+        encoder_layer = nn.TransformerEncoderLayer(
+            d_model=d_model,
+            nhead=n_heads,
+            dim_feedforward=dim_feedforward,
+            dropout=dropout,
+            batch_first=True,
+            norm_first=True,
+        )
+
+        self.encoder = nn.TransformerEncoder(
+            encoder_layer,
+            num_layers=n_layers,
+        )
+
+        # Decode each feature token back to a scalar
+        self.decoder = nn.Sequential(
+            nn.Linear(d_model, d_model),
+            nn.GELU(),
+            nn.Linear(d_model, 1),
+        )
+
+    def forward(self, x):
+        # x: [batch, n_features]
+        x = x.unsqueeze(-1)                 # [B, M, 1]
+
+        h = self.feature_embedding(x)       # [B, M, d_model]
+        h = h + self.feature_pos
+
+        h = self.encoder(h)
+
+        x_hat = self.decoder(h).squeeze(-1) # [B, M]
+
+        return x_hat
+
+    def anomaly_score(self, x):
+        self.eval()
+
+        with torch.no_grad():
+            x_hat = self(x)
+            score = ((x - x_hat) ** 2).mean(dim=1)
+
+        return score
+
+
+#****************************************************************************************
+#****************************************************************************************
+#   deep kernel learning
+
+# ============================================================
+# Neural feature extractor
+# ============================================================
+
+class FeatureNetwork(nn.Module):
+
+    def __init__(
+        self,
+        n_features,
+        latent_dim=32,
+        hidden_dims=(128, 64),
+        dropout=0.1,
+    ):
+        super().__init__()
+
+        layers = []
+
+        in_dim = n_features
+
+        for hidden_dim in hidden_dims:
+
+            layers.append(
+                nn.Linear(in_dim, hidden_dim)
+            )
+
+            layers.append(
+                nn.LayerNorm(hidden_dim)
+            )
+
+            layers.append(
+                nn.GELU()
+            )
+
+            layers.append(
+                nn.Dropout(dropout)
+            )
+
+            in_dim = hidden_dim
+
+        layers.append(
+            nn.Linear(in_dim, latent_dim)
+        )
+
+        self.network = nn.Sequential(*layers)
+
+    def forward(self, x):
+
+        z = self.network(x)
+
+        # Normalize latent representation
+        z = F.normalize(
+            z,
+            p=2,
+            dim=-1,
+        )
+
+        return z
+
+
+# ============================================================
+# Deep Kernel model
+# ============================================================
+
+class DeepKernelAnomalyDetector(nn.Module):
+
+    def __init__(
+        self,
+        n_features,
+        latent_dim=32,
+        hidden_dims=(128, 64),
+        dropout=0.1,
+        kernel_sigma=0.5,
+    ):
+        super().__init__()
+
+        self.feature_net = FeatureNetwork(
+            n_features=n_features,
+            latent_dim=latent_dim,
+            hidden_dims=hidden_dims,
+            dropout=dropout,
+        )
+
+        # log(sigma) guarantees sigma > 0
+        self.log_sigma = nn.Parameter(
+            torch.tensor(
+                np.log(kernel_sigma),
+                dtype=torch.float32,
+            )
+        )
+
+    @property
+    def sigma(self):
+
+        return torch.exp(
+            self.log_sigma
+        )
+
+    def encode(self, x):
+
+        return self.feature_net(x)
+
+    def kernel(self, z1, z2):
+
+        # z1: [B, D]
+        # z2: [C, D]
+
+        dist_sq = torch.cdist(
+            z1,
+            z2,
+        ).pow(2)
+
+        sigma_sq = self.sigma.pow(2)
+
+        return torch.exp(
+            -dist_sq / (2.0 * sigma_sq)
+        )
+
+    def forward(self, x):
+
+        return self.encode(x)
+
+# ============================================================
+# Training loss
+# ============================================================
+
+def deep_kernel_loss(
+    model,
+    x,
+):
+
+    z = model.encode(x)
+
+    K = model.kernel(
+        z,
+        z,
+    )
+
+    B = K.shape[0]
+
+    # Remove diagonal because
+    # k(x_i, x_i) = 1 by definition
+    mask = ~torch.eye(
+        B,
+        dtype=torch.bool,
+        device=K.device,
+    )
+
+    mean_similarity = K[mask].mean()
+
+    kernel_loss = 1.0 - mean_similarity
+
+    # Avoid complete latent collapse
+    variance = z.var(dim=0)
+
+    variance_loss = torch.mean(
+        F.relu(
+            0.05 - variance
+        )
+    )
+
+    loss = (
+        kernel_loss
+        + 0.1 * variance_loss
+    )
+
+    return loss
+
+# ============================================================
+# Training
+# ============================================================
+
+def train_model_DeepK(
+    X_train,
+    latent_dim=32,
+    hidden_dims=(128, 64),
+    dropout=0.1,
+    kernel_sigma=0.5,
+    epochs=100,
+    batch_size=512,
+    learning_rate=1e-3,
+    weight_decay=1e-4,
+    device="cpu"
+):
+
+    n_features = X_train.shape[1]
+
+    model = DeepKernelAnomalyDetector(
+        n_features=n_features,
+        latent_dim=latent_dim,
+        hidden_dims=hidden_dims,
+        dropout=dropout,
+        kernel_sigma=kernel_sigma,
+    ).to(device)
+
+    dataset = TensorDataset(
+        torch.tensor(
+            X_train,
+            dtype=torch.float32,
+        )
+    )
+
+    use_cuda = device.type == "cuda"
+
+    loader = DataLoader(
+        dataset,
+        batch_size=batch_size,
+        shuffle=True,
+        pin_memory=use_cuda,
+        num_workers=0,
+    )
+
+    optimizer = torch.optim.AdamW(
+        model.parameters(),
+        lr=learning_rate,
+        weight_decay=weight_decay,
+    )
+
+    for epoch in range(epochs):
+
+        model.train()
+
+        total_loss = 0.0
+        n_samples = 0
+
+        for (x,) in loader:
+
+            x = x.to(
+                device,
+                non_blocking=use_cuda,
+            )
+
+            optimizer.zero_grad(
+                set_to_none=True
+            )
+
+            loss = deep_kernel_loss(
+                model,
+                x,
+            )
+
+            loss.backward()
+
+            torch.nn.utils.clip_grad_norm_(
+                model.parameters(),
+                max_norm=5.0,
+            )
+
+            optimizer.step()
+
+            total_loss += (
+                loss.item()
+                * x.size(0)
+            )
+
+            n_samples += x.size(0)
+
+        avg_loss = (
+            total_loss / n_samples
+        )
+
+        if epoch % 10 == 0:
+
+            print(
+                f"Epoch {epoch:4d}/{epochs} | "
+                f"Loss: {avg_loss:.6f} | "
+                f"Sigma: {model.sigma.item():.4f}"
+            )
+
+    return model
+
+# ============================================================
+# Create kernel reference centers
+# ============================================================
+
+@torch.no_grad()
+def create_reference_centers(
+    model,
+    X_normal,
+    n_centers=512,
+    batch_size=1024,
+    device="cpu"
+):
+
+    model.eval()
+
+    dataset = TensorDataset(
+        torch.tensor(
+            X_normal,
+            dtype=torch.float32,
+        )
+    )
+
+    loader = DataLoader(
+        dataset,
+        batch_size=batch_size,
+        shuffle=False,
+        pin_memory=(device.type == "cuda"),
+    )
+
+    embeddings = []
+
+    for (x,) in loader:
+
+        x = x.to(
+            device,
+            non_blocking=(device.type == "cuda"),
+        )
+
+        z = model.encode(x)
+
+        embeddings.append(
+            z
+        )
+
+    Z = torch.cat(
+        embeddings,
+        dim=0,
+    )
+
+    # Randomly select representative centers
+    n = Z.shape[0]
+
+    n_centers = min(
+        n_centers,
+        n,
+    )
+
+    indices = torch.randperm(
+        n,
+        device=device,
+    )[:n_centers]
+
+    centers = Z[indices]
+
+    print(
+        f"Using {n_centers} kernel centers "
+        f"out of {n} normal samples"
+    )
+
+    return centers
+
+
+# ============================================================
+# Anomaly score
+# ============================================================
+
+@torch.no_grad()
+def anomaly_score(
+    model,
+    X,
+    reference_centers,
+    batch_size=512,
+    device="cpu"
+):
+
+    model.eval()
+
+    dataset = TensorDataset(
+        torch.tensor(
+            X,
+            dtype=torch.float32,
+        )
+    )
+
+    loader = DataLoader(
+        dataset,
+        batch_size=batch_size,
+        shuffle=False,
+        pin_memory=(device.type == "cuda"),
+    )
+
+    scores = []
+
+    for (x,) in loader:
+
+        x = x.to(
+            device,
+            non_blocking=(device.type == "cuda"),
+        )
+
+        z = model.encode(x)
+
+        K = model.kernel(
+            z,
+            reference_centers,
+        )
+
+        # Average similarity to normal centers
+        similarity = K.mean(dim=1)
+
+        # Low similarity = anomaly
+        score = 1.0 - similarity
+
+        scores.append(
+            score.cpu()
+        )
+
+    return torch.cat(
+        scores
+    ).numpy()
+
+
+# ============================================================
+# Device
+# ============================================================
+
+def get_device():
+    if torch.cuda.is_available():
+        device = torch.device("cuda")
+
+        print("Using CUDA")
+        print("GPU:", torch.cuda.get_device_name(0))
+
+        # Optional: useful on Ampere+ GPUs
+        torch.backends.cuda.matmul.allow_tf32 = True
+        torch.backends.cudnn.allow_tf32 = True
+
+    else:
+        device = torch.device("cpu")
+        print("Using CPU")
+
+    return device
+
+
+
+#****************************************************************************************
+#****************************************************************************************
 #   CLASSIFIER OBJECT
 
 class S_Classif:
@@ -3957,7 +5215,19 @@ class S_Classif:
         self.autoenc2_train_mu=0
         self.autoenc2_train_cov=0
         self.autoenc2_args=0
-        
+        #autoencoder Conv1D
+        self.DEVICE="cpu"
+        self.contamination=0.01
+        self.normalized=True#not used at present, can be investigated for the future (the ampliudes are excluded at the processing stage at present, no need to repeat it here)
+        self.threshold=0.01
+        #deep kernel
+        self.reference_centers=None
+        #Transformer+GAN in trg namespace
+        self.contrastive_encoder=None
+        self.normal_centroid=None
+        self.alpha_GAN=0.7
+
+
     def AssignClassif(self,classif,orig_labels,intern_labels,categ_names=[]):
         self.classifier=classif
         self.orig_labels=orig_labels              
@@ -4048,12 +5318,48 @@ class S_Classif:
                 else: labs.append(0)
 
 
-        if( str(cls_type) == 'SHelpers.DeepK1') or str(cls_type) ==("<class 'SHelpers.DeepK1'>"): 
-            device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-            norm_x = torch.Tensor(feat).to(device) 
-            norm_y = torch.empty
+        if( str(cls_type) == 'SHelpers.DeepKernelAnomalyDetector') or str(cls_type) ==("<class 'SHelpers.DeepKernelAnomalyDetector'>"): 
             
-            labs=self.classifier.eval(norm_x)                   
+            #device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+            #norm_x = torch.Tensor(feat).to(device) 
+            #norm_y = torch.empty            
+            #labs=self.classifier.eval(norm_x)       
+            test_scores = anomaly_score(self.classifier,feat,self.reference_centers,device=self.DEVICE)
+            threshold = np.quantile(test_scores,(1-self.contamination))
+            labs = (test_scores > threshold).astype(int)
+            
+        if str(cls_type) == 'SHelpers.Conv1DAutoencoder' or str(cls_type) == "<class 'SHelpers.Conv1DAutoencoder'>":
+            all_errors = reconstruction_errors(self.classifier,feat,DEVICE=self.DEVICE)
+            percentile = (100 * (1 - self.contamination))
+            threshold = calculate_threshold(all_errors,method="percentile",percentile=percentile)
+            #anomaly_labels = ( all_errors > self.threshold )
+            labs = (all_errors > threshold).astype(int)
+            if(self.DEVICE=="cuda"): labs=labs.cpu().detach().numpy()  
+            else: labs=labs.numpy()  
+
+        if str(cls_type) == 'SHelpers.TransformerAnomalyDetector' or str(cls_type) == "<class 'SHelpers.TransformerAnomalyDetector'>":
+            X_validation_tensor = torch.tensor(feat,dtype=torch.float32, device=self.DEVICE,)
+            scores = self.classifier.anomaly_score(X_validation_tensor)
+            if(DEVICE=="cuda"):     scores=scores.cpu().detach().numpy()  
+            else:                   scores=scores.numpy()  
+            threshold = np.quantile(scores, (1-self.contamination))#0.995)
+            labs = (scores > threshold).astype(int)
+
+        if str(cls_type)== "<class 'Transformer_GAN.TransformerAnomalyDetector'>" or str(cls_type) == 'Transformer_GAN.TransformerAnomalyDetector':
+            scores = trg.anomaly_score(transformer=self.classifier,
+                                       contrastive_encoder=self.contrastive_encoder,
+                                       X=feat,
+                                       normal_centroid=self.normal_centroid,
+                                       alpha=self.alpha_GAN,
+                                      )
+            threshold = np.quantile(scores,(1-self.contamination))
+            labs = (scores > threshold)
+
+        if str(cls_type)== "<class 'Geometr_Encoder.GeometricAnomalyDetector'>" or str(cls_type) == 'Geometr_Encoder.GeometricAnomalyDetector':
+            scores = self.classifier.score(X_normal)
+            threshold = np.quantile( scores,(1-self.contamination))
+            labs = (scores > threshold)
+
 
         #NICOLA adds classifiers here
         #if(str(cls_type)==):
@@ -4075,3 +5381,6 @@ class S_Classif:
 #example
 #cl=S_Classif()
 #cl.AssignClassif(CLASSIFIER,None)
+
+
+
