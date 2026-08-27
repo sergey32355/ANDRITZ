@@ -75,6 +75,8 @@ import torch.nn as nn
 import SHelpers as shlp
 import Transformer_GAN as trg
 import Geometr_Encoder as ge
+import Geometr_Encoder_Self_Deform as gesd
+import Geom_Enc_Self_Deform_Hyperbolic as gesdh
 
 #LINKS TOOLS
 
@@ -1170,7 +1172,7 @@ class MainWindow(QMainWindow):
             print("Selected label: " + str(target_label)+" ,selected features shape: " + str(X_normal.shape[0]))
             
             #*****************
-            epochs=200
+            epochs=int(self.proc_settings.get("autoencoder_torch_epochs_num"))
             contamination=0.01
             normalized=True
 
@@ -1199,6 +1201,144 @@ class MainWindow(QMainWindow):
             model_type=str(type(self.s_model.classifier))
             print("Universal classifier assigned as type: " + model_type)
 
+        if(self.proc_settings.get("algorithm")=="Self_Deforming_Geometric_Encoder"):
+            
+            #gesd - namespace
+
+            #SPLIT INTO tests
+            X_train, X_test, y_train, y_test = train_test_split(feat, new_lab, test_size=test_size)
+            #we select onyl one label for anomaly detection (label 0)
+            try: target_label = np.unique(y_train) [0]
+            except: 
+                print("Labels are not settled up. make labelling and repeat...")
+                return 
+
+            if(len(np.unique(y_train))<=1):
+                print("Several labels required for training. re-label data and repeat")
+                return
+            #select only good labels
+            mask = y_train == target_label
+            X_normal = np.asarray(X_train)[mask]
+            Y_normal = np.asarray(y_train)[mask]
+            print("Selected label: " + str(target_label)+" ,selected features shape: " + str(X_normal.shape[0]))
+            #select only bad labels
+            mask = y_train != target_label
+            X_anomaly = np.asarray(X_train)[mask]
+            Y_anom = np.asarray(y_train)[mask]
+
+            DEVICE = trg.get_device()
+            print("Device: "+str(DEVICE))
+
+            epochs=int(self.proc_settings.get("autoencoder_torch_epochs_num"))
+            contamination=0.01
+            normalized=True
+            #geometric settings
+            lambda_geometry=1.0
+            lambda_separation=1.0
+            lambda_deformation=0.1
+            
+            #*****************
+            detector = gesd.SelfDeformingGeometricAnomalyDetector(latent_dim=16,k=10,max_deformation=1.0,device=None,)
+            detector.fit_normal(X_normal,epochs=epochs,)
+
+            detector.deform(X_normal=X_normal,X_anomaly=X_anomaly,epochs=epochs,margin=2.0,
+                            lambda_geometry=lambda_geometry,#1.0,
+                            lambda_separation=lambda_separation,#1.0,
+                            lambda_deformation=lambda_deformation,
+                           )
+
+            scores = detector.score(X_normal)
+            threshold = np.quantile( scores,(1-contamination))
+            predictions = (scores > threshold)
+
+            #fill global model
+            self.s_model=shlp.S_Classif()            
+            self.s_model.AssignClassif(detector,None,None)  
+            self.s_model.DEVICE=DEVICE
+            self.s_model.contamination=contamination
+            self.s_model.normalized=normalized
+            self.s_model.threshold=threshold
+
+            #print out what we have at the end
+            model_type=str(type(self.s_model.classifier))
+            print("Universal classifier assigned as type: " + model_type)
+
+        if(self.proc_settings.get("algorithm")=="Self_Deforming_Geometric_Encoder_Hyperbolic"):
+
+            #gesdh - namespace
+
+            #SPLIT INTO tests
+            X_train, X_test, y_train, y_test = train_test_split(feat, new_lab, test_size=test_size)
+            #we select onyl one label for anomaly detection (label 0)
+            try: target_label = np.unique(y_train) [0]
+            except: 
+                print("Labels are not settled up. make labelling and repeat...")
+                return 
+
+            if(len(np.unique(y_train))<=1):
+                print("Several labels required for training. re-label data and repeat")
+                return
+            #select only good labels
+            mask = y_train == target_label
+            X_normal = np.asarray(X_train)[mask]
+            Y_normal = np.asarray(y_train)[mask]
+            print("Selected label: " + str(target_label)+" ,selected features shape: " + str(X_normal.shape[0]))
+            #select only bad labels
+            mask = y_train != target_label
+            X_anomaly = np.asarray(X_train)[mask]
+            Y_anom = np.asarray(y_train)[mask]
+
+            DEVICE = trg.get_device()
+            print("Device: "+str(DEVICE))
+
+            epochs=int(self.proc_settings.get("autoencoder_torch_epochs_num"))
+            contamination=0.01
+            normalized=True
+            #geometric settings
+            margin=2.0,
+            lambda_geometry=1.0
+            lambda_separation=1.0
+            lambda_deformation=0.1            
+            #*****************
+
+
+
+            detector = gesdh.HyperbolicSelfDeformingDetector(latent_dim=16,
+                                                             k=10,
+                                                             # Hyperbolic curvature
+                                                             curvature=1.0,
+                                                             max_deformation=0.2,
+                                                             device=None,     # Automatic CPU/GPU    
+                                                             )
+
+            detector.fit(X_normal=X_normal,
+                         X_anomaly=X_anomaly,
+
+                         epochs_encoder=epochs,#100
+                         epochs_deformation=epochs,#100
+
+                         margin=margin,#2.0,
+
+                         lambda_geometry=lambda_geometry,#1.0,
+                         lambda_separation=lambda_separation,#1.0,
+                         lambda_deformation=lambda_deformation#0.1,
+                        )
+
+            scores = detector.score(X_normal)
+            threshold = np.quantile( scores,(1-contamination)) #threshold = np.percentile(normal_scores,99,)
+            predictions = (scores > threshold)
+
+            #fill global model
+            self.s_model=shlp.S_Classif()            
+            self.s_model.AssignClassif(detector,None,None)  
+            self.s_model.DEVICE=DEVICE
+            self.s_model.contamination=contamination
+            self.s_model.normalized=normalized
+            self.s_model.threshold=threshold
+
+            #print out what we have at the end
+            model_type=str(type(self.s_model.classifier))
+            print("Universal classifier assigned as type: " + model_type)
 
         #***************************************************************************************************
         #**************************************************************************************************

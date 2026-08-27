@@ -5326,24 +5326,24 @@ class S_Classif:
             #labs=self.classifier.eval(norm_x)       
             test_scores = anomaly_score(self.classifier,feat,self.reference_centers,device=self.DEVICE)
             threshold = np.quantile(test_scores,(1-self.contamination))
-            labs = (test_scores > threshold).astype(int)
+            labs = (test_scores > self.threshold).astype(int)
             
         if str(cls_type) == 'SHelpers.Conv1DAutoencoder' or str(cls_type) == "<class 'SHelpers.Conv1DAutoencoder'>":
             all_errors = reconstruction_errors(self.classifier,feat,DEVICE=self.DEVICE)
             percentile = (100 * (1 - self.contamination))
             threshold = calculate_threshold(all_errors,method="percentile",percentile=percentile)
             #anomaly_labels = ( all_errors > self.threshold )
-            labs = (all_errors > threshold).astype(int)
+            labs = (all_errors > self.threshold).astype(int)
             if(self.DEVICE=="cuda"): labs=labs.cpu().detach().numpy()  
             else: labs=labs.numpy()  
 
         if str(cls_type) == 'SHelpers.TransformerAnomalyDetector' or str(cls_type) == "<class 'SHelpers.TransformerAnomalyDetector'>":
             X_validation_tensor = torch.tensor(feat,dtype=torch.float32, device=self.DEVICE,)
             scores = self.classifier.anomaly_score(X_validation_tensor)
-            if(DEVICE=="cuda"):     scores=scores.cpu().detach().numpy()  
+            if(self.DEVICE=="cuda"):     scores=scores.cpu().detach().numpy()  
             else:                   scores=scores.numpy()  
             threshold = np.quantile(scores, (1-self.contamination))#0.995)
-            labs = (scores > threshold).astype(int)
+            labs = (scores > self.threshold).astype(int)
 
         if str(cls_type)== "<class 'Transformer_GAN.TransformerAnomalyDetector'>" or str(cls_type) == 'Transformer_GAN.TransformerAnomalyDetector':
             scores = trg.anomaly_score(transformer=self.classifier,
@@ -5353,13 +5353,22 @@ class S_Classif:
                                        alpha=self.alpha_GAN,
                                       )
             threshold = np.quantile(scores,(1-self.contamination))
-            labs = (scores > threshold)
+            labs = (scores > self.threshold)
 
         if str(cls_type)== "<class 'Geometr_Encoder.GeometricAnomalyDetector'>" or str(cls_type) == 'Geometr_Encoder.GeometricAnomalyDetector':
-            scores = self.classifier.score(X_normal)
+            scores = self.classifier.score(feat)
             threshold = np.quantile( scores,(1-self.contamination))
-            labs = (scores > threshold)
+            labs = (scores > self.threshold).astype(int)
 
+        if str(cls_type)== "<class 'Geometr_Encoder_Self_Deform.SelfDeformingGeometricAnomalyDetector'>" or str(cls_type) == 'Geometr_Encoder_Self_Deform.SelfDeformingGeometricAnomalyDetector':
+            scores = self.classifier.score(feat)
+            threshold = np.quantile( scores,(1-self.contamination))
+            labs = (scores > self.threshold).astype(int)
+
+        if str(cls_type)== "<class 'Geom_Enc_Self_Deform_Hyperbolic.HyperbolicSelfDeformingDetector'>" or str(cls_type) == 'Geom_Enc_Self_Deform_Hyperbolic.HyperbolicSelfDeformingDetector':
+            scores = self.classifier.score(feat)
+            threshold = np.quantile( scores,(1-self.contamination))
+            labs = (scores > self.threshold).astype(int)
 
         #NICOLA adds classifiers here
         #if(str(cls_type)==):

@@ -610,6 +610,11 @@
           </item>
           <item>
            <property name="text">
+            <string>Self_Deforming_Geometric_Encoder_Hyperbolic</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
             <string>Transformer_GAN</string>
            </property>
           </item>
