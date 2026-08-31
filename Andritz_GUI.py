@@ -71,12 +71,15 @@ import torchaudio.functional as F
 from torch.utils.data import TensorDataset, DataLoader
 import torch.nn as nn
 
+from transformers import AutoTokenizer,AutoModelForCausalLM
+
 
 import SHelpers as shlp
 import Transformer_GAN as trg
 import Geometr_Encoder as ge
 import Geometr_Encoder_Self_Deform as gesd
 import Geom_Enc_Self_Deform_Hyperbolic as gesdh
+import Transformer_LLM as trllm
 
 #LINKS TOOLS
 
@@ -1339,6 +1342,136 @@ class MainWindow(QMainWindow):
             #print out what we have at the end
             model_type=str(type(self.s_model.classifier))
             print("Universal classifier assigned as type: " + model_type)
+
+        if(self.proc_settings.get("algorithm")=="Transformer_LLM"):
+
+            #namespace trllm
+            #SPLIT INTO tests
+            X_train, X_test, y_train, y_test = train_test_split(feat, new_lab, test_size=test_size)
+            #we select onyl one label for anomaly detection (label 0)
+            try: target_label = np.unique(y_train) [0]
+            except: 
+                print("Labels are not settled up. make labelling and repeat...")
+                return 
+
+            if(len(np.unique(y_train))<=1):
+                print("Several labels required for training. re-label data and repeat")
+                return
+            #select only good labels
+            mask = y_train == target_label
+            X_normal = np.asarray(X_train)[mask]
+            Y_normal = np.asarray(y_train)[mask]
+            print("Selected label: " + str(target_label)+" ,selected features shape: " + str(X_normal.shape[0]))
+            #select only bad labels
+            mask = y_train != target_label
+            X_anomaly = np.asarray(X_train)[mask]
+            Y_anom = np.asarray(y_train)[mask]
+            
+            normalized=True
+            epochs=10
+            batch_size=64
+            contamination=0.005
+
+            DEVICE= trllm.select_device()
+
+
+            pipeline = trllm.run_pipeline(X_train=X_normal,
+                                          X_test=X_anomaly,
+                                          feature_names=feature_names,
+                                          transformer_epochs=epochs,
+                                          threshold_percentile=(1-),
+
+        top_k=10,
+
+        load_llm=True,
+    )
+
+           
+            #threshold callibration            
+            print(f"\nAnomaly threshold: {threshold:.6f}")
+            result = trllm.compute_anomaly_scores(model,X_normal)
+            scores = result["score"].detach().cpu().numpy()
+
+            print("\nTest scores:")
+
+            #MAKE LLM EXPLANATION
+
+            LLM_DEVICE=trllm.select_llm_device()#we can put it on the second card in case
+
+            MODEL_NAME = ("Qwen/Qwen3-4B-Instruct-2507")
+
+            MAX_NEW_TOKENS = 400
+
+
+            """
+            for i, score in enumerate(scores):
+
+                status = (
+                    "ANOMALY"
+                    if score > threshold
+                    else "normal"
+                )
+
+                print(
+                    f"Sample {i:03d}: "
+                    f"{score:.6f} -> {status}"
+                )
+
+            # --------------------------------------------------------
+            # Feature names
+            # --------------------------------------------------------
+
+            feature_names = [
+                f"feature_{i}"
+                for i in range(N)
+            ]
+
+            # --------------------------------------------------------
+            # Explain sample 0
+            # --------------------------------------------------------
+
+            explanation = trllm.create_explanation(
+                X=X_normal,
+                result=result,
+                sample_index=0,
+                feature_names=feature_names,
+                threshold=threshold,
+                top_k=10,
+            )
+
+            print("\nLLM explanation payload:")
+
+            print(json.dumps(explanation,indent=2,))
+
+            # --------------------------------------------------------
+            # Generate LLM prompt
+            # --------------------------------------------------------
+
+            llm_prompt = trllm.create_llm_prompt(explanation)
+
+            print("\nLLM prompt:\n")
+
+            print(llm_prompt)
+
+            # LOAD LLM
+           
+            explainer = trllm.AnomalyExplainer(model_name="Qwen/Qwen3-4B-Instruct-2507",
+                                         device_map="auto",
+                                        )
+                       
+           # GENERATE EXPLANATION
+           text = explainer.explain(
+                    explanation
+                )
+
+           print("\n")
+           print("=" * 70)
+           print("LLM EXPLANATION")
+           print("=" * 70)
+           print(text)
+           print("=" * 70)
+
+           """
 
         #***************************************************************************************************
         #**************************************************************************************************
