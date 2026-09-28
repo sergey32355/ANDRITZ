@@ -756,13 +756,16 @@ class MainWindow(QMainWindow):
                 else:
                     print("In all plates only one label is detected.Add another label...")
                 return
+
             X_train, X_test, y_train, y_test = train_test_split(feat, new_lab, test_size=test_size)
-            print("training with XGBoost...")               
+            print("training with XGBoost...")    
+            
             clf,tests_l,orig_labs,intern_labs = shlp.XGBoostClassifRun(X_train=X_train, X_test=X_test, y_train=y_train, y_test=y_test,
                                                                        trees_num=int(self.proc_settings.get("Settings_Trees_Trees_Number_2")),
                                                                        max_depth=int(self.proc_settings.get("Settings_Trees_Tree_depth_text_3")),
                                                                        learn_rate=float(self.proc_settings.get("Settings_Trees_learn_rate_value_text_4")),
-                                                                       )   
+                                                                       )  
+            
             
             cm = confusion_matrix(y_test,tests_l)#, xgb_labs_back)            
             self.s_model=shlp.S_Classif()
