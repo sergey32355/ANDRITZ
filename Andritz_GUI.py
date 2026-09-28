@@ -1382,12 +1382,10 @@ class MainWindow(QMainWindow):
                                           X_test=X_anomaly,
                                           feature_names=feature_names,
                                           transformer_epochs=epochs,
-                                          threshold_percentile=(1-),
-
-        top_k=10,
-
-        load_llm=True,
-    )
+                                          threshold_percentile=True,#(1-),
+                                          top_k=10,
+                                          load_llm=True,
+                                         )
 
            
             #threshold callibration            
