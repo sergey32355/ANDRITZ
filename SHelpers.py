@@ -5374,7 +5374,7 @@ class S_Classif:
         #if(str(cls_type)==):
             #bla bla bla
         return labs
-        
+            
     def getClassifType(self):
         cls_type=type(self.classifier)
         if(str(cls_type) == "<class 'xgboost.sklearn.XGBClassifier'>"):
