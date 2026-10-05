@@ -37,6 +37,7 @@ from time import gmtime, strftime
 import signal
 # import pyrvsignal #import Signal
 from tqdm import tqdm
+import datetime
 # from itertools import product
 #import pylab as pl
 
@@ -73,14 +74,14 @@ from torch.utils.data import TensorDataset, DataLoader
 import torch.nn as nn
 
 from transformers import AutoTokenizer,AutoModelForCausalLM
-
-
 import SHelpers as shlp
 import Transformer_GAN as trg
 import Geometr_Encoder as ge
 import Geometr_Encoder_Self_Deform as gesd
 import Geom_Enc_Self_Deform_Hyperbolic as gesdh
 import Transformer_LLM as trllm
+
+import DAQ_Funcs as daq
 
 #LINKS TOOLS
 
@@ -210,6 +211,7 @@ class MainWindow(QMainWindow):
         EXIT_DAQ_FLAG=True
         #real time thread
         self.Real_Time_Thread=None
+        self.DAQ_stop_event=None
         #generate colors lists
         self.colors_id = None
         self.GenerateCOlors_Botton_Click() #dc.get_colors(500)   
@@ -2386,8 +2388,20 @@ class MainWindow(QMainWindow):
         
     def Real_Time_Stop_Click(self):     
         
+        if(self.DAQ_stop_event is None): pass
+        else:             
+            self.DAQ_stop_event.set()
+            try: self.Real_Time_Thread.join()  # let the current acquisition finish before closing
+            except:pass
+            try: daq.close_spectrum_cards(self.card)
+            except: pass
+            print("session cosed at: "+str(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
+            self.DAQ_stop_event=None
+            self.Real_Time_Thread=None
+
+
         global EXIT_RT_FLAG
-        EXIT_RT_FLAG=True
+        EXIT_RT_FLAG=True        
 
         if(self.Real_Time_Thread is None):
             pass
@@ -2441,9 +2455,11 @@ class MainWindow(QMainWindow):
             self.Channels_In_Use=self.GetChannels()
         if(rt_source != "Folder") and (rt_source != "RealTime"):
             return      
-        self.show_proc_results_thread=threading.Thread()
+        #self.show_proc_results_thread=threading.Thread()
+        self.show_proc_results_thread=None
         self.show_proc_result_in_progress=False
         self.RT_Frame_Counter=0   
+
         if(rt_source == "Folder"):
             rt_path = self.proc_settings.get("real_time_folder_text")                
             if not os.path.exists(rt_path):
@@ -2459,12 +2475,15 @@ class MainWindow(QMainWindow):
             self.Real_Time_Thread.start()          
 
         if(rt_source == "RealTime"):
-            self.Real_Time_Thread = threading.Thread(target=self.Spectrum_card_tracking)                                                                                                           
-            self.Real_Time_Thread.start()  
+
+            self.Spectrum_card_tracking()
+            #OLD CODE
+            #self.Real_Time_Thread = threading.Thread(target=self.Spectrum_card_tracking)                                                                                                           
+            #self.Real_Time_Thread.start()  
 
         self.ui.real_time_status_label.setText("Active")    
         print("")
-        print("Real time started. Waiting for signals...")
+        #print("Real time started. Waiting for signals...")
 
     #****************************************************************************************************************************
     #*******************************TRACKING SPECTRUM CARD***********************************************************************
@@ -2489,7 +2508,119 @@ class MainWindow(QMainWindow):
         POSTTRIG_DURATION=float(self.proc_settings.get("post_trigger_duration"))
         TRIG_CHAN_NUM=int(self.proc_settings.get("trig_chan_num"))
         CHAN_NAMES=["chan_0","chan_1","chan_2","chan_3","chan_4","chan_5","chan_6","chan_7"]        
+            
+        chan_in_use= list(self.GetChannels())
+        #----------------------------------------------------------------
+        #NEW CODE
+        #----------------------------------------------------------------
+
+        found = daq.list_spectrum_cards()
+        if(len(found)==0):
+            print("Input devices are not found. Install DAQ and repeat.")
+            return
+        else: print(f"{len(found)} Spectrum card(s) found")
+
+        card_settings = dict                (sampling_rate= SAMPLING_RATE,          #100000,     
+                                             trigger_channel=TRIG_CHAN_NUM,         #TRIG_CHAN_NUM, for comntinious aquisition press -1
+                                             pre_trigger_samples=PRETRIG_DURATION,  #10000
+                                             post_trigger_samples=POSTTRIG_DURATION,#90000
+                                             input_range_mV=AMPLITUDE,              #5000
+                                             trigger_level_mV=TRIGGER_LEVEL,        #100
+                                            )        
+
+        self.card = daq.open_spectrum_cards(found[0], **card_settings)
+
+        self.DAQ_stop_event = threading.Event()
+
+        def acquisition_loop():
+            """Runs in its own thread: acquire until stop_event is set."""           
+            timeout_reached=False
+            try:
+                while not self.DAQ_stop_event.is_set():
+                    # After a timeout: reopen the card with the old settings and start new measurements
+                    if timeout_reached:
+                        print("Resetting card with the previous settings at "+str(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
+                        daq.close_spectrum_cards(self.card)
+                        self.card = daq.open_spectrum_cards(found[0], **card_settings)
+                        timeout_reached=False
+                    try:
+                        data = daq.read_spectrum_data(self.card, timeout_s=3)
+                    except spcm.SpcmTimeout:
+                        print("")
+                        print("Timeout reached at "+str(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))+" , card will be reset")
+                        print("wait for signals...")
+                        print("")
+                        timeout_reached=True
+                        continue
+
+                    self.RT_Frame_Counter+=1  
+                    #print aquired data parameters
+                    print("")                    
+                    print("//---------------------------------------------------------")
+                    print("FRAME: "+str(self.RT_Frame_Counter))
+                    print("DATA RECEIVED at "+str(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
+                    print("Data array shape: "+str(type(data)) + " , " + str(data.dtype)+" , " +str(data.shape))          # expect ndarray, float64, (8, 100000)
+                    print("Data min/max(V): "+str(np.min(data.min(axis=1)))+" , " + str(np.min(data.max(axis=1))))    # per-channel range, should be within ±5 V
+                    print("Sampling rate applied: "+str(spcm.Clock(self.card).sample_rate()))              # rate the card actually applied
+                    print("")
+                    #select the number of channels secleted by user & prepare the plate
+                    data=data[chan_in_use,:]
+                    chans_names=[CHAN_NAMES[i] for i in chan_in_use]
+                    shp_check=np.shape(data)
                     
+                    try:
+                        rt_plate=shlp.SPlate()
+                        rt_plate.raw_signals=list(data)
+                        rt_plate.chans_names=chans_names
+                        rt_plate.time=np.linspace(0,np.shape(data)[1]*1.0/SAMPLING_RATE,np.shape(data)[1])#np.arange(0,len(data[f'channel {0}']))*(1.0/(SAMPLING_RATE))
+                        if(TRIG_CHAN_NUM!=-1):
+                            rt_plate.get_segments(ref_chan_name=TRIG_CHAN_NUM,threshold=float(TRIGGER_LEVEL/1000))
+                        else:
+                            trig_lev=data[0].min()*2
+                            if(trig_lev>0):trig_lev=trig_lev*(-1)
+                            rt_plate.get_segments(ref_chan_name=chan_in_use[0],threshold=trig_lev)
+                        segm_l=len(rt_plate.segments_sign)
+                        if(segm_l==0): 
+                            print("No segments were detected...")                        
+                        else: self.Process_RT_Data(rt_plate)
+                            
+                            
+                    except Exception as ex:
+                        print("Impossible to process data. Exception raised: "+str(ex))             
+                    
+            except Exception as e:
+                #print("Acquisition interrupted with exception raised: "+repr(e))        
+                #self.Real_Time_Stop_Click()        
+                import traceback
+                traceback.print_exc()
+                print("Acquisition interrupted with exception raised: "+str(e))
+                self.Real_Time_Stop_Click()     
+                        
+        self.Real_Time_Thread = threading.Thread(target=acquisition_loop)
+
+        try:
+            print("Session started at: "+str(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
+            self.Real_Time_Thread.start()
+            # Main thread: terminates the acquisition thread when Enter is pressed.
+            #input("Press <Stop> button to interrupt the acquisition...")
+        except Exception as exc:
+            print("Cant start real time. Exception raised: "+str(exc))
+            self.Real_Time_Stop_Click()
+        """
+        finally:       
+            self.DAQ_stop_event.set()
+            self.Real_Time_Thread.join()  # let the current acquisition finish before closing
+            daq.close_spectrum_cards(card)
+            print("session cosed at: "+str(datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
+            self.DAQ_stop_event=None
+            self.Real_Time_Thread=None
+        """
+
+        #----------------------------------------------------------------
+        #OLD CODE
+        #----------------------------------------------------------------
+
+        """
         t = threading.current_thread()
 
         card : spcm.Card
@@ -2572,13 +2703,7 @@ class MainWindow(QMainWindow):
                     pickle.dump(data, file)
                     file.flush()
                     os.fsync(file.fileno())
-
-                """
-                with open(f"data/metadata_{self.RT_Frame_Counter}.pkl", "wb") as file:
-                    pickle.dump(metadata, file)
-                    file.flush()
-                    os.fsync(file.fileno())
-                """
+                
                 print(f"Data acquisition {self.RT_Frame_Counter} completed")
                                 
                 try:
@@ -2598,6 +2723,7 @@ class MainWindow(QMainWindow):
             # card.reset() # A software and hardware reset is done for the board. All settings are set to the default values. The data in the board’s on-board memory will be no longer valid. Any output signals like trigger or clock output will be disabled.
             # card.close() # Closes the connection to the card using a handle
             self.Real_Time_Stop_Click()
+            """
 
     #****************************************************************************************************************************
     #*******************************TRACKING FOLDER******************************************************************************
@@ -2692,6 +2818,8 @@ class MainWindow(QMainWindow):
         
     def Process_RT_Data(self,plate):
 
+        #here the plate already arrives with the preselected channels
+
         import SHelpers as shlp
         global EXIT_RT_FLAG
 
@@ -2702,21 +2830,14 @@ class MainWindow(QMainWindow):
         display_time=[]
         proc_time_total=[]
         snips_num=0        
-        labels_in_segment=[]
-
-        if( int(self.proc_settings.get("classification_channels_choice_drop_down")) == 0):
-            chan_index= int(self.proc_settings.get("chan_from_settings"))-1
-            if(chan_index<0):
-                CHANNELS_TO_USE=list([0,1,2,3,4,5,6,7]) #all channels are selected
-            else:
-                CHANNELS_TO_USE=list([chan_index])
+        labels_in_segment=[]    
             
-        else:
-            CHANNELS_TO_USE = [int(i) for i in self.proc_settings.get("classification_user_channels_text_box").split(",") if i.strip().isdigit()]
-                     
-        sgn_len= len(plate.segments_sign)
-                
+        sgn_len= len(plate.segments_sign)                
         proc_time_total.append(time.time())
+
+        #we use all channels that arrive here (the preselection was already done before)
+        sign_N = len(plate.raw_signals) #allplates that arrive to this point already jhave the right number of signals. No fiurther selection is needed
+        CHANNELS_TO_USE = list(range(sign_N))
         #*********************************************************************************************
         for seg_i in tqdm(range(0,sgn_len),desc='Segem. proc:'):
 
@@ -2749,6 +2870,7 @@ class MainWindow(QMainWindow):
         proc_time_total.append(time.time())
 
         #SHOW RESULTS
+        """
         skipped_results = False
         if(bool(self.proc_settings.get("RealT_show_processed_signals_checkbox_3"))):       
             
@@ -2758,30 +2880,33 @@ class MainWindow(QMainWindow):
             try:    
                 
                 #multiprocessing.Process
-                if(self.show_proc_result_in_progress==False): #self.show_proc_results_thread.is_alive()==False):
+                if(self.show_proc_result_in_progress==False): #self.show_proc_results_thread.is_alive()==False):                                      
 
-                    self.show_proc_result_in_progress=True
-
-                    cur_n=self.RT_Frame_Counter #we fix here the current frame counter number that corresponds to this measurements                    
-                    self.show_proc_results_thread = My_RT_Thread(target=self.Show_Sign_RT, args=(plate,labels_in_segment,cur_n))
-                    self.show_proc_results_thread.finished.connect(self.Show_RT_Thread_Finished)
-                    self.show_proc_results_thread.start() 
-
-                    display_time.append(0)
-                    display_time.append(1)
+                    cur_n=self.RT_Frame_Counter #we fix here the current frame counter number that corresponds to this measurements                      
+                    #if(self.show_proc_results_thread is None):
+                        #self.show_proc_results_thread = My_RT_Thread(target=self.Show_Sign_RT, args=(plate,labels_in_segment,cur_n))
+                        #self.show_proc_results_thread = threading.Thread(target=self.Show_Sign_RT, args=(plate,labels_in_segment,cur_n))
+                        #self.show_proc_results_thread.finished.connect(self.Show_RT_Thread_Finished)
+                    
+                    if(self.show_proc_results_thread is None):   self.show_proc_results_thread = threading.Thread(target=self.Show_Sign_RT, args=(plate,labels_in_segment,cur_n))
+                    if(self.show_proc_results_thread.is_alive()==False):
+                        self.show_proc_results_thread = threading.Thread(target=self.Show_Sign_RT, args=(plate,labels_in_segment,cur_n))
+                        self.show_proc_result_in_progress=False
+                        self.show_proc_results_thread.start() 
+                        time.sleep(0.05)
+                    #self.Show_Sign_RT(plate,labels_in_segment,cur_n)  
+                    
                 else: 
                     skipped_results=True
                 
             except Exception as Ex: print("Can't display processed data. Exception: "+str(Ex))
-
+        """
+            
         if(bool(self.proc_settings.get("show_info"))==True):
             now = datetime.datetime.now()
             try:
                 print("")
-                print("GENERAL INFO: ")            
-                print("Data received: "+str(now))
-                print("Data length/chan.: "+str(len(plate.raw_signals[0])))
-                print("Processed channels: "+str(CHANNELS_TO_USE))
+                print("Processing: ")                                            
                 print("Segments num.: "+str(sgn_len))
                 print("Snippets num.: "+str(snips_num))       
                 if(snips_num==0): print("ATTENTION: segments are to short to create snippets, analysis in bot possible...")
@@ -2803,7 +2928,7 @@ class MainWindow(QMainWindow):
         self.show_proc_result_in_progress=False
 
     def Show_Sign_RT(self,plate,labels_in_segment,cur_num):
-        
+        #here, all plates signals will be shown 
         points_num_limit_check=bool(self.proc_settings.get("GUI_show_results_points_number_limit_checkbox"))
         points_num_limit=int(self.proc_settings.get("GUI_show_results_points_number_limit_textbox"))
         #only_one_chan_to_she=bool(self.proc_settings.get("RealT_show_processed_signals_checkbox_3"))
@@ -2816,30 +2941,35 @@ class MainWindow(QMainWindow):
         full_sign=[]   
         segm_pos=[]
         cur_segm_pos=0
-        for kks in range(0,len(self.Channels_In_Use)):    
-            full_sign.append([])                   
+        chans_num=len(plate.raw_signals)
+        step_points_reduction=0
+
+        for kks in range(0,chans_num):    
+            full_sign.append([])    
+            cur_segm_pos=0
             for segment in plate.segments_sign:               
-                if(len(full_sign[-1])==0):full_sign[-1]=np.asarray(segment[self.Channels_In_Use[kks]])                                
+                if(len(full_sign[-1])==0):full_sign[-1]=np.asarray(segment[kks])                                
                 else:
                     sfg = np.asarray(full_sign[-1])            
-                    sfg1=np.concatenate((sfg,segment[self.Channels_In_Use[kks]]),axis=None)
+                    sfg1=np.concatenate((sfg,segment[kks]),axis=None)
                     full_sign[-1]=np.empty
                     full_sign[-1]=np.asarray(sfg1)      
-                if(mark_segm_borders): 
+                if(mark_segm_borders and kks==0): 
                     segm_pos.append(cur_segm_pos+len(segment[0]))
                     cur_segm_pos=cur_segm_pos+len(segment[0])
             if(points_num_limit_check) and (points_num_limit!=0):
-                step=int(len(full_sign[-1])/points_num_limit)               
-                full_sign[-1]=full_sign[-1][::step]      
-                if(mark_segm_borders):
-                    for p in range(0,len(segm_pos)): segm_pos[p]=int(segm_pos[p]/step)
+                step_points_reduction=int(len(full_sign[-1])/points_num_limit)               
+                full_sign[-1]=full_sign[-1][::step_points_reduction]      
+        if(mark_segm_borders and points_num_limit_check):
+             for p in range(len(segm_pos)): 
+                  segm_pos[p]=int(segm_pos[p]/step_points_reduction)
                     #segm_pos = list([x / step for x in segm_pos])#segm_pos=segm_pos/step
             
-   
+        """
         if(chans_to_show==0):#only selected
             new_list=[]
-            for p in range(len(self.Channels_In_Use)):
-                new_list.append(np.asarray(full_sign[self.Channels_In_Use[p]]))
+            for p in range(chans_num):
+                new_list.append(np.asarray(full_sign[p]))
             full_sign=new_list
             new_list=[]
         if(chans_to_show==1):#all
@@ -2853,6 +2983,7 @@ class MainWindow(QMainWindow):
             except: 
                 chan_num=-1
                 print("Error in user input. Single channel to use is indictaed wrongly")            
+        """
 
         if(use_offset_flag==True) and (len(full_sign>1)):
             offset_curr=0
@@ -3771,10 +3902,14 @@ class RTPlotWidget_1(PySide6.QtWidgets.QWidget):
     def plot(self,x):
         #CRAZY, but qt does not like cycles, so we do by hands
         if(len(x)>0):
+            self.x1=np.empty
+            #self.line1.setData(self.x1)
             self.x1=x[0]
             self.line1.setData(self.x1)
         if(len(x)>1):
-            self.x2=x[1]
+            self.x2=np.empty
+            #self.line2.setData(self.x1)
+            self.x2=x[1]           
             self.line2.setData(self.x2)
         if(len(x)>2):
             self.x3=x[2]

@@ -566,6 +566,9 @@ class SPlate:
                     raising_edge.append(x)
                 if(ref_sign[x-1]>ref_threshold) and (ref_sign[x]<=ref_threshold):
                     if(len(raising_edge)>len(falling_edge)): falling_edge.append(x)
+            else:
+                if(ref_sign[x]>ref_threshold):
+                    raising_edge.append(x)
 
         segm_extr=[]            
         l_raise=len(raising_edge)
@@ -2078,7 +2081,7 @@ def ReadSettings(window):
     settings["post_trigger_duration"] = post_trigger_duration
     ampl_per_channel=window.ui.REAL_T_amp_chan_textbox_3.text()
     settings["ampl_per_channel"] = ampl_per_channel
-    trig_chan_num=window.ui.REAL_T_trigger_channel_drop_box.currentText()
+    trig_chan_num=window.ui.Settings_OpenFile_TrigChannelID_text.text()#Settings_OpenFile_TrigChannelID_text
     settings["trig_chan_num"] = trig_chan_num
     show_info=window.ui.RealT_show_info_checkbox.isChecked()
     settings["show_info"] = show_info    
@@ -2301,8 +2304,9 @@ def LoadInterfaceFromFile(window,path):
         window.ui.REAL_Post_trig_durat_textbox_4.setText(str(my_set["post_trigger_duration"])) 
         window.ui.REAL_T_amp_chan_textbox_3.setText(str(my_set["ampl_per_channel"])) 
 
-        index = window.ui.REAL_T_trigger_channel_drop_box.findText(str(my_set["trig_chan_num"]), PySide6.QtCore.Qt.MatchFixedString)
-        window.ui.REAL_T_trigger_channel_drop_box.setCurrentIndex(index) 
+        window.ui.Settings_OpenFile_TrigChannelID_text.setText(str(my_set["trig_chan_num"]))
+        #index = window.ui.REAL_T_trigger_channel_drop_box.findText(str(my_set["trig_chan_num"]), PySide6.QtCore.Qt.MatchFixedString)
+        #window.ui.REAL_T_trigger_channel_drop_box.setCurrentIndex(index) 
         
         window.ui.RealT_show_info_checkbox.setChecked(bool(my_set["show_info"])) 
         window.ui.RealT_show_processed_signals_checkbox_3.setChecked(bool(my_set["RealT_show_processed_signals_checkbox_3"])) 
