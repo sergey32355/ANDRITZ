@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 
 ################################################################################
-## Form generated from reading UI file 'empa_guiipooCZ.ui'
+## Form generated from reading UI file 'empa_guidicLBM.ui'
 ##
-## Created by: Qt User Interface Compiler version 6.9.0
+## Created by: Qt User Interface Compiler version 6.11.2
 ##
 ## WARNING! All changes made in this file will be lost when recompiling UI file!
 ################################################################################
@@ -388,13 +388,13 @@ class Ui_EmpaGUI(object):
         self.REAL_T_TRigger_Level_label.setGeometry(QRect(10, 20, 91, 16))
         self.REAL_T_TRigger_Level_textbox = QLineEdit(self.groupBox_15)
         self.REAL_T_TRigger_Level_textbox.setObjectName(u"REAL_T_TRigger_Level_textbox")
-        self.REAL_T_TRigger_Level_textbox.setGeometry(QRect(130, 17, 51, 22))
+        self.REAL_T_TRigger_Level_textbox.setGeometry(QRect(110, 17, 71, 22))
         self.REAL_T_Samp_rate_label_2 = QLabel(self.groupBox_15)
         self.REAL_T_Samp_rate_label_2.setObjectName(u"REAL_T_Samp_rate_label_2")
         self.REAL_T_Samp_rate_label_2.setGeometry(QRect(10, 50, 121, 16))
         self.REAL_T_smp_rate_textbox_2 = QLineEdit(self.groupBox_15)
         self.REAL_T_smp_rate_textbox_2.setObjectName(u"REAL_T_smp_rate_textbox_2")
-        self.REAL_T_smp_rate_textbox_2.setGeometry(QRect(130, 47, 51, 22))
+        self.REAL_T_smp_rate_textbox_2.setGeometry(QRect(110, 47, 71, 22))
         self.REAL_T_Samp_rate_label_3 = QLabel(self.groupBox_15)
         self.REAL_T_Samp_rate_label_3.setObjectName(u"REAL_T_Samp_rate_label_3")
         self.REAL_T_Samp_rate_label_3.setGeometry(QRect(190, 20, 131, 16))
@@ -420,7 +420,7 @@ class Ui_EmpaGUI(object):
         self.REAL_T_Samp_rate_label_5.setGeometry(QRect(10, 80, 121, 16))
         self.REAL_T_PRE_TRigger_durat_textbox_3 = QLineEdit(self.groupBox_15)
         self.REAL_T_PRE_TRigger_durat_textbox_3.setObjectName(u"REAL_T_PRE_TRigger_durat_textbox_3")
-        self.REAL_T_PRE_TRigger_durat_textbox_3.setGeometry(QRect(130, 75, 51, 22))
+        self.REAL_T_PRE_TRigger_durat_textbox_3.setGeometry(QRect(110, 75, 71, 22))
         self.REAL_T_Samp_rate_label_6 = QLabel(self.groupBox_15)
         self.REAL_T_Samp_rate_label_6.setObjectName(u"REAL_T_Samp_rate_label_6")
         self.REAL_T_Samp_rate_label_6.setGeometry(QRect(190, 80, 121, 16))
@@ -674,15 +674,10 @@ class Ui_EmpaGUI(object):
         self.label_15.setGeometry(QRect(80, 35, 50, 16))
         self.label_25 = QLabel(self.groupBox_9)
         self.label_25.setObjectName(u"label_25")
-        self.label_25.setGeometry(QRect(3, 60, 91, 16))
-        self.classification_channels_choice_drop_down = QComboBox(self.groupBox_9)
-        self.classification_channels_choice_drop_down.addItem("")
-        self.classification_channels_choice_drop_down.addItem("")
-        self.classification_channels_choice_drop_down.setObjectName(u"classification_channels_choice_drop_down")
-        self.classification_channels_choice_drop_down.setGeometry(QRect(60, 55, 231, 24))
+        self.label_25.setGeometry(QRect(3, 60, 201, 16))
         self.classification_user_channels_text_box = QLineEdit(self.groupBox_9)
         self.classification_user_channels_text_box.setObjectName(u"classification_user_channels_text_box")
-        self.classification_user_channels_text_box.setGeometry(QRect(292, 55, 111, 22))
+        self.classification_user_channels_text_box.setGeometry(QRect(200, 55, 211, 22))
         EmpaGUI.setCentralWidget(self.centralwidget)
         self.menubar = QMenuBar(EmpaGUI)
         self.menubar.setObjectName(u"menubar")
@@ -694,7 +689,7 @@ class Ui_EmpaGUI(object):
 
         self.retranslateUi(EmpaGUI)
 
-        self.tabWidget.setCurrentIndex(1)
+        self.tabWidget.setCurrentIndex(2)
         self.load_data_plate_type_dropdown.setCurrentIndex(-1)
         self.real_time_source_dropdown_2.setCurrentIndex(1)
         self.tabWidget_2.setCurrentIndex(0)
@@ -704,13 +699,12 @@ class Ui_EmpaGUI(object):
         self.tabWidget_3.setCurrentIndex(0)
         self.classification_plot_choice_dropdown_3.setCurrentIndex(0)
         self.Settings_openfile_segmentation_mode_text.setCurrentIndex(0)
-        self.Settings_Spectrograms_Define_Parameters_Tab.setCurrentIndex(1)
+        self.Settings_Spectrograms_Define_Parameters_Tab.setCurrentIndex(0)
         self.REAL_T_trigger_channel_drop_box.setCurrentIndex(7)
         self.Color_list_drop_down_.setCurrentIndex(0)
         self.Show_results_color_scheme_drop_down_1.setCurrentIndex(0)
         self.tabWidget_4.setCurrentIndex(0)
         self.classification_preproc_dropdown.setCurrentIndex(-1)
-        self.classification_channels_choice_drop_down.setCurrentIndex(0)
 
 
         QMetaObject.connectSlotsByName(EmpaGUI)
@@ -869,8 +863,8 @@ class Ui_EmpaGUI(object):
         self.groupBox_15.setTitle(QCoreApplication.translate("EmpaGUI", u"Spectrum DAQ", None))
         self.REAL_T_TRigger_Level_label.setText(QCoreApplication.translate("EmpaGUI", u"Trigger lev.(mV):", None))
         self.REAL_T_TRigger_Level_textbox.setText(QCoreApplication.translate("EmpaGUI", u"2500", None))
-        self.REAL_T_Samp_rate_label_2.setText(QCoreApplication.translate("EmpaGUI", u"Sampling rate (MHz):", None))
-        self.REAL_T_smp_rate_textbox_2.setText(QCoreApplication.translate("EmpaGUI", u"0.5", None))
+        self.REAL_T_Samp_rate_label_2.setText(QCoreApplication.translate("EmpaGUI", u"Sampling rate(Hz):", None))
+        self.REAL_T_smp_rate_textbox_2.setText(QCoreApplication.translate("EmpaGUI", u"100000", None))
         self.REAL_T_Samp_rate_label_3.setText(QCoreApplication.translate("EmpaGUI", u"Amplitude/channel(mV):", None))
         self.REAL_T_amp_chan_textbox_3.setText(QCoreApplication.translate("EmpaGUI", u"5000", None))
         self.REAL_T_Samp_rate_label_4.setText(QCoreApplication.translate("EmpaGUI", u"Trigger chan.:", None))
@@ -987,12 +981,7 @@ class Ui_EmpaGUI(object):
         self.classification_preproc_dropdown.setCurrentText("")
         self.classification_preproc_dropdown.setPlaceholderText(QCoreApplication.translate("EmpaGUI", u"None", None))
         self.label_15.setText(QCoreApplication.translate("EmpaGUI", u"Preproc.:", None))
-        self.label_25.setText(QCoreApplication.translate("EmpaGUI", u"Channels:", None))
-        self.classification_channels_choice_drop_down.setItemText(0, QCoreApplication.translate("EmpaGUI", u"From settings", None))
-        self.classification_channels_choice_drop_down.setItemText(1, QCoreApplication.translate("EmpaGUI", u"User defined (\",\" as separator)->:", None))
-
-        self.classification_channels_choice_drop_down.setCurrentText(QCoreApplication.translate("EmpaGUI", u"From settings", None))
-        self.classification_channels_choice_drop_down.setPlaceholderText(QCoreApplication.translate("EmpaGUI", u"this_plate_this_segment", None))
+        self.label_25.setText(QCoreApplication.translate("EmpaGUI", u"Channels (list with \",\" as a separator):", None))
         self.classification_user_channels_text_box.setText(QCoreApplication.translate("EmpaGUI", u"0,1,3", None))
     # retranslateUi
 

@@ -2025,10 +2025,7 @@ def ReadSettings(window):
     #preprocessing
     classification_preproc_dropdown=window.ui.classification_preproc_dropdown.currentText()
     settings["classification_preproc_dropdown"] = classification_preproc_dropdown    
-    #channels
-    chans_to_use=window.ui.classification_channels_choice_drop_down.currentIndex()
-    settings["classification_channels_choice_drop_down"] = chans_to_use
-
+    
     classification_user_channels_text_box=window.ui.classification_user_channels_text_box.text()
     settings["classification_user_channels_text_box"] = classification_user_channels_text_box
 
@@ -2250,7 +2247,7 @@ def LoadInterfaceFromFile(window,path):
     window.ui.classification_snippet_size_text.setText(str(my_set["MAIN_classification_snippet_size_text"]))
     window.ui.classification_preproc_dropdown.setCurrentIndex(int(my_set["MAIN_classification_preproc_dropdown"]))
     window.ui.classification_user_channels_text_box.setText(str(my_set["classification_user_channels_text_box"]))
-    window.ui.classification_channels_choice_drop_down.setCurrentIndex(int(my_set["classification_channels_choice_drop_down"]))
+    
     
     #settings - Visualization page
     window.ui.GUI_load_default_on_start.setChecked(bool(my_set["SETTINGS_VIZUALIZATION_load_default_GUI"]))    

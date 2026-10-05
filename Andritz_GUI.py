@@ -2371,15 +2371,7 @@ class MainWindow(QMainWindow):
 
     def GetChannels(self):
         #self.proc_settings=shlp.ReadSettings(self)
-        CHANNELS_TO_USE=[]
-        if( int(self.proc_settings.get("classification_channels_choice_drop_down")) == 0):
-            chan_index= int(self.proc_settings.get("chan_from_settings"))-1
-            if(chan_index<0):
-                CHANNELS_TO_USE=list([0,1,2,3,4,5,6,7]) #all channels are selected
-            else:
-                CHANNELS_TO_USE=list([chan_index])            
-        else:
-            CHANNELS_TO_USE = [int(i) for i in self.proc_settings.get("classification_user_channels_text_box").split(",") if i.strip().isdigit()]
+        CHANNELS_TO_USE = [int(i) for i in self.proc_settings.get("classification_user_channels_text_box").split(",") if i.strip().isdigit()]
         return CHANNELS_TO_USE
     #**********************************************************************************************
     #**********************************************************************************************
@@ -2501,11 +2493,11 @@ class MainWindow(QMainWindow):
         global EXIT_RT_FLAG
 
         #check for settings
-        AMPLITUDE=float(self.proc_settings.get("ampl_per_channel"))
-        SAMPLING_RATE=float(self.proc_settings.get("sampling_rate"))
-        TRIGGER_LEVEL=float(self.proc_settings.get("trigger_level"))
-        PRETRIG_DURATION=float(self.proc_settings.get("pre_trigger_duration"))
-        POSTTRIG_DURATION=float(self.proc_settings.get("post_trigger_duration"))
+        AMPLITUDE=int(self.proc_settings.get("ampl_per_channel"))
+        SAMPLING_RATE=int(self.proc_settings.get("sampling_rate"))
+        TRIGGER_LEVEL=int(self.proc_settings.get("trigger_level"))
+        PRETRIG_DURATION=int(self.proc_settings.get("pre_trigger_duration"))
+        POSTTRIG_DURATION=int(self.proc_settings.get("post_trigger_duration"))
         TRIG_CHAN_NUM=int(self.proc_settings.get("trig_chan_num"))
         CHAN_NAMES=["chan_0","chan_1","chan_2","chan_3","chan_4","chan_5","chan_6","chan_7"]        
             
@@ -2527,6 +2519,10 @@ class MainWindow(QMainWindow):
                                              input_range_mV=AMPLITUDE,              #5000
                                              trigger_level_mV=TRIGGER_LEVEL,        #100
                                             )        
+
+        print("")
+        print("Card settings from user: ")
+        print(card_settings)
 
         self.card = daq.open_spectrum_cards(found[0], **card_settings)
 
@@ -2870,7 +2866,7 @@ class MainWindow(QMainWindow):
         proc_time_total.append(time.time())
 
         #SHOW RESULTS
-        """
+        
         skipped_results = False
         if(bool(self.proc_settings.get("RealT_show_processed_signals_checkbox_3"))):       
             
@@ -2900,8 +2896,7 @@ class MainWindow(QMainWindow):
                     skipped_results=True
                 
             except Exception as Ex: print("Can't display processed data. Exception: "+str(Ex))
-        """
-            
+                    
         if(bool(self.proc_settings.get("show_info"))==True):
             now = datetime.datetime.now()
             try:
