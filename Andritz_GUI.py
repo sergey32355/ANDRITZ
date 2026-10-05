@@ -1992,8 +1992,8 @@ class MainWindow(QMainWindow):
         segm_thresh_val = self.ui.Settings_openfile_segmentation_mode_text.currentText()
         if(segm_thresh_val=="automatic"): segm_thresh_val = "automatic"
         else:
-            segm_thresh_val=self.ui.Settings_Segmentation_TriggerThreshold_text.text()
-            try:    segm_thresh_val=float(segm_thresh_val)
+            segm_thresh_val=self.ui.REAL_T_TRigger_Level_textbox.text()
+            try:    segm_thresh_val=float(segm_thresh_val)/1000
             except: segm_thresh_val = "automatic"
         
 

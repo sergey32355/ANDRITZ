@@ -2052,7 +2052,7 @@ def ReadSettings(window):
     #settings tab, group box trigger channel
     settings["Settings_OpenFile_TrigChannelID_text"] = window.ui.Settings_OpenFile_TrigChannelID_text.text()
     settings["Settings_openfile_segmentation_mode_text"] = window.ui.Settings_openfile_segmentation_mode_text.currentIndex()
-    settings["Settings_Segmentation_TriggerThreshold_text"] = window.ui.Settings_Segmentation_TriggerThreshold_text.text()
+    
       
 
     #algorithm
@@ -2096,10 +2096,7 @@ def ReadSettings(window):
 
     #if to show all signals or not
     try:
-        #Spectrum card 
-        REAL_T_trigger_channel_drop_box=int(window.ui.REAL_T_trigger_channel_drop_box.currentIndex())
-        settings["REAL_T_trigger_channel_drop_box"] = REAL_T_trigger_channel_drop_box
-                
+        #Spectrum card                         
         RT_offset_signals_show_checkbox=bool(window.ui.RT_offset_signals_show_checkbox.isChecked())
         settings["RT_offset_signals_show_checkbox"] = RT_offset_signals_show_checkbox
 
@@ -2262,7 +2259,7 @@ def LoadInterfaceFromFile(window,path):
     try:
         window.ui.Settings_OpenFile_TrigChannelID_text.setText(str(my_set["Settings_OpenFile_TrigChannelID_text"]))
         window.ui.Settings_openfile_segmentation_mode_text.setCurrentIndex(int(my_set["Settings_openfile_segmentation_mode_text"]))
-        window.ui.Settings_Segmentation_TriggerThreshold_text.setText(str(my_set["Settings_Segmentation_TriggerThreshold_text"]))
+        
     except:   pass
 
     #settings - optimization of parameter tab
@@ -2301,9 +2298,7 @@ def LoadInterfaceFromFile(window,path):
         window.ui.REAL_Post_trig_durat_textbox_4.setText(str(my_set["post_trigger_duration"])) 
         window.ui.REAL_T_amp_chan_textbox_3.setText(str(my_set["ampl_per_channel"])) 
 
-        window.ui.Settings_OpenFile_TrigChannelID_text.setText(str(my_set["trig_chan_num"]))
-        #index = window.ui.REAL_T_trigger_channel_drop_box.findText(str(my_set["trig_chan_num"]), PySide6.QtCore.Qt.MatchFixedString)
-        #window.ui.REAL_T_trigger_channel_drop_box.setCurrentIndex(index) 
+        window.ui.Settings_OpenFile_TrigChannelID_text.setText(str(my_set["trig_chan_num"]))        
         
         window.ui.RealT_show_info_checkbox.setChecked(bool(my_set["show_info"])) 
         window.ui.RealT_show_processed_signals_checkbox_3.setChecked(bool(my_set["RealT_show_processed_signals_checkbox_3"])) 
