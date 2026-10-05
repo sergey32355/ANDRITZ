@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 ################################################################################
-## Form generated from reading UI file 'empa_guixOdbbo.ui'
+## Form generated from reading UI file 'empa_guixCMZyL.ui'
 ##
 ## Created by: Qt User Interface Compiler version 6.11.2
 ##
@@ -24,7 +24,7 @@ class Ui_EmpaGUI(object):
     def setupUi(self, EmpaGUI):
         if not EmpaGUI.objectName():
             EmpaGUI.setObjectName(u"EmpaGUI")
-        EmpaGUI.resize(431, 542)
+        EmpaGUI.resize(432, 586)
         sizePolicy = QSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
@@ -364,7 +364,7 @@ class Ui_EmpaGUI(object):
         self.REAL_T_TRigger_Level_textbox.setGeometry(QRect(270, 50, 71, 22))
         self.Settings_Spectrograms_Define_Parameters_Tab = QTabWidget(self.tab_3)
         self.Settings_Spectrograms_Define_Parameters_Tab.setObjectName(u"Settings_Spectrograms_Define_Parameters_Tab")
-        self.Settings_Spectrograms_Define_Parameters_Tab.setGeometry(QRect(0, 80, 421, 311))
+        self.Settings_Spectrograms_Define_Parameters_Tab.setGeometry(QRect(0, 80, 421, 291))
         self.tab_11 = QWidget()
         self.tab_11.setObjectName(u"tab_11")
         self.RealT_show_info_checkbox = QCheckBox(self.tab_11)
@@ -494,22 +494,6 @@ class Ui_EmpaGUI(object):
         self.GUI_fiure_coment_text_2 = QLineEdit(self.groupBox_10)
         self.GUI_fiure_coment_text_2.setObjectName(u"GUI_fiure_coment_text_2")
         self.GUI_fiure_coment_text_2.setGeometry(QRect(160, 50, 241, 22))
-        self.groupBox_13 = QGroupBox(self.tab_6)
-        self.groupBox_13.setObjectName(u"groupBox_13")
-        self.groupBox_13.setGeometry(QRect(0, 130, 411, 101))
-        self.Model_ready_label_4 = QLabel(self.groupBox_13)
-        self.Model_ready_label_4.setObjectName(u"Model_ready_label_4")
-        self.Model_ready_label_4.setGeometry(QRect(55, 27, 16, 16))
-        self.Model_ready_label_4.setAutoFillBackground(True)
-        self.save_interface_button = QPushButton(self.groupBox_13)
-        self.save_interface_button.setObjectName(u"save_interface_button")
-        self.save_interface_button.setGeometry(QRect(0, 14, 171, 61))
-        self.load_interface_button = QPushButton(self.groupBox_13)
-        self.load_interface_button.setObjectName(u"load_interface_button")
-        self.load_interface_button.setGeometry(QRect(170, 14, 171, 61))
-        self.GUI_load_default_on_start = QCheckBox(self.groupBox_13)
-        self.GUI_load_default_on_start.setObjectName(u"GUI_load_default_on_start")
-        self.GUI_load_default_on_start.setGeometry(QRect(6, 77, 121, 20))
         self.Settings_Spectrograms_Define_Parameters_Tab.addTab(self.tab_6, "")
         self.tab_7 = QWidget()
         self.tab_7.setObjectName(u"tab_7")
@@ -661,10 +645,19 @@ class Ui_EmpaGUI(object):
         self.classification_user_channels_text_box = QLineEdit(self.groupBox_9)
         self.classification_user_channels_text_box.setObjectName(u"classification_user_channels_text_box")
         self.classification_user_channels_text_box.setGeometry(QRect(200, 55, 211, 22))
+        self.save_interface_button = QPushButton(self.centralwidget)
+        self.save_interface_button.setObjectName(u"save_interface_button")
+        self.save_interface_button.setGeometry(QRect(0, 480, 101, 51))
+        self.load_interface_button = QPushButton(self.centralwidget)
+        self.load_interface_button.setObjectName(u"load_interface_button")
+        self.load_interface_button.setGeometry(QRect(100, 480, 111, 51))
+        self.GUI_load_default_on_start = QCheckBox(self.centralwidget)
+        self.GUI_load_default_on_start.setObjectName(u"GUI_load_default_on_start")
+        self.GUI_load_default_on_start.setGeometry(QRect(210, 510, 121, 20))
         EmpaGUI.setCentralWidget(self.centralwidget)
         self.menubar = QMenuBar(EmpaGUI)
         self.menubar.setObjectName(u"menubar")
-        self.menubar.setGeometry(QRect(0, 0, 431, 33))
+        self.menubar.setGeometry(QRect(0, 0, 432, 33))
         EmpaGUI.setMenuBar(self.menubar)
         self.statusbar = QStatusBar(EmpaGUI)
         self.statusbar.setObjectName(u"statusbar")
@@ -888,11 +881,6 @@ class Ui_EmpaGUI(object):
         self.GUI_impose_measurements_delay_value_textbox_2.setText(QCoreApplication.translate("EmpaGUI", u"200", None))
         self.GUI_settitle_figure_checkbox_2.setText(QCoreApplication.translate("EmpaGUI", u"Add comment to figure:", None))
         self.GUI_fiure_coment_text_2.setText(QCoreApplication.translate("EmpaGUI", u"Trigger", None))
-        self.groupBox_13.setTitle(QCoreApplication.translate("EmpaGUI", u"GUI save/load", None))
-        self.Model_ready_label_4.setText("")
-        self.save_interface_button.setText(QCoreApplication.translate("EmpaGUI", u"Save interface", None))
-        self.load_interface_button.setText(QCoreApplication.translate("EmpaGUI", u"Load interface", None))
-        self.GUI_load_default_on_start.setText(QCoreApplication.translate("EmpaGUI", u"Load on start", None))
         self.Settings_Spectrograms_Define_Parameters_Tab.setTabText(self.Settings_Spectrograms_Define_Parameters_Tab.indexOf(self.tab_6), QCoreApplication.translate("EmpaGUI", u"GUI", None))
         self.Settings_Trees_Trees_Number_2.setText(QCoreApplication.translate("EmpaGUI", u"800", None))
         self.label_28.setText(QCoreApplication.translate("EmpaGUI", u"Trees num.:", None))
@@ -952,5 +940,8 @@ class Ui_EmpaGUI(object):
         self.label_15.setText(QCoreApplication.translate("EmpaGUI", u"Preproc.:", None))
         self.label_25.setText(QCoreApplication.translate("EmpaGUI", u"Channels (list with \",\" as a separator):", None))
         self.classification_user_channels_text_box.setText(QCoreApplication.translate("EmpaGUI", u"0,1,3", None))
+        self.save_interface_button.setText(QCoreApplication.translate("EmpaGUI", u"Save interface", None))
+        self.load_interface_button.setText(QCoreApplication.translate("EmpaGUI", u"Load interface", None))
+        self.GUI_load_default_on_start.setText(QCoreApplication.translate("EmpaGUI", u"Load on start", None))
     # retranslateUi
 

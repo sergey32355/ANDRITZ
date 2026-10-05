@@ -2578,8 +2578,7 @@ class MainWindow(QMainWindow):
                         segm_l=len(rt_plate.segments_sign)
                         if(segm_l==0): 
                             print("No segments were detected...")                        
-                        else: self.Process_RT_Data(rt_plate)
-                            
+                        else: self.Process_RT_Data(rt_plate)                           
                             
                     except Exception as ex:
                         print("Impossible to process data. Exception raised: "+str(ex))             
@@ -2731,7 +2730,13 @@ class MainWindow(QMainWindow):
         txtfiles = []    
         self.RT_Frame_Counter=0
         global EXIT_RT_FLAG
-                                       
+
+        chan_in_use= list(self.GetChannels())
+        TRIGGER_LEVEL=int(self.proc_settings.get("trigger_level"))
+        TRIG_CHAN_NUM=int(self.proc_settings.get("trig_chan_num"))
+        CHAN_NAMES=["chan_0","chan_1","chan_2","chan_3","chan_4","chan_5","chan_6","chan_7"]        
+        SAMPLING_RATE=1
+                                               
         t = threading.current_thread()
         while(getattr(t, "do_run", True)):
             #check for exit
@@ -2781,14 +2786,43 @@ class MainWindow(QMainWindow):
                 #open/processing                
                 plates=[]
                 try: 
-                    plates= shlp.OpenDataFromFolder(ONLY_SINGLE_FILE=True,SINGLE_FILE_PATH_BIN=bin_path,SINGLE_FILE_PATH_TXT=txt_path)
-                    self.Process_RT_Data(plates[0])
+                    plate= shlp.OpenDataFromFolder(ONLY_SINGLE_FILE=True,SINGLE_FILE_PATH_BIN=bin_path,SINGLE_FILE_PATH_TXT=txt_path)
+                    self.RT_Frame_Counter+=1
+                    data = np.asarray(plate[-1].raw_signals)
+                    data=data[chan_in_use,:]
+                    chans_names=[CHAN_NAMES[i] for i in chan_in_use]                    
+                    #show info about data 
+                    print("")                    
+                    print("//---------------------------------------------------------")
+                    print("FRAME: "+str(self.RT_Frame_Counter))
+                    print("DATA RECEIVED at "+str(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
+                    print("Data array shape: "+str(type(data)) + " , " + str(data.dtype)+" , " +str(data.shape))          # expect ndarray, float64, (8, 100000)
+                    print("Data min/max(V): "+str(np.min(data.min(axis=1)))+" , " + str(np.min(data.max(axis=1))))    # per-channel range, should be within ±5 V
+                    #print("Sampling rate applied: "+str(spcm.Clock(self.card).sample_rate()))              # rate the card actually applied
+                    print("")
+
+                    #start to fill the plate objhect with the reduced ammount of channels
+                    try:
+                        rt_plate=shlp.SPlate()
+                        rt_plate.raw_signals=list(data)
+                        rt_plate.chans_names=chans_names
+                        rt_plate.time=np.linspace(0,np.shape(data)[1]*1.0/SAMPLING_RATE,np.shape(data)[1])#np.arange(0,len(data[f'channel {0}']))*(1.0/(SAMPLING_RATE))
+                        if(TRIG_CHAN_NUM!=-1):
+                            rt_plate.get_segments(ref_chan_name=TRIG_CHAN_NUM,threshold=float(TRIGGER_LEVEL/1000))
+                        else:  trig_lev=data[0].min()*2
+
+                        if(trig_lev>0):trig_lev=trig_lev*(-1)
+                        rt_plate.get_segments(ref_chan_name=chan_in_use[0],threshold=trig_lev)
+                        segm_l=len(rt_plate.segments_sign)
+                        if(segm_l==0): print("No segments were detected...")                        
+                        else:          self.Process_RT_Data(rt_plate)
+                    except Exception as ex:
+                        print("Impossible to process data. Exception raised: "+str(ex))                                 
                 except Exception as ex:                     
                     print("Impossible to open files. Exception raised: "+str(ex))                     
                 print("********************************************************************")
                 print("")
-                print("")
-                self.RT_Frame_Counter=self.RT_Frame_Counter+1
+                print("")                
                 #delete files after processing if needed
                 if(bool(self.proc_settings.get("RealT_filse_folders_delete_files_checkbox"))==True):
                     try: os.remove(txt_path)                    
