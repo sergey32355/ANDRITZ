@@ -2409,8 +2409,7 @@ class MainWindow(QMainWindow):
                        
         if(self.RT_SpectrumThread is None):
             pass
-        else:
-            
+        else:            
             self.RT_SpectrumThread.do_run = False
             try:
                 while (self.Real_time_FolderTrackerThread.is_alive()):z=0 
@@ -2502,6 +2501,12 @@ class MainWindow(QMainWindow):
         CHAN_NAMES=["chan_0","chan_1","chan_2","chan_3","chan_4","chan_5","chan_6","chan_7"]        
             
         chan_in_use= list(self.GetChannels())
+        if(TRIG_CHAN_NUM!=-1):
+            if(TRIG_CHAN_NUM not in chan_in_use): 
+                chan_in_use.append(TRIG_CHAN_NUM)
+                trig_chan=len(chan_in_use)-1
+            else: 
+                trig_chan=chan_in_use.index(TRIG_CHAN_NUM)
         #----------------------------------------------------------------
         #NEW CODE
         #----------------------------------------------------------------
@@ -2570,7 +2575,7 @@ class MainWindow(QMainWindow):
                         rt_plate.chans_names=chans_names
                         rt_plate.time=np.linspace(0,np.shape(data)[1]*1.0/SAMPLING_RATE,np.shape(data)[1])#np.arange(0,len(data[f'channel {0}']))*(1.0/(SAMPLING_RATE))
                         if(TRIG_CHAN_NUM!=-1):
-                            rt_plate.get_segments(ref_chan_name=TRIG_CHAN_NUM,threshold=float(TRIGGER_LEVEL/1000))
+                            rt_plate.get_segments(ref_chan_name=trig_chan,threshold=float(TRIGGER_LEVEL/1000))
                         else:
                             trig_lev=data[0].min()*2
                             if(trig_lev>0):trig_lev=trig_lev*(-1)
@@ -2730,12 +2735,19 @@ class MainWindow(QMainWindow):
         txtfiles = []    
         self.RT_Frame_Counter=0
         global EXIT_RT_FLAG
-
-        chan_in_use= list(self.GetChannels())
+        
         TRIGGER_LEVEL=int(self.proc_settings.get("trigger_level"))
         TRIG_CHAN_NUM=int(self.proc_settings.get("trig_chan_num"))
         CHAN_NAMES=["chan_0","chan_1","chan_2","chan_3","chan_4","chan_5","chan_6","chan_7"]        
         SAMPLING_RATE=1
+        #we leave here the trigger cahannel to use it for segments computations
+        chan_in_use= list(self.GetChannels())
+        if(TRIG_CHAN_NUM!=-1):
+            if(TRIG_CHAN_NUM not in chan_in_use): 
+                chan_in_use.append(TRIG_CHAN_NUM)
+                trig_chan=len(chan_in_use)-1
+            else: 
+                trig_chan=chan_in_use.index(TRIG_CHAN_NUM)
                                                
         t = threading.current_thread()
         while(getattr(t, "do_run", True)):
@@ -2808,11 +2820,11 @@ class MainWindow(QMainWindow):
                         rt_plate.chans_names=chans_names
                         rt_plate.time=np.linspace(0,np.shape(data)[1]*1.0/SAMPLING_RATE,np.shape(data)[1])#np.arange(0,len(data[f'channel {0}']))*(1.0/(SAMPLING_RATE))
                         if(TRIG_CHAN_NUM!=-1):
-                            rt_plate.get_segments(ref_chan_name=TRIG_CHAN_NUM,threshold=float(TRIGGER_LEVEL/1000))
-                        else:  trig_lev=data[0].min()*2
-
-                        if(trig_lev>0):trig_lev=trig_lev*(-1)
-                        rt_plate.get_segments(ref_chan_name=chan_in_use[0],threshold=trig_lev)
+                            rt_plate.get_segments(ref_chan_name=trig_chan,threshold=float(TRIGGER_LEVEL/1000))
+                        else:  
+                            trig_lev=data[0].min()*2
+                            if(trig_lev>0):trig_lev=trig_lev*(-1)
+                            rt_plate.get_segments(ref_chan_name=chan_in_use[0],threshold=trig_lev)
                         segm_l=len(rt_plate.segments_sign)
                         if(segm_l==0): print("No segments were detected...")                        
                         else:          self.Process_RT_Data(rt_plate)
@@ -2963,7 +2975,7 @@ class MainWindow(QMainWindow):
         #only_one_chan_to_she=bool(self.proc_settings.get("RealT_show_processed_signals_checkbox_3"))
         mark_segm_borders=bool(self.proc_settings.get("GUI_mark_segments_checkbox"))
         #number of channels to show
-        chans_to_show = int(self.proc_settings.get("RT_channels_to_show_combo")) # window.ui.RT_channels_to_show_combo.setCurrentIndex(int(my_set["RT_channels_to_show_combo"]))
+        chans_to_show = 1 #this values is for all channels #int(self.proc_settings.get("RT_channels_to_show_combo")) # window.ui.RT_channels_to_show_combo.setCurrentIndex(int(my_set["RT_channels_to_show_combo"]))
         use_offset_flag = bool(self.proc_settings.get("RT_offset_signals_show_checkbox"))
         offset_value= int(self.proc_settings.get("RT_show_channels_offset_textbox_6"))
         
@@ -2971,8 +2983,23 @@ class MainWindow(QMainWindow):
         segm_pos=[]
         cur_segm_pos=0
         chans_num=len(plate.raw_signals)
-        step_points_reduction=0
+        step_points_reduction=int(len(plate.raw_signals[0])/points_num_limit)
 
+        for kks in range(0,chans_num):    
+            signal_to_show=plate.raw_signals[kks]
+            if(points_num_limit_check): signal_to_show = signal_to_show[::step_points_reduction]      
+            full_sign.append(signal_to_show)                
+        if(mark_segm_borders):
+            segm_pos.append(0)
+            for segm in plate.segments_sign:
+                last_val=segm_pos[-1]
+                segm_pos.append(last_val+len(segm[0]))
+        if(points_num_limit_check):            
+            for p in range(len(segm_pos)):     
+                segm_pos[p]=int(segm_pos[p]/step_points_reduction)
+
+        #THIS CODE IS THE LATEST WORKING ONE
+        """
         for kks in range(0,chans_num):    
             full_sign.append([])    
             cur_segm_pos=0
@@ -2993,7 +3020,9 @@ class MainWindow(QMainWindow):
              for p in range(len(segm_pos)): 
                   segm_pos[p]=int(segm_pos[p]/step_points_reduction)
                     #segm_pos = list([x / step for x in segm_pos])#segm_pos=segm_pos/step
-            
+        """
+                    
+        #THIS CODE IS NOT NEEDED    
         """
         if(chans_to_show==0):#only selected
             new_list=[]
@@ -3017,8 +3046,7 @@ class MainWindow(QMainWindow):
         if(use_offset_flag==True) and (len(full_sign>1)):
             offset_curr=0
             for k in range(0,len(full_sign)):
-                full_sign[k]=full_sign[k]+offset_curr
-                offset_curr=offset_curr+offset_value
+                full_sign[k]=full_sign[k]+k*offset_value                
        
         self.RT_fig_proc_results.plot(full_sign)
         if(mark_segm_borders): 

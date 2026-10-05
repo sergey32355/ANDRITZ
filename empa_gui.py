@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 ################################################################################
-## Form generated from reading UI file 'empa_guixCMZyL.ui'
+## Form generated from reading UI file 'empa_guioFcehX.ui'
 ##
 ## Created by: Qt User Interface Compiler version 6.11.2
 ##
@@ -423,18 +423,6 @@ class Ui_EmpaGUI(object):
         self.RT_show_channels_offset_textbox_6 = QLineEdit(self.tab_11)
         self.RT_show_channels_offset_textbox_6.setObjectName(u"RT_show_channels_offset_textbox_6")
         self.RT_show_channels_offset_textbox_6.setGeometry(QRect(293, 135, 111, 22))
-        self.RT_channels_to_show_combo = QComboBox(self.tab_11)
-        self.RT_channels_to_show_combo.addItem("")
-        self.RT_channels_to_show_combo.addItem("")
-        self.RT_channels_to_show_combo.addItem("")
-        self.RT_channels_to_show_combo.setObjectName(u"RT_channels_to_show_combo")
-        self.RT_channels_to_show_combo.setGeometry(QRect(180, 114, 121, 24))
-        self.Segmentlabel14_5 = QLabel(self.tab_11)
-        self.Segmentlabel14_5.setObjectName(u"Segmentlabel14_5")
-        self.Segmentlabel14_5.setGeometry(QRect(184, 100, 121, 16))
-        self.RT_single_chan_to_show_textbox = QLineEdit(self.tab_11)
-        self.RT_single_chan_to_show_textbox.setObjectName(u"RT_single_chan_to_show_textbox")
-        self.RT_single_chan_to_show_textbox.setGeometry(QRect(300, 114, 101, 22))
         self.Settings_Spectrograms_Define_Parameters_Tab.addTab(self.tab_11, "")
         self.tab_6 = QWidget()
         self.tab_6.setObjectName(u"tab_6")
@@ -849,12 +837,6 @@ class Ui_EmpaGUI(object):
         self.RealT_filse_folders_delete_files_checkbox.setText(QCoreApplication.translate("EmpaGUI", u"Delete files after processing", None))
         self.RT_offset_signals_show_checkbox.setText(QCoreApplication.translate("EmpaGUI", u"With offset (mV)", None))
         self.RT_show_channels_offset_textbox_6.setText(QCoreApplication.translate("EmpaGUI", u"10", None))
-        self.RT_channels_to_show_combo.setItemText(0, QCoreApplication.translate("EmpaGUI", u"only_selected", None))
-        self.RT_channels_to_show_combo.setItemText(1, QCoreApplication.translate("EmpaGUI", u"all", None))
-        self.RT_channels_to_show_combo.setItemText(2, QCoreApplication.translate("EmpaGUI", u"one->", None))
-
-        self.Segmentlabel14_5.setText(QCoreApplication.translate("EmpaGUI", u"Display channels:", None))
-        self.RT_single_chan_to_show_textbox.setText(QCoreApplication.translate("EmpaGUI", u"0", None))
         self.Settings_Spectrograms_Define_Parameters_Tab.setTabText(self.Settings_Spectrograms_Define_Parameters_Tab.indexOf(self.tab_11), QCoreApplication.translate("EmpaGUI", u"Real time", None))
         self.groupBox_10.setTitle(QCoreApplication.translate("EmpaGUI", u"Processing results show", None))
         self.Model_ready_label_2.setText("")

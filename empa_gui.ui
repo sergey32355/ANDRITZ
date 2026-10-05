@@ -30,7 +30,7 @@
      </rect>
     </property>
     <property name="currentIndex">
-     <number>2</number>
+     <number>0</number>
     </property>
     <widget class="QWidget" name="tab">
      <attribute name="title">
@@ -1700,57 +1700,6 @@
         </property>
         <property name="text">
          <string>10</string>
-        </property>
-       </widget>
-       <widget class="QComboBox" name="RT_channels_to_show_combo">
-        <property name="geometry">
-         <rect>
-          <x>180</x>
-          <y>114</y>
-          <width>121</width>
-          <height>24</height>
-         </rect>
-        </property>
-        <item>
-         <property name="text">
-          <string>only_selected</string>
-         </property>
-        </item>
-        <item>
-         <property name="text">
-          <string>all</string>
-         </property>
-        </item>
-        <item>
-         <property name="text">
-          <string>one-&gt;</string>
-         </property>
-        </item>
-       </widget>
-       <widget class="QLabel" name="Segmentlabel14_5">
-        <property name="geometry">
-         <rect>
-          <x>184</x>
-          <y>100</y>
-          <width>121</width>
-          <height>16</height>
-         </rect>
-        </property>
-        <property name="text">
-         <string>Display channels:</string>
-        </property>
-       </widget>
-       <widget class="QLineEdit" name="RT_single_chan_to_show_textbox">
-        <property name="geometry">
-         <rect>
-          <x>300</x>
-          <y>114</y>
-          <width>101</width>
-          <height>22</height>
-         </rect>
-        </property>
-        <property name="text">
-         <string>0</string>
         </property>
        </widget>
       </widget>

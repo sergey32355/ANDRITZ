@@ -2099,16 +2099,11 @@ def ReadSettings(window):
         #Spectrum card                         
         RT_offset_signals_show_checkbox=bool(window.ui.RT_offset_signals_show_checkbox.isChecked())
         settings["RT_offset_signals_show_checkbox"] = RT_offset_signals_show_checkbox
-
-        RT_channels_to_show_combo=int(window.ui.RT_channels_to_show_combo.currentIndex())
-        settings["RT_channels_to_show_combo"] = RT_channels_to_show_combo
+      
 
         RT_show_channels_offset_textbox_6=window.ui.RT_show_channels_offset_textbox_6.text()
         settings["RT_show_channels_offset_textbox_6"] = RT_show_channels_offset_textbox_6
-
-        RT_single_chan_to_show_textbox=window.ui.RT_single_chan_to_show_textbox.text()
-        settings["RT_single_chan_to_show_textbox"] = RT_single_chan_to_show_textbox
-
+       
     except Exception as es:
         print("Exception: "+str(es))
 
@@ -2244,7 +2239,7 @@ def LoadInterfaceFromFile(window,path):
     window.ui.classification_snippet_size_text.setText(str(my_set["MAIN_classification_snippet_size_text"]))
     window.ui.classification_preproc_dropdown.setCurrentIndex(int(my_set["MAIN_classification_preproc_dropdown"]))
     window.ui.classification_user_channels_text_box.setText(str(my_set["classification_user_channels_text_box"]))
-    
+    window.ui.real_time_folder_text.setText(str(my_set["real_time_folder_text"]))  
     
     #settings - Visualization page
     window.ui.GUI_load_default_on_start.setChecked(bool(my_set["SETTINGS_VIZUALIZATION_load_default_GUI"]))    
@@ -2309,11 +2304,10 @@ def LoadInterfaceFromFile(window,path):
         window.ui.RT_impose_delay_between_measurements_checkbox_3.setChecked(bool(my_set["RT_impose_delay_between_measurements_checkbox_3"]))
         window.ui.RT_impose_delay_between_measurements_textbox_5.setText(str(my_set["RT_impose_delay_between_measurements_textbox_5"]))
         #how to show the cahnnels         
-        
-        window.ui.RT_channels_to_show_combo.setCurrentIndex(int(my_set["RT_channels_to_show_combo"]))
+              
         window.ui.RT_offset_signals_show_checkbox.setChecked(bool(my_set["RT_offset_signals_show_checkbox"]))
         window.ui.RT_show_channels_offset_textbox_6.setText(str(my_set["RT_show_channels_offset_textbox_6"]))
-        window.ui.RT_single_chan_to_show_textbox.setText(str(my_set["RT_single_chan_to_show_textbox"]))        
+        
         
         #files folder
         window.ui.RealT_filse_folders_delete_files_checkbox.setChecked(bool(my_set["RealT_filse_folders_delete_files_checkbox"]))
